@@ -1,0 +1,54 @@
+{
+    "test_settings": {
+        "max_retries": 3,
+        "retry_delay": 5,
+        "timeout": 30,
+        "batch_size": 10,
+        "validate_data": true,
+        "generate_reports": true
+    },
+    "validation_rules": {
+        "required_fields": [
+            "isin",
+            "issuer_name",
+            "issue_date",
+            "maturity_date",
+            "currency",
+            "coupon_rate",
+            "face_value"
+        ],
+        "data_types": {
+            "isin": "string",
+            "issue_date": "date",
+            "maturity_date": "date",
+            "coupon_rate": "number",
+            "face_value": "number"
+        },
+        "value_ranges": {
+            "coupon_rate": {
+                "min": 0,
+                "max": 100
+            },
+            "face_value": {
+                "min": 0
+            }
+        }
+    },
+    "error_handling": {
+        "retry_conditions": [
+            "network_error",
+            "timeout",
+            "server_error",
+            "connection_error"
+        ],
+        "max_retries": 3,
+        "retry_delay": 5,
+        "error_logging": true
+    },
+    "performance": {
+        "max_concurrent_downloads": 5,
+        "batch_size": 10,
+        "cache_enabled": true,
+        "cache_duration": 3600
+    }
+} 

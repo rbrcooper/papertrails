@@ -1,0 +1,34 @@
+{
+    "companies": [
+        {
+            "name": "TotalEnergies",
+            "lei": "549300GXQGKXQJK5QF55",
+            "industry": "Oil and Gas",
+            "country": "France"
+        },
+        {
+            "name": "Glencore",
+            "lei": "549300GXQGKXQJK5QF55",
+            "industry": "Mining and Commodities",
+            "country": "Switzerland"
+        },
+        {
+            "name": "Repsol",
+            "lei": "549300GXQGKXQJK5QF55",
+            "industry": "Oil and Gas",
+            "country": "Spain"
+        },
+        {
+            "name": "Eni",
+            "lei": "549300GXQGKXQJK5QF55",
+            "industry": "Oil and Gas",
+            "country": "Italy"
+        },
+        {
+            "name": "Equinor",
+            "lei": "549300GXQGKXQJK5QF55",
+            "industry": "Oil and Gas",
+            "country": "Norway"
+        }
+    ]
+} 

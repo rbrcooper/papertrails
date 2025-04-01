@@ -1,0 +1,1309 @@
+2025-04-01 16:46:42,059 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:46:42,165 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:46:42,169 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:46:44,703 - workflow - ERROR - Failed to initialize Chrome WebDriver: 'NoneType' object has no attribute 'split'
+2025-04-01 16:46:44,703 - workflow - ERROR - Workflow initialization failed: 'NoneType' object has no attribute 'split'
+2025-04-01 16:46:44,704 - __main__ - ERROR - ESMA workflow failed: 'NoneType' object has no attribute 'split'
+2025-04-01 16:46:44,709 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\run_workflow.py", line 18, in main
+    workflow.initialize()
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\workflow.py", line 62, in initialize
+    self.initialize_driver()
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\workflow.py", line 90, in initialize_driver
+    service = Service(ChromeDriverManager().install())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\chrome.py", line 40, in install
+    driver_path = self._get_driver_binary_path(self.driver)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\core\manager.py", line 40, in _get_driver_binary_path
+    file = self._download_manager.download_file(driver.get_driver_download_url(os_type))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\drivers\chrome.py", line 32, in get_driver_download_url
+    driver_version_to_download = self.get_driver_version_to_download()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\core\driver.py", line 48, in get_driver_version_to_download
+    return self.get_latest_release_version()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\drivers\chrome.py", line 64, in get_latest_release_version
+    determined_browser_version = ".".join(determined_browser_version.split(".")[:3])
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'split'
+
+2025-04-01 16:48:25,676 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:48:25,705 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:48:25,705 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:48:27,927 - workflow - ERROR - Failed to initialize Chrome WebDriver: 'NoneType' object has no attribute 'split'
+2025-04-01 16:48:27,927 - workflow - ERROR - Workflow initialization failed: 'NoneType' object has no attribute 'split'
+2025-04-01 16:48:27,927 - __main__ - ERROR - ESMA workflow failed: 'NoneType' object has no attribute 'split'
+2025-04-01 16:48:27,930 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\run_workflow.py", line 18, in main
+    workflow.initialize()
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\workflow.py", line 63, in initialize
+    self.initialize_driver()
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\workflow.py", line 94, in initialize_driver
+    driver_path = ChromeDriverManager().install()
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\chrome.py", line 40, in install
+    driver_path = self._get_driver_binary_path(self.driver)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\core\manager.py", line 40, in _get_driver_binary_path
+    file = self._download_manager.download_file(driver.get_driver_download_url(os_type))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\drivers\chrome.py", line 32, in get_driver_download_url
+    driver_version_to_download = self.get_driver_version_to_download()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\core\driver.py", line 48, in get_driver_version_to_download
+    return self.get_latest_release_version()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\drivers\chrome.py", line 64, in get_latest_release_version
+    determined_browser_version = ".".join(determined_browser_version.split(".")[:3])
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'split'
+
+2025-04-01 16:49:16,902 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:49:16,920 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:49:16,920 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:49:21,584 - workflow - INFO - Chrome WebDriver initialized successfully
+2025-04-01 16:49:21,586 - workflow - INFO - Workflow initialized successfully
+2025-04-01 16:49:21,587 - __main__ - ERROR - ESMA workflow failed: 'ESMAWorkflow' object has no attribute 'COMPANIES'
+2025-04-01 16:49:21,589 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\run_workflow.py", line 21, in main
+    for company_name, company_data in workflow.COMPANIES.items():
+                                      ^^^^^^^^^^^^^^^^^^
+AttributeError: 'ESMAWorkflow' object has no attribute 'COMPANIES'
+
+2025-04-01 16:50:56,613 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:50:56,632 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:50:56,632 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:51:00,419 - workflow - INFO - Chrome WebDriver initialized successfully
+2025-04-01 16:51:00,420 - workflow - INFO - Workflow initialized successfully
+2025-04-01 16:51:00,420 - __main__ - INFO - Processing company: TotalEnergies
+2025-04-01 16:51:00,420 - workflow - INFO - Processing company: TotalEnergies
+2025-04-01 16:51:00,421 - workflow - ERROR - Error processing company TotalEnergies: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,421 - __main__ - ERROR - Failed to process company TotalEnergies: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,421 - __main__ - INFO - Processing company: Glencore
+2025-04-01 16:51:00,421 - workflow - INFO - Processing company: Glencore
+2025-04-01 16:51:00,422 - workflow - ERROR - Error processing company Glencore: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,422 - __main__ - ERROR - Failed to process company Glencore: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,422 - __main__ - INFO - Processing company: Repsol
+2025-04-01 16:51:00,422 - workflow - INFO - Processing company: Repsol
+2025-04-01 16:51:00,422 - workflow - ERROR - Error processing company Repsol: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,422 - __main__ - ERROR - Failed to process company Repsol: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,423 - __main__ - INFO - Processing company: Eni
+2025-04-01 16:51:00,423 - workflow - INFO - Processing company: Eni
+2025-04-01 16:51:00,423 - workflow - ERROR - Error processing company Eni: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,423 - __main__ - ERROR - Failed to process company Eni: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,423 - __main__ - INFO - Processing company: Equinor
+2025-04-01 16:51:00,424 - workflow - INFO - Processing company: Equinor
+2025-04-01 16:51:00,424 - workflow - ERROR - Error processing company Equinor: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,424 - __main__ - ERROR - Failed to process company Equinor: 'DatabaseManager' object has no attribute 'get_or_create_issuer'
+2025-04-01 16:51:00,425 - workflow - INFO - Generating final reports
+2025-04-01 16:51:00,425 - __main__ - INFO - ESMA workflow completed successfully
+2025-04-01 16:52:24,087 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:52:24,104 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:52:24,104 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:52:27,496 - workflow - INFO - Chrome WebDriver initialized successfully
+2025-04-01 16:52:27,497 - workflow - INFO - Workflow initialized successfully
+2025-04-01 16:52:27,498 - __main__ - INFO - Processing company: TotalEnergies
+2025-04-01 16:52:27,498 - workflow - INFO - Processing company: TotalEnergies
+2025-04-01 16:52:27,516 - workflow - ERROR - Error processing company TotalEnergies: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,517 - __main__ - ERROR - Failed to process company TotalEnergies: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,517 - __main__ - INFO - Processing company: Glencore
+2025-04-01 16:52:27,517 - workflow - INFO - Processing company: Glencore
+2025-04-01 16:52:27,519 - workflow - ERROR - Error processing company Glencore: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,520 - __main__ - ERROR - Failed to process company Glencore: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,520 - __main__ - INFO - Processing company: Repsol
+2025-04-01 16:52:27,520 - workflow - INFO - Processing company: Repsol
+2025-04-01 16:52:27,522 - workflow - ERROR - Error processing company Repsol: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,523 - __main__ - ERROR - Failed to process company Repsol: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,523 - __main__ - INFO - Processing company: Eni
+2025-04-01 16:52:27,523 - workflow - INFO - Processing company: Eni
+2025-04-01 16:52:27,525 - workflow - ERROR - Error processing company Eni: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,525 - __main__ - ERROR - Failed to process company Eni: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,526 - __main__ - INFO - Processing company: Equinor
+2025-04-01 16:52:27,526 - workflow - INFO - Processing company: Equinor
+2025-04-01 16:52:27,527 - workflow - ERROR - Error processing company Equinor: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,528 - __main__ - ERROR - Failed to process company Equinor: (sqlite3.OperationalError) no such column: issuers.industry
+[SQL: SELECT issuers.id AS issuers_id, issuers.name AS issuers_name, issuers.lei AS issuers_lei, issuers.country AS issuers_country, issuers.industry AS issuers_industry, issuers.created_at AS issuers_created_at 
+FROM issuers 
+WHERE issuers.lei = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('549300GXQGKXQJK5QF55', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-04-01 16:52:27,528 - workflow - INFO - Generating final reports
+2025-04-01 16:52:27,528 - __main__ - INFO - ESMA workflow completed successfully
+2025-04-01 16:52:48,607 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:52:48,673 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:52:48,673 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:52:52,313 - workflow - INFO - Chrome WebDriver initialized successfully
+2025-04-01 16:52:52,314 - workflow - INFO - Workflow initialized successfully
+2025-04-01 16:52:52,314 - __main__ - INFO - Processing company: TotalEnergies
+2025-04-01 16:52:52,315 - workflow - INFO - Processing company: TotalEnergies
+2025-04-01 16:52:52,342 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:52:52,677 - workflow - INFO - Generating report for company: TotalEnergies
+2025-04-01 16:52:52,677 - __main__ - INFO - Successfully processed company: TotalEnergies - Found 0 bonds
+2025-04-01 16:52:52,678 - __main__ - INFO - Processing company: Glencore
+2025-04-01 16:52:52,678 - workflow - INFO - Processing company: Glencore
+2025-04-01 16:52:52,680 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:52:52,823 - workflow - INFO - Generating report for company: Glencore
+2025-04-01 16:52:52,823 - __main__ - INFO - Successfully processed company: Glencore - Found 0 bonds
+2025-04-01 16:52:52,823 - __main__ - INFO - Processing company: Repsol
+2025-04-01 16:52:52,824 - workflow - INFO - Processing company: Repsol
+2025-04-01 16:52:52,824 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:52:52,969 - workflow - INFO - Generating report for company: Repsol
+2025-04-01 16:52:52,970 - __main__ - INFO - Successfully processed company: Repsol - Found 0 bonds
+2025-04-01 16:52:52,970 - __main__ - INFO - Processing company: Eni
+2025-04-01 16:52:52,971 - workflow - INFO - Processing company: Eni
+2025-04-01 16:52:52,972 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:52:53,104 - workflow - INFO - Generating report for company: Eni
+2025-04-01 16:52:53,105 - __main__ - INFO - Successfully processed company: Eni - Found 0 bonds
+2025-04-01 16:52:53,105 - __main__ - INFO - Processing company: Equinor
+2025-04-01 16:52:53,105 - workflow - INFO - Processing company: Equinor
+2025-04-01 16:52:53,107 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:52:53,239 - workflow - INFO - Generating report for company: Equinor
+2025-04-01 16:52:53,240 - __main__ - INFO - Successfully processed company: Equinor - Found 0 bonds
+2025-04-01 16:52:53,240 - workflow - INFO - Generating final reports
+2025-04-01 16:52:53,240 - __main__ - INFO - ESMA workflow completed successfully
+2025-04-01 16:54:21,851 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:54:21,867 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:54:21,867 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:54:25,215 - workflow - INFO - Chrome WebDriver initialized successfully
+2025-04-01 16:54:25,216 - workflow - INFO - Workflow initialized successfully
+2025-04-01 16:54:25,217 - __main__ - INFO - Processing company: TotalEnergies
+2025-04-01 16:54:25,217 - workflow - INFO - Processing company: TotalEnergies
+2025-04-01 16:54:25,235 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:54:35,620 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:54:35,620 - workflow - INFO - Generating report for company: TotalEnergies
+2025-04-01 16:54:35,621 - __main__ - INFO - Successfully processed company: TotalEnergies - Found 0 bonds
+2025-04-01 16:54:35,621 - __main__ - INFO - Processing company: Glencore
+2025-04-01 16:54:35,622 - workflow - INFO - Processing company: Glencore
+2025-04-01 16:54:35,623 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:54:45,924 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:54:45,924 - workflow - INFO - Generating report for company: Glencore
+2025-04-01 16:54:45,925 - __main__ - INFO - Successfully processed company: Glencore - Found 0 bonds
+2025-04-01 16:54:45,925 - __main__ - INFO - Processing company: Repsol
+2025-04-01 16:54:45,925 - workflow - INFO - Processing company: Repsol
+2025-04-01 16:54:45,928 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:54:56,238 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:54:56,239 - workflow - INFO - Generating report for company: Repsol
+2025-04-01 16:54:56,239 - __main__ - INFO - Successfully processed company: Repsol - Found 0 bonds
+2025-04-01 16:54:56,239 - __main__ - INFO - Processing company: Eni
+2025-04-01 16:54:56,240 - workflow - INFO - Processing company: Eni
+2025-04-01 16:54:56,242 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:55:06,543 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:55:06,544 - workflow - INFO - Generating report for company: Eni
+2025-04-01 16:55:06,545 - __main__ - INFO - Successfully processed company: Eni - Found 0 bonds
+2025-04-01 16:55:06,545 - __main__ - INFO - Processing company: Equinor
+2025-04-01 16:55:06,545 - workflow - INFO - Processing company: Equinor
+2025-04-01 16:55:06,547 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:55:16,848 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:55:16,849 - workflow - INFO - Generating report for company: Equinor
+2025-04-01 16:55:16,849 - __main__ - INFO - Successfully processed company: Equinor - Found 0 bonds
+2025-04-01 16:55:16,850 - workflow - INFO - Generating final reports
+2025-04-01 16:55:16,850 - __main__ - INFO - ESMA workflow completed successfully
+2025-04-01 16:56:49,253 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 16:56:49,272 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 16:56:49,272 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 16:56:52,857 - workflow - INFO - Chrome WebDriver initialized successfully
+2025-04-01 16:56:52,859 - workflow - INFO - Workflow initialized successfully
+2025-04-01 16:56:52,859 - __main__ - INFO - Processing company: TotalEnergies
+2025-04-01 16:56:52,859 - workflow - INFO - Processing company: TotalEnergies
+2025-04-01 16:56:52,880 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:57:03,328 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:03,328 - workflow - ERROR - Error processing company TotalEnergies: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:03,328 - __main__ - ERROR - Failed to process company TotalEnergies: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:03,328 - __main__ - INFO - Processing company: Glencore
+2025-04-01 16:57:03,328 - workflow - INFO - Processing company: Glencore
+2025-04-01 16:57:03,331 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:57:13,625 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:13,625 - workflow - ERROR - Error processing company Glencore: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:13,626 - __main__ - ERROR - Failed to process company Glencore: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:13,626 - __main__ - INFO - Processing company: Repsol
+2025-04-01 16:57:13,626 - workflow - INFO - Processing company: Repsol
+2025-04-01 16:57:13,628 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:57:23,898 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:23,898 - workflow - ERROR - Error processing company Repsol: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:23,898 - __main__ - ERROR - Failed to process company Repsol: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:23,899 - __main__ - INFO - Processing company: Eni
+2025-04-01 16:57:23,899 - workflow - INFO - Processing company: Eni
+2025-04-01 16:57:23,900 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:57:34,169 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:34,169 - workflow - ERROR - Error processing company Eni: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:34,170 - __main__ - ERROR - Failed to process company Eni: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:34,170 - __main__ - INFO - Processing company: Equinor
+2025-04-01 16:57:34,170 - workflow - INFO - Processing company: Equinor
+2025-04-01 16:57:34,172 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 16:57:44,474 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:44,475 - workflow - ERROR - Error processing company Equinor: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:44,475 - __main__ - ERROR - Failed to process company Equinor: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 16:57:44,476 - workflow - INFO - Generating final reports
+2025-04-01 16:57:44,476 - __main__ - INFO - ESMA workflow completed successfully
+2025-04-01 17:01:16,082 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 17:01:16,101 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 17:01:16,101 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 17:01:21,144 - workflow - INFO - Chrome WebDriver initialized successfully
+2025-04-01 17:01:21,148 - workflow - INFO - Workflow initialized successfully
+2025-04-01 17:01:21,150 - __main__ - INFO - Processing company: TotalEnergies
+2025-04-01 17:01:21,151 - workflow - INFO - Processing company: TotalEnergies
+2025-04-01 17:01:21,255 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 17:01:42,072 - workflow - ERROR - Timeout waiting for element: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:01:42,073 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:01:42,073 - workflow - ERROR - Error processing company TotalEnergies: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:01:42,073 - __main__ - ERROR - Failed to process company TotalEnergies: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:01:42,075 - __main__ - INFO - Processing company: Glencore
+2025-04-01 17:01:42,075 - workflow - INFO - Processing company: Glencore
+2025-04-01 17:01:42,077 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 17:02:02,309 - workflow - ERROR - Timeout waiting for element: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:02,310 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:02,310 - workflow - ERROR - Error processing company Glencore: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:02,311 - __main__ - ERROR - Failed to process company Glencore: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:02,311 - __main__ - INFO - Processing company: Repsol
+2025-04-01 17:02:02,312 - workflow - INFO - Processing company: Repsol
+2025-04-01 17:02:02,315 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 17:02:22,959 - workflow - ERROR - Timeout waiting for element: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:22,960 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:22,960 - workflow - ERROR - Error processing company Repsol: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:22,961 - __main__ - ERROR - Failed to process company Repsol: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:22,961 - __main__ - INFO - Processing company: Eni
+2025-04-01 17:02:22,961 - workflow - INFO - Processing company: Eni
+2025-04-01 17:02:22,964 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 17:02:43,438 - workflow - ERROR - Timeout waiting for element: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:43,438 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:43,439 - workflow - ERROR - Error processing company Eni: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:43,439 - __main__ - ERROR - Failed to process company Eni: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:02:43,440 - __main__ - INFO - Processing company: Equinor
+2025-04-01 17:02:43,440 - workflow - INFO - Processing company: Equinor
+2025-04-01 17:02:43,443 - workflow - INFO - Searching bonds for LEI: 549300GXQGKXQJK5QF55
+2025-04-01 17:03:03,931 - workflow - ERROR - Timeout waiting for element: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:03:03,932 - workflow - ERROR - Error searching bonds: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:03:03,933 - workflow - ERROR - Error processing company Equinor: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:03:03,933 - __main__ - ERROR - Failed to process company Equinor: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF60D144C25+3179557]
+	(No symbol) [0x00007FF60CDA88A0]
+	(No symbol) [0x00007FF60CC391CA]
+	(No symbol) [0x00007FF60CC8FA67]
+	(No symbol) [0x00007FF60CC8FC9C]
+	(No symbol) [0x00007FF60CCE3627]
+	(No symbol) [0x00007FF60CCB7C6F]
+	(No symbol) [0x00007FF60CCE02F3]
+	(No symbol) [0x00007FF60CCB7A03]
+	(No symbol) [0x00007FF60CC806D0]
+	(No symbol) [0x00007FF60CC81983]
+	GetHandleVerifier [0x00007FF60D1A67CD+3579853]
+	GetHandleVerifier [0x00007FF60D1BD1D2+3672530]
+	GetHandleVerifier [0x00007FF60D1B2153+3627347]
+	GetHandleVerifier [0x00007FF60CF1092A+868650]
+	(No symbol) [0x00007FF60CDB2FFF]
+	(No symbol) [0x00007FF60CDAF4A4]
+	(No symbol) [0x00007FF60CDAF646]
+	(No symbol) [0x00007FF60CD9EAA9]
+	BaseThreadInitThunk [0x00007FFC4673E8D7+23]
+	RtlUserThreadStart [0x00007FFC4825BF6C+44]
+
+2025-04-01 17:03:03,934 - workflow - INFO - Generating final reports
+2025-04-01 17:03:03,934 - __main__ - INFO - ESMA workflow completed successfully
+2025-04-01 17:04:08,355 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 17:04:08,356 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 17:04:08,357 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 17:04:11,099 - workflow - ERROR - Error initializing workflow: 'NoneType' object has no attribute 'split'
+2025-04-01 17:04:11,100 - __main__ - ERROR - ESMA workflow failed: 'NoneType' object has no attribute 'split'
+2025-04-01 17:04:11,105 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\run_workflow.py", line 17, in main
+    workflow = ESMAWorkflow()
+               ^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\workflow.py", line 61, in __init__
+    service = Service(ChromeDriverManager().install())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\chrome.py", line 40, in install
+    driver_path = self._get_driver_binary_path(self.driver)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\core\manager.py", line 40, in _get_driver_binary_path
+    file = self._download_manager.download_file(driver.get_driver_download_url(os_type))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\drivers\chrome.py", line 32, in get_driver_download_url
+    driver_version_to_download = self.get_driver_version_to_download()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\core\driver.py", line 48, in get_driver_version_to_download
+    return self.get_latest_release_version()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\webdriver_manager\drivers\chrome.py", line 64, in get_latest_release_version
+    determined_browser_version = ".".join(determined_browser_version.split(".")[:3])
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'split'
+
+2025-04-01 17:04:43,404 - __main__ - INFO - Starting ESMA workflow
+2025-04-01 17:04:43,405 - workflow - INFO - Initializing ESMA workflow
+2025-04-01 17:04:43,405 - workflow - INFO - Initializing Chrome WebDriver
+2025-04-01 17:04:43,408 - workflow - ERROR - Error initializing workflow: Message: Unable to locate or obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+
+2025-04-01 17:04:43,409 - __main__ - ERROR - ESMA workflow failed: Message: Unable to locate or obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+
+2025-04-01 17:04:43,414 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\run_workflow.py", line 17, in main
+    workflow = ESMAWorkflow()
+               ^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\ESMA bond pull\workflow.py", line 62, in __init__
+    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\selenium\webdriver\chrome\webdriver.py", line 45, in __init__
+    super().__init__(
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\selenium\webdriver\chromium\webdriver.py", line 49, in __init__
+    self.service.path = DriverFinder.get_path(self.service, options)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rbrco\Documents\ff2\venv\Lib\site-packages\selenium\webdriver\common\driver_finder.py", line 44, in get_path
+    raise NoSuchDriverException(f"Unable to locate or obtain driver for {options.capabilities['browserName']}")
+selenium.common.exceptions.NoSuchDriverException: Message: Unable to locate or obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+
+
