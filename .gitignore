@@ -4,8 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
-env/
 build/
 develop-eggs/
 dist/
@@ -22,12 +20,10 @@ wheels/
 .installed.cfg
 *.egg
 
-# Logs
-*.log
-log/
-
-# Results
-results/
+# Virtual Environment
+venv/
+ENV/
+env/
 
 # IDE
 .idea/
@@ -35,9 +31,21 @@ results/
 *.swp
 *.swo
 
-# Data files
+# Logs
+logs/
+log/
+*.log
+
+# Local data
+data/
+debug_screenshots/
+downloads/
+results/
+
+# Excel files
 *.xlsx
 *.xls
-*.csv
-*.json
-*.db 
+
+# Other
+.DS_Store
+Thumbs.db 
