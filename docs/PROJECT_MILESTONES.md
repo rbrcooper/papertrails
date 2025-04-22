@@ -11,7 +11,7 @@
 
 *   **Core Aim:** Provide accessible, aggregated data on bond underwriting links from ESMA prospectuses.
 *   **MVP Feature Set:**
-    *   [x] Automated download of relevant ESMA prospectuses for a given company list.
+    *   [x] Automated download of relevant ESMA prospectuses for a given company list - esma_scraper.py
     *   [ ] Extraction of key fields from downloaded PDFs: **Issuer, Underwriting Banks/Bookrunners, Issue Size & Currency, Issue/Maturity Dates, Coupon Rates**. (Lower Priority: Ratings, Listing Info, etc.)
     *   [ ] Storing the extracted data in a consolidated, structured format: **`results/extracted_data.json`** and **`results/extracted_data.xlsx`**.
 
