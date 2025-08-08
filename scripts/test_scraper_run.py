@@ -1,0 +1,23 @@
+import logging
+from pprint import pprint
+
+from processes.esma_scraper import ESMAScraper
+
+
+def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    scraper = None
+    try:
+        scraper = ESMAScraper(debug_mode=True, headless=True)
+        downloads = scraper.search_and_process('OMV AG')
+        print('Downloaded files:')
+        pprint(downloads)
+    finally:
+        if scraper:
+            scraper.close()
+
+
+if __name__ == '__main__':
+    main()
+
+

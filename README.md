@@ -1,129 +1,81 @@
-# ESMA Bond Data Tracker
+# Papertrails Data Pipeline
 
-This project aims to build a tool to extract and aggregate key bond data, primarily focusing on underwriter information, for specific companies from ESMA Prospectus documents. The primary challenge lies in reliably extracting structured data from PDF documents with variable formats.
+Papertrails is a data processing pipeline designed to extract financial data from public documents for use by NGOs, think tanks, and journalists. It currently focuses on extracting bond underwriting data from ESMA (European Securities and Markets Authority) prospectus documents. Future plans include incorporating equity data from US 13F filings.
 
-## Project Goal
+The core of this project is a hybrid data extraction system that uses a local LLM (via Ollama) for intelligent, context-aware data extraction, combined with traditional regex-based methods for reliability and speed.
 
-Provide accessible, aggregated data on bond underwriting links and other key financial details found within ESMA prospectuses, primarily for researchers and campaigners.
+## Current Status: In Development 🏗️
 
-## Minimum Viable Product (MVP) Scope
+The project has a functional core pipeline but is undergoing development to become a fully automated, production-ready system.
 
-The MVP focuses on delivering the core extraction and aggregation pipeline:
+-   **Extraction Engine:** ✅ (AI + Regex Hybrid)
+-   **Web Scraper:** ✅ (Hardened against bot detection)
+-   **Pipeline Orchestrator:** ✅ (Dynamically processes a list of companies)
+-   **Validation & Error Handling:** 🚧 (Under development)
+-   **Website/API:** ấp (Planned)
 
-1.  **Automated Prospectus Download:** Download relevant ESMA prospectuses for a predefined list of companies using `processes/esma_scraper.py`.
-2.  **Key Field Extraction:** Extract the following fields from the downloaded PDFs using `processes/pdf_extractor.py`:
-    *   Issuer Name
-    *   Underwriting Banks/Bookrunners (including standardization)
-    *   Issue Size & Currency
-    *   Issue Date & Maturity Date
-    *   Coupon Rate(s)
-3.  **Consolidated Output:** Store the extracted data in structured formats: `results/extracted_data.json` and `results/extracted_data.xlsx`.
+## Core Features
 
-## Current Status (Summary from PROJECT_MILESTONES.md)
+-   **Hybrid Data Extraction:** Combines AI (Llama 3.1 8B) for high-accuracy bank name extraction with regex for structured metadata like dates and currencies.
+-   **Intelligent Chunking:** A custom AI strategy that finds relevant sections in large PDFs before sending them to the LLM, overcoming context window limitations.
+-   **Dynamic Pipeline:** The main orchestrator can process a list of companies, running the scraper and extractor for each one.
+-   **Robust Web Scraping:** Uses `undetected-chromedriver` and hardened techniques to reliably download documents from the ESMA portal.
+-   **Modular Architecture:** The system is broken down into distinct, maintainable components for scraping, extraction, database handling, and more.
 
-*   **ESMA Scraper (`esma_scraper.py`):** Functionally complete for downloading and organizing PDFs. **`[x]`**
-*   **PDF Extractor (`pdf_extractor.py`):** Initial extraction logic exists but requires significant refinement for MVP fields and is not fully integrated. **`[~]`**
-*   **Main Workflow (`main.py`):** Runs the scraper but does not yet integrate the extractor or produce the final aggregated output. **`[~]`**
-*   **Output:** Final consolidated JSON/Excel files are not yet generated. **`[ ]`**
+## Getting Started
 
-## Development Roadmap (Simplified)
+### Prerequisites
 
-1.  **Phase 1: Offline PDF Extraction Refinement:** Improve `pdf_extractor.py` using sample PDFs.
-2.  **Phase 2: Pipeline Integration:** Connect the refined extractor to `main.py`.
-3.  **Phase 3: Final Output Generation:** Create the consolidated JSON/Excel files.
-
-## Technology Stack
-
-*   **Python:** Core language.
-*   **Web Scraping:** Selenium (`undetected-chromedriver`).
-*   **PDF Processing:** PyMuPDF, pdfplumber (potential Tesseract OCR fallback).
-*   **Data Handling:** pandas.
-*   **Development:** VS Code with Cursor AI assistant.
-
-## Basic Usage (Anticipated)
-
-1.  Ensure all dependencies are installed:
+1.  **Ollama:** You must have [Ollama](https://ollama.ai/) installed and running.
+2.  **Llama 3.1 8B Model:** Pull the required model:
     ```bash
-    pip install -r requirements.txt
+    ollama pull llama3.1:8b
     ```
-2.  Ensure `data/bank_names.json` (for standardization) is populated if needed.
-3.  Run the main workflow script (likely `main.py` or `run.py`):
+3.  **Python 3.8+:** Ensure you have a compatible Python version.
+
+### Installation
+
+1.  Clone the repository:
     ```bash
-    python main.py
+    git clone <your-repo-url>
+    cd <your-repo-name>
     ```
-4.  Check the `results/` directory for `extracted_data.json` and `extracted_data.xlsx`.
+2.  Install the required Python packages:
+    ```bash
+    pip install -r docs/requirements.txt
+    ```
 
-## Output Files
+### Running the Pipeline
 
-*   **`results/extracted_data.json`:** A list of dictionaries, where each dictionary represents the extracted data from a single PDF document.
-*   **`results/extracted_data.xlsx`:** A spreadsheet containing the aggregated extracted data, with columns corresponding to the key MVP fields.
+To run the full pipeline, which will scrape new documents and then process them:
 
-## Notes
-
-*   The project is currently focused on achieving the MVP functionality.
-*   Development prioritizes refining the PDF extraction logic offline before full pipeline integration.
-
-## System Components
-
-1. **ESMA Scraper** (`processes/esma_scraper.py`)
-   - Downloads PDF documents from the ESMA website
-   - Filters for "Final Terms" documents
-   - Handles document metadata and organization
-
-2. **PDF Extractor** (`processes/pdf_extractor.py`)
-   - Processes downloaded PDFs
-   - Extracts bank information, particularly from the "Distribution" section
-   - Uses both primary (section-based) and fallback (pattern-based) extraction strategies
-
-## Test Process
-
-The test script (`test_full_process.py`) demonstrates the complete workflow:
-
-1. Downloads Final Terms documents for test companies:
-   - BNP Paribas
-   - Société Générale
-   - Deutsche Bank
-
-2. Processes the downloaded PDFs to extract bank information
-
-3. Saves results in JSON format
-
-### Directory Structure
-
-```
-data/
-└── test/
-    ├── downloads/    # Downloaded PDFs
-    └── results/      # Extracted bank information
+```bash
+python -m processes.main
 ```
 
-### Running the Test
+To run the pipeline but skip the scraping step (i.e., only process already downloaded PDFs):
 
-1. Ensure all dependencies are installed:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+python -m processes.main --skip-scraping
+```
 
-2. Run the test script:
-   ```bash
-   python test_full_process.py
-   ```
+To limit the number of companies processed for a test run:
 
-3. Monitor the progress through the console output
+```bash
+python -m processes.main --limit-companies 5
+```
 
-4. Check the results in `data/test/results/`
+## Project Structure
 
-## Notes
+-   `processes/`: The core application logic.
+    -   `main.py`: The main pipeline orchestrator.
+    -   `esma_scraper.py`: The web scraper for the ESMA portal.
+    -   `pdf_extractor.py`: The hybrid AI/regex data extraction engine.
+    -   `database_handler.py`: Manages the SQLite database.
+    -   `pdf_extraction/`: Contains the individual extractor modules.
+    -   `pipeline_components/`: Modules for validation, aggregation, and reporting.
+-   `docs/`: Project documentation.
+-   `data/`: Data files, including downloaded PDFs and processed output.
+-   `logs/`: Application logs.
 
-- The system is configured to only process "Final Terms" documents
-- Bank information is primarily extracted from the "Distribution" section
-- Results are saved in JSON format with detailed bank information and roles
-- The system includes error handling and logging for troubleshooting
-
-## Troubleshooting
-
-If you encounter issues:
-1. Check the console output for error messages
-2. Verify the ESMA website is accessible
-3. Ensure all required dependencies are installed
-4. Check the log files for detailed error information 
+For more detailed information about the system's design, see `docs/ARCHITECTURE.md`. 

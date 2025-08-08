@@ -147,15 +147,68 @@ class ExtractionEngine:
         
         # Extract dates
         dates = self.date_extractor.extract(text)
+        self.logger.debug(f"Extracted dates: {dates}")
         
         # Extract currency and issue size
         currency_info = self.currency_extractor.extract(text)
+        self.logger.debug(f"Extracted currency info: {currency_info}")
         
         # Extract coupon information
         coupon_info = self.coupon_extractor.extract(text)
+        self.logger.debug(f"Extracted coupon info: {coupon_info}")
         
         # Extract document sections
         sections = self.text_processor.extract_sections(text)
+        
+        # Process section-specific information if general extraction failed
+        if not dates.get('issue_date') or not dates.get('maturity_date'):
+            # Try to find dates in specific sections
+            for section_name, section_text in sections.items():
+                section_name_lower = section_name.lower()
+                
+                # For issue date, look in summary, terms, or issuance sections
+                if not dates.get('issue_date') and any(term in section_name_lower for term in ['summary', 'terms', 'issuance', 'offer']):
+                    section_dates = self.date_extractor.extract(section_text)
+                    if section_dates.get('issue_date'):
+                        dates['issue_date'] = section_dates['issue_date']
+                        self.logger.info(f"Found issue date {dates['issue_date']} in section {section_name}")
+                
+                # For maturity date, look in redemption or repayment sections
+                if not dates.get('maturity_date') and any(term in section_name_lower for term in ['maturity', 'redemption', 'repayment']):
+                    section_dates = self.date_extractor.extract(section_text)
+                    if section_dates.get('maturity_date'):
+                        dates['maturity_date'] = section_dates['maturity_date']
+                        self.logger.info(f"Found maturity date {dates['maturity_date']} in section {section_name}")
+        
+        # Try to extract currency and issue size from specific sections if general extraction failed
+        if not currency_info.get('currency') or not currency_info.get('issue_size'):
+            for section_name, section_text in sections.items():
+                section_name_lower = section_name.lower()
+                
+                if any(term in section_name_lower for term in ['summary', 'terms', 'offer', 'issuance', 'principal']):
+                    section_currency = self.currency_extractor.extract(section_text)
+                    if not currency_info.get('currency') and section_currency.get('currency'):
+                        currency_info['currency'] = section_currency['currency']
+                        self.logger.info(f"Found currency {currency_info['currency']} in section {section_name}")
+                    
+                    if not currency_info.get('issue_size') and section_currency.get('issue_size'):
+                        currency_info['issue_size'] = section_currency['issue_size']
+                        self.logger.info(f"Found issue size {currency_info['issue_size']} in section {section_name}")
+        
+        # Try to extract coupon information from specific sections if general extraction failed
+        if not coupon_info.get('coupon_rate') or not coupon_info.get('coupon_type'):
+            for section_name, section_text in sections.items():
+                section_name_lower = section_name.lower()
+                
+                if any(term in section_name_lower for term in ['interest', 'coupon', 'payment', 'yield']):
+                    section_coupon = self.coupon_extractor.extract(section_text)
+                    if not coupon_info.get('coupon_rate') and section_coupon.get('coupon_rate'):
+                        coupon_info['coupon_rate'] = section_coupon['coupon_rate']
+                        self.logger.info(f"Found coupon rate {coupon_info['coupon_rate']} in section {section_name}")
+                    
+                    if not coupon_info.get('coupon_type') and section_coupon.get('coupon_type'):
+                        coupon_info['coupon_type'] = section_coupon['coupon_type']
+                        self.logger.info(f"Found coupon type {coupon_info['coupon_type']} in section {section_name}")
         
         # Combine all metadata
         metadata = {
@@ -163,6 +216,9 @@ class ExtractionEngine:
             **currency_info,
             **coupon_info
         }
+        
+        # Perform additional normalization and verification of extracted data
+        metadata = self._normalize_metadata(metadata)
         
         # Create result dictionary
         result = {
@@ -183,6 +239,47 @@ class ExtractionEngine:
         
         return result
     
+    def _normalize_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalize and clean up extracted metadata.
+        
+        Args:
+            metadata: The metadata dictionary to normalize
+            
+        Returns:
+            Normalized metadata dictionary
+        """
+        normalized = metadata.copy()
+        
+        # Normalize currency values - standardize format and remove extra spaces
+        if 'currency' in normalized and normalized['currency']:
+            normalized['currency'] = normalized['currency'].strip().upper()
+        
+        # Normalize issue size - ensure consistent number format
+        if 'issue_size' in normalized and normalized['issue_size']:
+            # Try to convert to standard number format if possible
+            try:
+                # Replace commas that are thousand separators
+                issue_size = normalized['issue_size'].replace(',', '')
+                # Convert to float then back to string for standardization
+                normalized['issue_size'] = str(float(issue_size))
+            except:
+                # If conversion fails, keep original format
+                pass
+        
+        # Normalize coupon rate - standardize percentage format
+        if 'coupon_rate' in normalized and normalized['coupon_rate']:
+            try:
+                # Remove % symbol if present
+                rate = normalized['coupon_rate'].replace('%', '').strip()
+                # Convert to float then back to string with % for standardization
+                normalized['coupon_rate'] = f"{float(rate)}%"
+            except:
+                # If conversion fails, keep original format
+                pass
+        
+        return normalized
+    
     def _validate_extraction_results(self, 
                                      bank_info: Dict[str, Any], 
                                      metadata: Dict[str, Any], 
@@ -202,23 +299,23 @@ class ExtractionEngine:
         """
         flags = []
         
-        # Check if we extracted any banks
+        # Check if extracted any banks
         if not bank_info.get('extracted_banks'):
             flags.append('no_banks_extracted')
             
-        # Check if we extracted dates
+        # Check if extracted dates
         if not metadata.get('issue_date') and not metadata.get('maturity_date'):
             flags.append('no_dates_extracted')
             
-        # Check if we extracted currency information
+        # Check if extracted currency information
         if not metadata.get('currency') and not metadata.get('issue_size'):
             flags.append('no_currency_info_extracted')
             
-        # Check if we extracted coupon information
+        # Check if extracted coupon information
         if not metadata.get('coupon_rate') and not metadata.get('coupon_type'):
             flags.append('no_coupon_info_extracted')
             
-        # Check if we found any sections
+        # Check if found any sections
         if not sections:
             flags.append('no_sections_found')
             

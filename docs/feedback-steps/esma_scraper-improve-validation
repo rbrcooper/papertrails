@@ -1,0 +1,188 @@
+# ESMA Scraper Feedback Validation
+
+## Feedback Assessment
+
+### ✅ **Valid Feedback Points**
+
+1. **Multi-Signal Scoring**: The feedback correctly identifies that fuzzy matching alone is insufficient. A weighted scoring system combining multiple signals (name similarity, LEI codes, document type, date relevance) will significantly improve precision.
+
+2. **Entity Disambiguation**: The current approach does struggle with entity disambiguation, especially for companies with multiple subsidiaries and legal entities.
+
+3. **AI Pre-Download Validator**: Using a local AI model for pre-download validation is a smart approach that can catch false positives before wasting download bandwidth.
+
+4. **Post-Download Validation**: Validating downloaded documents against canonical company profiles will catch false positives that slip through the initial filtering.
+
+### ⚠️ **Feedback Adjustments for Your Objectives**
+
+#### 1. **Comprehensive Data Collection vs Precision**
+**Original Feedback**: Focus on reducing false positives
+**Your Objective**: Collect ALL data from limited companies, including subsidiaries
+
+**Adjustment**: 
+- Keep the multi-signal scoring but **lower the thresholds** to maximize recall
+- **Include all subsidiaries** in canonical company profiles
+- **Don't penalize subsidiary matches** - they're valid targets
+- Focus on **green vs non-green classification** rather than company-level filtering
+
+#### 2. **Green Instrument Classification**
+**Original Feedback**: Not mentioned
+**Your Objective**: Careful classification of green instruments
+
+**Addition**:
+- Add systematic green instrument detection
+- Maintain separate tracking for green vs non-green documents
+- Use keyword analysis and document type classification
+- Create manual review queue for uncertain cases
+
+#### 3. **Subsidiary Inclusion Strategy**
+**Original Feedback**: Decide inclusion policy (parent-only vs group-wide)
+**Your Objective**: Include all subsidiaries
+
+**Clarification**:
+- **Include ALL subsidiaries** in the canonical company profiles
+- **Search for each subsidiary separately** to maximize coverage
+- **Deduplicate results** but don't exclude subsidiary documents
+- **Label documents** by parent vs subsidiary for analysis
+
+## Refined Implementation Strategy
+
+### Phase 1: Enhanced Company Profiles (Week 1-2)
+```python
+# Example implementation for OMV
+company_profile = {
+    "canonical_name": "OMV AG",
+    "parent_company": "OMV AG",
+    "subsidiaries": [
+        "OMV Petrom SA",
+        "OMV Exploration & Production GmbH", 
+        "OMV Gas Marketing GmbH",
+        "OMV Trading GmbH"
+    ],
+    "search_tokens": [
+        "OMV", "OMV AG", "OMV Aktiengesellschaft",
+        "OMV Petrom", "OMV Petrom SA",
+        "OMV Exploration", "OMV Trading"
+    ],
+    "lei_codes": ["5299000PJBSNGQ1Y7906"],
+    "green_instruments_only": False  # Collect all instruments
+}
+```
+
+### Phase 2: Multi-Pass Search Strategy (Week 2-3)
+```python
+def search_all_company_variants(company_profile):
+    all_results = []
+    
+    for search_token in company_profile["search_tokens"]:
+        results = scraper.search_company(search_token)
+        all_results.extend(results)
+    
+    # Deduplicate but keep all valid matches
+    deduplicated = deduplicate_results(all_results)
+    
+    # Apply scoring but with lower thresholds for recall
+    scored_results = score_results(deduplicated, threshold=0.4)  # Lower threshold
+    
+    return scored_results
+```
+
+### Phase 3: Green Instrument Classification (Week 3-4)
+```python
+def classify_green_instrument(document_data):
+    green_keywords = [
+        "green bond", "sustainability", "ESG", "climate", "environmental",
+        "sustainable", "renewable", "carbon", "emission", "social bond"
+    ]
+    
+    # Check document title and type
+    title_score = sum(1 for keyword in green_keywords 
+                     if keyword.lower() in document_data["title"].lower())
+    
+    # Check document type
+    type_score = 1.0 if "green" in document_data["doc_type"].lower() else 0.0
+    
+    # Combined score
+    green_score = (title_score * 0.7) + (type_score * 0.3)
+    
+    return {
+        "is_green": green_score > 0.5,
+        "confidence": green_score,
+        "classification": "green" if green_score > 0.5 else "non-green"
+    }
+```
+
+## Success Metrics for Your Objectives
+
+### 1. **Comprehensive Coverage**
+- **Target**: Capture documents from ALL subsidiaries of target companies
+- **Metric**: >95% of known subsidiaries have documents collected
+- **Validation**: Manual audit of subsidiary coverage
+
+### 2. **Green Instrument Classification**
+- **Target**: Accurate classification of green vs non-green instruments
+- **Metric**: >90% accuracy in green instrument classification
+- **Validation**: Manual review of classification results
+
+### 3. **Data Completeness**
+- **Target**: Collect all available documents for target companies
+- **Metric**: Compare against known document counts from ESMA
+- **Validation**: Cross-reference with manual ESMA searches
+
+### 4. **Performance**
+- **Target**: Process 100+ companies efficiently
+- **Metric**: <30 minutes per company on average
+- **Validation**: Monitor processing times and success rates
+
+## Implementation Timeline
+
+### Week 1-2: Foundation
+- Build enhanced company profiles with subsidiaries
+- Implement multi-signal scoring system
+- Create basic green instrument classification
+
+### Week 3-4: Search Enhancement
+- Implement multi-pass search strategy
+- Add deduplication logic
+- Integrate green classification into pipeline
+
+### Week 5-6: Validation & Testing
+- Add post-download validation
+- Implement audit logging
+- Create test datasets for validation
+
+### Week 7-8: Optimization
+- Tune scoring thresholds for maximum recall
+- Optimize performance
+- Add comprehensive error handling
+
+## Risk Mitigation
+
+### 1. **False Positive Risk**
+- **Mitigation**: Post-download validation will catch false positives
+- **Acceptance**: Some false positives acceptable for maximum recall
+
+### 2. **Performance Risk**
+- **Mitigation**: Implement caching and rate limiting
+- **Monitoring**: Track processing times and success rates
+
+### 3. **Green Classification Accuracy**
+- **Mitigation**: Manual review queue for uncertain cases
+- **Validation**: Regular accuracy audits
+
+## Conclusion
+
+The original feedback is **largely valid** but needs adjustment for your specific objectives:
+
+1. **Keep the multi-signal scoring** but lower thresholds for maximum recall
+2. **Include all subsidiaries** in the search strategy
+3. **Add green instrument classification** as a new requirement
+4. **Focus on comprehensive coverage** rather than strict precision
+
+The refined approach will give you maximum data collection while maintaining reasonable quality control through post-download validation and green instrument classification.
+
+## Implemented in code (summary)
+- Added multi-signal scorer inside `ESMAScraper` that weights name similarity, doc-type relevance and recency, with penalties for noisy instruments.
+- Added green classification heuristic and per-company audit CSV at `logs/audit/<Company>/esma_rows.csv` including scores and decisions.
+- Introduced `search_and_process(company)` which navigates → searches → sets 100/page → scores rows → downloads above threshold, and caches seen URLs in `data/processed/seen_urls.txt`.
+- Made row parsing more robust (detect ISIN if present, find first PDF link reliably).
+- Kept single-page processing invariant (no pagination).

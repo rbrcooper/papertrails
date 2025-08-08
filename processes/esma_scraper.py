@@ -50,6 +50,7 @@ import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any, Tuple
+import csv
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -179,7 +180,7 @@ class ESMAScraper:
         # Base configuration
         self.base_url = "https://registers.esma.europa.eu/publication/searchRegister?core=esma_registers_priii_documents"
         self.headless = headless
-        self.fuzzy_match_threshold = 80
+        self.fuzzy_match_threshold = 65 # Lowered from 80
         # self.min_similarity = 80 # Potentially unused, replaced by fuzzy_match_threshold?
         self.company_list_handler = CompanyListHandler()
         
@@ -201,66 +202,36 @@ class ESMAScraper:
         # Processed files hash tracker for deduplication
         self.processed_files = set()
 
+        # Seen URLs cache (avoid re-downloading same link across runs)
+        self.seen_urls_file = Path("data/processed/seen_urls.txt")
+        self.seen_urls_file.parent.mkdir(parents=True, exist_ok=True)
+        self.seen_urls: set[str] = self._load_seen_urls()
+
+        # Audit log base dir
+        self.audit_dir = Path("logs/audit")
+        self.audit_dir.mkdir(parents=True, exist_ok=True)
+
     def setup_driver(self):
         """Set up the Chrome driver with retries."""
         max_retries = 3
         retry_delay = 5
         
-        for attempt in range(max_retries):
+        # Use retry logic for driver setup
+        for attempt in range(1, max_retries + 1):
             try:
-                # Set up Chrome options
-                options = uc.ChromeOptions()
-                if self.headless:
-                    # Check if running in a CI/headless environment
-                    # if os.environ.get('CI') or not sys.stdout.isatty(): # Example check
-                    self.logger.info("Running in headless mode.")
-                    options.add_argument('--headless=new') # Use the new headless mode
-                else:
-                    self.logger.info("Running in non-headless (headed) mode.")
+                self.logger.info(f"Initializing Chrome driver (Attempt {attempt}/{max_retries})...")
+                options = self.setup_chrome_options()
 
-                options.add_argument('--no-sandbox')
-                options.add_argument('--disable-dev-shm-usage')
-                options.add_argument('--disable-gpu')
-                options.add_argument('--disable-extensions')
-                # options.add_argument('--disable-infobars') # Deprecated
-                options.add_argument('--disable-notifications')
-                options.add_argument('--disable-popup-blocking')
-                options.add_argument('--disable-blink-features=AutomationControlled')
-                options.add_argument('--start-maximized') # May not work in headless
-                options.add_argument('--window-size=1920,1080') # Set a default window size
-
-                # User agent rotation (optional, example)
-                # user_agents = [...] # List of user agents
-                # options.add_argument(f"user-agent={random.choice(user_agents)}")
-                
-                # Set up download preferences
-                prefs = {
-                    "download.default_directory": str(self.download_dir.absolute()),
-                    "download.prompt_for_download": False,
-                    "download.directory_upgrade": True,
-                    "safebrowsing.enabled": True,
-                    "plugins.always_open_pdf_externally": True # Try to force download PDFs
-                }
-                options.add_experimental_option("prefs", prefs)
-                
-                # Initialize the undetected Chrome driver
-                self.logger.info(f"Initializing Chrome driver (Attempt {attempt + 1}/{max_retries})...")
-                # Use driver_executable_path if uc needs it explicitly
-                # driver_executable_path = shutil.which('chromedriver') # Or provide path
-                self.driver = uc.Chrome(options=options) #, driver_executable_path=driver_executable_path) 
-                
-                # Set timeouts
-                self.driver.set_page_load_timeout(60) # Increased page load timeout
-                self.driver.set_script_timeout(30)
-                
-                # Initialize WebDriverWait
-                self.wait = WebDriverWait(self.driver, self.default_wait_timeout) 
+                # Detect installed Chrome major version to align driver
+                version_main = self._detect_chrome_major_version(default=138)
+                self.logger.info(f"Detected Chrome major version: {version_main}")
+                self.driver = uc.Chrome(options=options, version_main=version_main)
                 
                 self.logger.info("Chrome driver initialized successfully")
-                return True
-                
+                self.wait = WebDriverWait(self.driver, self.default_wait_timeout)
+                return
             except Exception as e:
-                self.logger.error(f"Attempt {attempt + 1} failed to initialize Chrome driver: {str(e)}", exc_info=True)
+                self.logger.error(f"Attempt {attempt} failed to initialize Chrome driver: {str(e)}", exc_info=True)
                 # Cleanup driver if partially initialized
                 if self.driver:
                     try:
@@ -275,6 +246,71 @@ class ESMAScraper:
                 else:
                     self.logger.error("All attempts to initialize Chrome driver failed.")
                     raise # Re-raise the last exception
+
+    def setup_chrome_options(self):
+        """Set up Chrome options for undetected-chromedriver."""
+        options = uc.ChromeOptions()
+        if self.headless:
+            # Check if running in a CI/headless environment
+            # if os.environ.get('CI') or not sys.stdout.isatty(): # Example check
+            self.logger.info("Running in headless mode.")
+            options.add_argument('--headless=new') # Use the new headless mode
+        else:
+            self.logger.info("Running in non-headless (headed) mode.")
+
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--disable-extensions')
+        # options.add_argument('--disable-infobars') # Deprecated
+        options.add_argument('--disable-notifications')
+        options.add_argument('--disable-popup-blocking')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_argument('--start-maximized') # May not work in headless
+        options.add_argument('--window-size=1920,1080') # Set a default window size
+
+        # User agent rotation (optional, example)
+        # user_agents = [...] # List of user agents
+        # options.add_argument(f"user-agent={random.choice(user_agents)}")
+        
+        # Set up download preferences
+        prefs = {
+            "download.default_directory": str(self.download_dir.absolute()),
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True,
+            "plugins.always_open_pdf_externally": True # Try to force download PDFs
+        }
+        options.add_experimental_option("prefs", prefs)
+        return options
+
+    def _detect_chrome_major_version(self, default: int = 138) -> int:
+        """Best-effort detection of installed Chrome major version on Windows.
+
+        Falls back to provided default if detection fails.
+        """
+        try:
+            # Common install locations
+            candidates = [
+                Path(r"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"),
+                Path(r"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"),
+                Path(os.path.expandvars(r"%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe")),
+            ]
+            for exe in candidates:
+                if exe.exists():
+                    try:
+                        import subprocess
+                        out = subprocess.check_output([str(exe), "--version"], text=True, timeout=5)
+                        # e.g., 'Google Chrome 138.0.XXXX.XX'
+                        parts = re.findall(r"(\d+)\.", out)
+                        if parts:
+                            major = int(parts[0])
+                            return major
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+        return default
 
     def close(self):
         """Close the browser and clean up resources."""
@@ -319,6 +355,26 @@ class ESMAScraper:
             self.logger.debug(f"Saved {len(self.document_hashes)} document hashes to {self.document_hashes_file}")
         except Exception as e:
             self.logger.error(f"Error saving document hashes: {str(e)}", exc_info=True)
+
+    def _load_seen_urls(self) -> set:
+        """Load seen URLs from file to skip re-downloading the same link across runs."""
+        try:
+            if not self.seen_urls_file.exists():
+                return set()
+            with open(self.seen_urls_file, 'r', encoding='utf-8') as f:
+                return set(line.strip() for line in f if line.strip())
+        except Exception as e:
+            self.logger.error(f"Error loading seen URLs: {e}")
+            return set()
+
+    def _save_seen_urls(self) -> None:
+        """Persist seen URLs cache to disk."""
+        try:
+            with open(self.seen_urls_file, 'w', encoding='utf-8') as f:
+                for url in sorted(self.seen_urls):
+                    f.write(url + "\n")
+        except Exception as e:
+            self.logger.error(f"Error saving seen URLs: {e}")
 
     def random_delay(self, min_seconds=None, max_seconds=None):
         """Add a random delay. Uses instance defaults if not provided."""
@@ -537,202 +593,48 @@ class ESMAScraper:
             raise # Re-raise unexpected errors
 
     def process_results(self, company_name: str) -> List[Dict]:
-        """Process search results, handling pagination and extracting document details."""
-        self.logger.info(f"Processing results for company: {company_name}")
-        all_documents = []
-        page_num = 1
-        processed_urls = set() # Track URLs processed in this run to avoid duplicates within pagination
-        
-        # More targeted selectors
-        results_table_locator = (By.ID, RESULTS_TABLE_ID) # Use the actual table ID
-        results_container_locator = (By.ID, RESULTS_CONTAINER_ID) # Container ID
-        result_row_selector = "tbody tr" # Example CSS selector for result rows
-        next_page_link_text = "Next" # Example link text for pagination
+        """Process only the current results page. Assumes page size already set to 100."""
+        self.logger.info(f"Processing current results page for company: {company_name}")
+        documents: List[Dict] = []
 
-        while True:
-            self.logger.info(f"Processing page {page_num} for '{company_name}'...")
-            self.random_delay(1, 2) # Delay between page loads
+        results_table_locator = (By.ID, RESULTS_TABLE_ID)
+        results_container_locator = (By.ID, RESULTS_CONTAINER_ID)
+        result_row_selector = "tbody tr"
 
+        try:
+            self.logger.debug("Locating results container and table...")
+            results_container = self.wait.until(
+                EC.presence_of_element_located(results_container_locator),
+                message="Results container not found."
+            )
             try:
-                # First check if the container exists
-                self.logger.debug("Checking for results container...")
-                results_container = self.wait.until(
-                    EC.presence_of_element_located(results_container_locator),
-                    message=f"Results container not found on page {page_num}."
+                short_wait = WebDriverWait(self.driver, 5)
+                results_table = short_wait.until(
+                    EC.presence_of_element_located(results_table_locator),
+                    message="Results table not found within container."
                 )
-                
-                # Then check if the table exists within the container
-                self.logger.debug("Looking for results table within container...")
+            except TimeoutException:
+                results_table = results_container
+
+            rows = results_table.find_elements(By.CSS_SELECTOR, result_row_selector)
+            self.logger.info(f"Found {len(rows)} rows on current page.")
+
+            for idx, row in enumerate(rows):
                 try:
-                    # Using a shorter timeout to quickly check for the table
-                    short_wait = WebDriverWait(self.driver, 5)
-                    results_table = short_wait.until(
-                        EC.presence_of_element_located(results_table_locator),
-                        message=f"Results table not found within container on page {page_num}."
-                    )
-                    self.logger.debug("Results table found.")
-                except TimeoutException:
-                    # If the table element isn't found, check for any rows directly in the container
-                    self.logger.debug("Table element not found. Looking for rows directly in container...")
-                    results_table = results_container
-                    
-                # Try to find rows either in the results table or container
-                # Use find_elements to avoid error if no rows exist
-                result_rows = results_table.find_elements(By.CSS_SELECTOR, result_row_selector)
-                
-                if not result_rows:
-                    self.logger.info(f"No result rows found on page {page_num}. Assuming end of results or no matching results.")
-                    # Try to check for an explicit "No results" message
-                    try:
-                        no_results_selector = (By.CSS_SELECTOR, ".no-results, .empty-results")
-                        no_results_element = short_wait.until(
-                            EC.presence_of_element_located(no_results_selector),
-                            message="No 'No results' message found."
-                        )
-                        self.logger.info(f"Found 'No results' message: {no_results_element.text}")
-                    except TimeoutException:
-                        self.logger.debug("No explicit 'No results' message found.")
-                    
-                    break # Exit pagination loop if no rows found
-                
-                # Capture the state of the table before processing rows
-                table_html_before = results_table.get_attribute('outerHTML')
-                self.logger.info(f"Found {len(result_rows)} result rows on page {page_num}.")
+                    row_data = self.get_document_details(row)
+                    if not row_data or not row_data.get('url'):
+                        continue
+                    url = row_data['url']
+                    # Skip if already seen in previous runs
+                    row_data['already_seen'] = url in self.seen_urls
+                    documents.append(row_data)
+                except Exception as e:
+                    self.logger.warning(f"Skipping row {idx+1} due to error: {e}")
 
-                # --- Processing Rows --- 
-                for index, row in enumerate(result_rows):
-                    row_data = None
-                    try:
-                        # Extract details from the row
-                        row_data = self.get_document_details(row)
-                        if row_data and row_data.get('url'):
-                            doc_url = row_data['url']
-                            if doc_url not in processed_urls:
-                                processed_urls.add(doc_url)
-                                all_documents.append(row_data)
-                                self.logger.debug(f"Processed result {index+1} on page {page_num}: {row_data.get('issuer_name', '?')} - {row_data.get('doc_type', '?')}")
-                            else:
-                                self.logger.debug(f"Skipping duplicate URL on page {page_num}: {doc_url}")
-                        else:
-                            self.logger.warning(f"Row {index+1} on page {page_num} yielded no valid document data.")
-                    except StaleElementReferenceException:
-                        self.logger.warning(f"Row {index+1} on page {page_num} became stale during processing. Re-finding table and retrying page.")
-                        # Re-find the table and break inner loop to retry the page processing
-                        self.wait.until(EC.presence_of_element_located(results_table_locator), "Results table disappeared after stale element.")
-                        break # Break the inner row processing loop
-                    except (NoSuchElementException, TimeoutException) as e:
-                        self.logger.error(f"Error processing row {index+1} on page {page_num}: {type(e).__name__} - {str(e)}")
-                        if self.debug_mode:
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            # Try capturing screenshot relative to the row if possible, else full page
-                            try: row.screenshot(str(self.screenshots_dir / f"error_proc_row_{page_num}_{index+1}_{timestamp}.png"))
-                            except Exception: self.take_screenshot(f"error_proc_row_{page_num}_{index+1}_{timestamp}.png")
-                            # Saving page source might be more useful here
-                            self.save_page_source(f"error_proc_row_{page_num}_{index+1}_{timestamp}.html")
-                        continue # Skip to the next row
-                    except Exception as e:
-                         self.logger.error(f"Unexpected error processing row {index+1} on page {page_num}: {e}", exc_info=True)
-                         if self.debug_mode:
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            try:
-                                result_element.screenshot(str(self.screenshots_dir / f"unexpected_error_proc_row_{page_num}_{index+1}_{timestamp}.png"))
-                            except Exception:
-                                self.take_screenshot(f"unexpected_error_proc_row_{page_num}_{index+1}_{timestamp}.png")
-                         continue # Skip to the next row
-                    else:
-                        # This 'else' block executes if the 'for' loop completed without a 'break'
-                        # Proceed to check for pagination
-                        pass
-               
-                # --- Pagination --- 
-                try:
-                    self.logger.debug("Checking for 'Next' page link...")
-                    # Wait for the 'Next' link to be potentially clickable
-                    next_button = self.wait.until(
-                        EC.element_to_be_clickable((By.LINK_TEXT, next_page_link_text)),
-                        message="'Next' page link not found or not clickable."
-                    )
-                    self.logger.info(f"Found 'Next' page link. Clicking page {page_num + 1}...")
-                    
-                    # Scroll into view before clicking (optional but can help)
-                    # self.driver.execute_script("arguments[0].scrollIntoView(true);", next_button)
-                    # time.sleep(0.5) # Small pause before click
+        except Exception as e:
+            self.logger.error(f"Failed to process current results page: {e}", exc_info=True)
 
-                    next_button.click()
-                    self.requests_count += 1
-                    page_num += 1
-
-                    # Wait for the results table to become stale or reload
-                    self.logger.debug("Waiting for results table to update after pagination...")
-                    try:
-                        # Wait for the previous table instance to become stale
-                        WebDriverWait(self.driver, self.default_wait_timeout).until(EC.staleness_of(results_table))
-                        self.logger.debug("Previous results table became stale.")
-                    except TimeoutException:
-                        # Fallback: Check if the table HTML has changed significantly
-                        self.logger.warning("Old table did not become stale. Checking for HTML change...")
-                        current_table_html = self.driver.find_element(*results_table_locator).get_attribute('outerHTML')
-                        if current_table_html == table_html_before:
-                            self.logger.error("Pagination clicked, but results table content did not change significantly.")
-                            # Consider breaking or further investigation
-                            break 
-                        else:
-                            self.logger.debug("Results table HTML has changed.")
-                    # Wait for the *new* results table to be present (redundant if staleness worked, but safe)
-                    self.wait.until(EC.presence_of_element_located(results_table_locator), "New results table did not appear after pagination.")
-
-                except (TimeoutException, NoSuchElementException):
-                    # If 'Next' link is not found or clickable, assume it's the last page
-                    self.logger.info("No 'Next' page link found or clickable. Assuming end of results.")
-                    break # Exit the pagination loop
-                except ElementClickInterceptedException:
-                    self.logger.warning("Clicking 'Next' button intercepted. Trying JavaScript click...")
-                    try:
-                        # Attempt JavaScript click as fallback
-                        next_button_js = self.driver.find_element(By.LINK_TEXT, next_page_link_text)
-                        self.driver.execute_script("arguments[0].click();", next_button_js)
-                        self.requests_count += 1
-                        page_num += 1
-                        # Add wait for staleness/reload as above
-                        self.logger.debug("Waiting for results table to update after JS pagination click...")
-                        WebDriverWait(self.driver, self.default_wait_timeout).until(EC.staleness_of(results_table))
-                        self.wait.until(EC.presence_of_element_located(results_table_locator))
-                    except Exception as js_e:
-                        self.logger.error(f"JavaScript click also failed for 'Next' button: {js_e}")
-                        if self.debug_mode:
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            self.take_screenshot(f"error_pagination_click_{page_num}_{timestamp}.png")
-                            self.save_page_source(f"error_pagination_click_{page_num}_{timestamp}.html")
-                        break # Exit loop if JS click fails
-            except StaleElementReferenceException:
-                     self.logger.warning(f"'Next' button became stale on page {page_num}. Retrying page processing.")
-                     # The loop will naturally retry finding the button after re-finding the table
-                     continue # Continue to the next iteration of the while loop
-            except Exception as e:
-                    self.logger.error(f"Unexpected error during pagination on page {page_num}: {e}", exc_info=True)
-                    if self.debug_mode:
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        self.take_screenshot(f"unexpected_error_pagination_{page_num}_{timestamp}.png")
-                        self.save_page_source(f"unexpected_error_pagination_{page_num}_{timestamp}.html")
-                    break # Exit loop on unexpected error
-
-            except (TimeoutException, NoSuchElementException, StaleElementReferenceException) as e:
-                self.logger.error(f"Error finding or processing results table on page {page_num}: {type(e).__name__} - {str(e)}")
-                if self.debug_mode:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    self.take_screenshot(f"error_find_table_{page_num}_{timestamp}.png")
-                    self.save_page_source(f"error_find_table_{page_num}_{timestamp}.html")
-                break # Exit pagination loop if table cannot be reliably processed
-            except Exception as e:
-                 self.logger.error(f"Unexpected error processing page {page_num}: {e}", exc_info=True)
-                 if self.debug_mode:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    self.take_screenshot(f"unexpected_error_page_{page_num}_{timestamp}.png")
-                    self.save_page_source(f"unexpected_error_page_{page_num}_{timestamp}.html")
-                 break # Exit loop on unexpected error
-
-        self.logger.info(f"Finished processing results for '{company_name}'. Found {len(all_documents)} relevant documents across {page_num} page(s).")
-        return all_documents
+        return documents
 
     def accept_cookies(self):
         """Attempt to find and click the cookie acceptance button."""
@@ -775,116 +677,65 @@ class ESMAScraper:
 
     def get_document_details(self, result_element) -> Optional[Dict]:
         """Extract document details from a single result row element."""
-        # Use relative searches within the result_element for robustness
         details = {'issuer_name': '', 'doc_type': '', 'date': '', 'url': '', 'filename': ''}
         try:
-            # Wait briefly for the row to be fully rendered before extracting
-            WebDriverWait(self.driver, 2).until(EC.visibility_of(result_element)) 
-
-            # First, try to get all td elements in the row
-            try:
-                cells = result_element.find_elements(By.TAG_NAME, "td")
-                if len(cells) >= 3:  # Assume at least 3 cells are needed
-                    # Try to extract text from cells using different strategies
-                    try:
-                        # First cell should be issuer name
-                        span = cells[0].find_elements(By.TAG_NAME, "span")
-                        if span:
-                            details['issuer_name'] = span[0].text.strip()
-                        else:
-                            details['issuer_name'] = cells[0].text.strip()
-                    except (NoSuchElementException, IndexError) as e:
-                        self.logger.warning(f"Could not extract issuer name: {e}")
-                        details['issuer_name'] = "Unknown Issuer"
-                        
-                    try:
-                        # Second cell should be document type
-                        span = cells[1].find_elements(By.TAG_NAME, "span")
-                        if span:
-                            details['doc_type'] = span[0].text.strip()
-                        else:
-                            details['doc_type'] = cells[1].text.strip()
-                    except (NoSuchElementException, IndexError) as e:
-                        self.logger.warning(f"Could not extract document type: {e}")
-                        details['doc_type'] = "Unknown Type"
-                        
-                    try:
-                        # Third cell should be date
-                        span = cells[2].find_elements(By.TAG_NAME, "span")
-                        if span:
-                            details['date'] = span[0].text.strip()
-                        else:
-                            details['date'] = cells[2].text.strip()
-                    except (NoSuchElementException, IndexError) as e:
-                        self.logger.warning(f"Could not extract date: {e}")
-                        details['date'] = datetime.now().strftime("%Y-%m-%d")
-                        
-                    # Last cell should contain the download link
-                    try:
-                        # Try to find any link in any of the cells
-                        for cell in cells:
-                            links = cell.find_elements(By.TAG_NAME, "a")
-                            if links:
-                                download_link = links[0]
-                                details['url'] = download_link.get_attribute('href')
-                                # Extract filename from URL or link text if possible
-                                parsed_url = urlparse(details['url'])
-                                if parsed_url.path:
-                                    details['filename'] = Path(parsed_url.path).name
-                                else:
-                                    details['filename'] = download_link.text.strip() # Fallback to link text
-                                break
-                    except (NoSuchElementException, IndexError) as e:
-                        self.logger.warning(f"Could not find download link in cells: {e}")
-                else:
-                    self.logger.warning(f"Row doesn't have enough cells. Found: {len(cells)}")
-            except NoSuchElementException as e:
-                self.logger.warning(f"Could not find td elements in row: {e}")
-
-            # If we couldn't get the URL from cells, try a direct approach
-            if not details.get('url'):
-                try:
-                    # Try to find any link in the row
-                    links = result_element.find_elements(By.TAG_NAME, "a")
-                    if links:
-                        download_link = links[0]
-                        details['url'] = download_link.get_attribute('href')
-                        # Extract filename from URL if possible
-                        parsed_url = urlparse(details['url'])
-                        if parsed_url.path:
-                            details['filename'] = Path(parsed_url.path).name
-                        else:
-                            details['filename'] = download_link.text.strip() # Fallback to link text
-                except NoSuchElementException:
-                    self.logger.warning("Could not find any links in row.")
-           
-            # Check if essential details were found
-            if not details.get('url'):
-                self.logger.error("Failed to extract document URL from result row. Cannot download.")
-                # Capture state if critical info is missing
-                if self.debug_mode:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    try: result_element.screenshot(str(self.screenshots_dir / f"error_extract_url_{timestamp}.png"))
-                    except Exception: self.take_screenshot(f"error_extract_url_{timestamp}.png")
-                    self.save_page_source(f"error_extract_url_{timestamp}.html")
+            # Use more specific selectors based on the table structure
+            cells = result_element.find_elements(By.TAG_NAME, "td")
+            if len(cells) < 10: # Expecting at least 10 columns based on screenshot
+                self.logger.warning(f"Row has fewer than 10 cells, skipping. HTML: {result_element.get_attribute('innerHTML')}")
                 return None
-           
+
+            # Extract details based on column position from screenshot
+            details['issuer_name'] = cells[4].text.strip()
+            details['doc_type'] = cells[1].text.strip()
+            details['date'] = cells[3].text.strip()
+            # Try to detect ISIN if present (best-effort; may be empty)
+            try:
+                details['isin'] = cells[6].text.strip()
+            except Exception:
+                details['isin'] = ''
+
+            # The PDF icon location varies; robustly search for first anchor with a PDF href
+            link_href = None
+            # First try a few likely columns
+            candidate_indices = [7, 9, len(cells)-2, len(cells)-1]
+            tried_indices = set()
+            for ci in candidate_indices:
+                if 0 <= ci < len(cells) and ci not in tried_indices:
+                    tried_indices.add(ci)
+                    try:
+                        a = cells[ci].find_element(By.TAG_NAME, "a")
+                        href = a.get_attribute('href')
+                        if href and href.lower().endswith('.pdf'):
+                            link_href = href
+                            break
+                    except Exception:
+                        pass
+            # Fallback: any anchor in the row
+            if not link_href:
+                try:
+                    a = result_element.find_element(By.CSS_SELECTOR, "a[href$='.pdf']")
+                    link_href = a.get_attribute('href')
+                except Exception:
+                    link_href = None
+            details['url'] = link_href or ''
+            
+            # --- Fuzzy Match Calculation ---
+            if self.current_company and details.get('issuer_name'):
+                details['fuzzy_score'] = fuzz.token_set_ratio(self.current_company, details['issuer_name'])
+            else:
+                details['fuzzy_score'] = 0
+            # --- End Fuzzy Match Calculation ---
+
             self.logger.debug(f"Extracted details: {details}")
             return details
 
-        except StaleElementReferenceException:
-            self.logger.warning("Result row became stale while extracting details.")
-            # Indicate failure to the caller (process_results) which should handle retrying the page/table
-            raise # Re-raise for process_results to catch
+        except (NoSuchElementException, IndexError) as e:
+            self.logger.error(f"Error parsing row details: {e}. HTML: {result_element.get_attribute('innerHTML')}")
+            return None
         except Exception as e:
-            self.logger.error(f"Unexpected error extracting details from row: {e}", exc_info=True)
-            # Capture state on unexpected error
-            if self.debug_mode:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                try: result_element.screenshot(str(self.screenshots_dir / f"unexpected_error_extract_{timestamp}.png"))
-                except Exception: self.take_screenshot(f"unexpected_error_extract_{timestamp}.png")
-                self.save_page_source(f"unexpected_error_extract_{timestamp}.html")
-            return None # Return None on unexpected error
+            self.logger.error(f"Unexpected error in get_document_details: {e}", exc_info=True)
+            return None
 
     def get_file_hash(self, file_path: Path) -> Optional[str]:
         """Calculate SHA-256 hash of a file."""
@@ -1032,81 +883,44 @@ class ESMAScraper:
     def organize_file(self, temp_file_path: Path, company_name: str, doc_type_hint: str = None,
                      date_hint: str = None, content_hash: str = None) -> Tuple[bool, Optional[Path]]:
         """Organizes a downloaded file into the correct company folder with standardized naming."""
-        self.logger.debug(f"Organizing file: {temp_file_path} for company: {company_name}")
         if not temp_file_path.exists():
-             self.logger.error(f"Temporary file {temp_file_path} does not exist for organization.")
-             return False, None
+            self.logger.error(f"Temporary file {temp_file_path} does not exist for organization.")
+            return False, None
 
-        # Sanitize company name for directory creation
-        # Replace invalid characters (e.g., /, \, :, *, ?, ", <, >, |) with underscores
-        sanitized_company_name = re.sub(r'[\\\\/:*?\"<>|]', '_', company_name)
-        # Limit length if necessary
-        sanitized_company_name = sanitized_company_name[:100] # Example limit
-        
-        # Create company-specific directory
-        company_dir = self.download_dir / sanitized_company_name
         try:
+            # Sanitize company name for directory creation
+            sanitized_company_name = re.sub(r'[\\\\/:*?\"<>|]', '_', company_name)
+            
+            # Create company-specific directory
+            company_dir = self.download_dir / sanitized_company_name
             company_dir.mkdir(parents=True, exist_ok=True)
-            self.logger.debug(f"Ensured company directory exists: {company_dir}")
-        except OSError as e:
-            self.logger.error(f"Failed to create company directory {company_dir}: {e}")
-            return False, None
 
-        # Determine Document Type
-        doc_type = doc_type_hint or "UnknownType"
-        # Basic sanitization for filename part
-        sanitized_doc_type = re.sub(r'\W+', '_', doc_type).strip('_')[:30]
+            # Sanitize document type for filename
+            sanitized_doc_type = re.sub(r'\W+', '_', doc_type_hint or "UnknownType").strip('_')[:30]
 
-        # Determine Date
-        date_str = date_hint or datetime.now().strftime('%Y%m%d')
-        # Basic sanitization/formatting for filename part
-        sanitized_date = re.sub(r'[^0-9]', '', date_str)[:8]
-        if not sanitized_date:
-            sanitized_date = datetime.now().strftime('%Y%m%d')
+            # Sanitize date for filename
+            sanitized_date = re.sub(r'[^0-9]', '', date_hint or datetime.now().strftime('%Y%m%d'))[:8]
+            if not sanitized_date:
+                sanitized_date = datetime.now().strftime('%Y%m%d')
 
-        # Get Content Hash (calculate if not provided)
-        if not content_hash:
-            content_hash = self.get_file_hash(temp_file_path)
-            if not content_hash:
-                self.logger.error(f"Failed to calculate hash for {temp_file_path}. Cannot organize.")
-                return False, None
-        # Use a short hash for the filename
-        short_hash = content_hash[:8]
+            # Get a short hash for the filename
+            short_hash = (content_hash or self.get_file_hash(temp_file_path) or "no_hash")[:8]
 
-        # Construct final filename
-        # Format: {document_type}_{date}_{short_hash}.pdf
-        final_filename = f"{sanitized_doc_type}_{sanitized_date}_{short_hash}.pdf" # Assume PDF for now
-        final_path = company_dir / final_filename
-        self.logger.debug(f"Determined final path: {final_path}")
+            # Construct final path and move the file
+            final_filename = f"{sanitized_doc_type}_{sanitized_date}_{short_hash}.pdf"
+            final_path = company_dir / final_filename
+            
+            shutil.move(str(temp_file_path), str(final_path))
+            
+            self.logger.info(f"Successfully moved file to {final_path}")
+            return True, final_path
 
-        # --- Move/Rename the File --- 
-        try:
-            # Check if a file with the same name already exists (shouldn't happen if hash check worked)
-            if final_path.exists():
-                # If destination exists, compare hashes
-                existing_hash = self.get_file_hash(final_path)
-                if existing_hash == content_hash:
-                    self.logger.warning(f"File with same name and content already exists at {final_path}. Discarding temporary file.")
-                    if temp_file_path.exists(): temp_file_path.unlink()
-                    return True, final_path # Indicate success, using the existing file
-                else:
-                    # Hash mismatch - potential collision or previous error
-                    self.logger.error(f"Filename collision with different content at {final_path}. Cannot move {temp_file_path}.")
-                    # Consider adding a unique suffix or logging for manual review
-                    return False, None
-            else:
-                # Move the temporary file to the final destination
-                shutil.move(str(temp_file_path), str(final_path))
-                self.logger.info(f"Successfully moved {temp_file_path.name} to {final_path}")
-                return True, final_path
         except Exception as e:
-            self.logger.error(f"Error moving/renaming {temp_file_path} to {final_path}: {e}", exc_info=True)
-            # Clean up temp file if move fails
+            self.logger.error(f"Error organizing file {temp_file_path}: {e}", exc_info=True)
             if temp_file_path.exists():
-                try: temp_file_path.unlink()
-                except OSError as del_e: self.logger.error(f"Error removing temp file {temp_file_path} after move error: {del_e}")
+                temp_file_path.unlink()
             return False, None
-
+            
     def wait_for_page_load(self, timeout=None):
         """Wait for the page to reach a ready state."""
         wait_time = timeout if timeout is not None else self.default_wait_timeout
@@ -1164,6 +978,207 @@ class ESMAScraper:
             self.logger.debug(f"Page source saved: {path}")
         except Exception as e:
             self.logger.error(f"Failed to save page source '{name}': {str(e)}")
+
+    # -------- Enhanced Matching & Orchestration --------
+    @staticmethod
+    def _normalize_name(name: str) -> str:
+        normalized = re.sub(r"[\W_]+", " ", name or "").lower().strip()
+        # Remove common legal suffixes for fuzzy matching
+        normalized = re.sub(r"\b(ag|sa|gmbh|nv|n\.v\.|plc|s\.a\.|s\.p\.a\.|b\.v\.|bv|inc|ltd)\b", "", normalized)
+        return re.sub(r"\s+", " ", normalized)
+
+    def _build_company_profile(self, company_name: str) -> Dict[str, Any]:
+        # Optional: load enriched profile from disk if provided by user
+        profiles_path = Path("data/company_profiles.json")
+        if profiles_path.exists():
+            try:
+                with open(profiles_path, 'r', encoding='utf-8') as f:
+                    profiles = json.load(f)
+                if company_name in profiles:
+                    return profiles[company_name]
+            except Exception as e:
+                self.logger.warning(f"Could not load company profiles: {e}")
+
+        base = company_name
+        base_norm = self._normalize_name(base)
+        # Prefer short token (first word) to capture subsidiaries (e.g., 'OMV' not 'OMV AG')
+        short_token = base.split(" ")[0]
+        tokens = [short_token, base]
+        return {
+            "canonical_name": base,
+            "aliases": [base, base_norm, base.replace(" Aktiengesellschaft", ""), base.split(" ")[0]],
+            "lei_codes": [],
+            "search_tokens": tokens,
+        }
+
+    def _classify_green(self, details: Dict[str, Any]) -> Dict[str, Any]:
+        green_keywords = [
+            "green", "sustainability", "sustainable", "climate", "environmental",
+            "social bond", "transition"
+        ]
+        text = f"{details.get('doc_type','')} {details.get('issuer_name','')}".lower()
+        score = sum(1 for kw in green_keywords if kw in text) / max(1, len(green_keywords))
+        return {
+            "is_green": score >= 0.2,
+            "confidence": round(score, 3)
+        }
+
+    def _compute_multi_signal_score(self, details: Dict[str, Any], profile: Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
+        # Name similarity against aliases
+        issuer = self._normalize_name(details.get('issuer_name', ''))
+        name_sims = [fuzz.token_set_ratio(issuer, self._normalize_name(a)) / 100.0 for a in profile.get('aliases', [])]
+        name_sim = max(name_sims) if name_sims else 0.0
+
+        # Doc type relevance
+        doc_type = (details.get('doc_type') or '').lower()
+        if 'final' in doc_type:
+            doc_type_score = 1.0
+        elif 'base prospectus' in doc_type:
+            doc_type_score = 0.5
+        else:
+            doc_type_score = 0.3
+
+        # Recency score from date (yyyy or dd/mm/yyyy etc.)
+        date_text = details.get('date', '')
+        recency_score = 0.5
+        try:
+            # try multiple formats
+            for fmt in ("%d/%m/%Y", "%d.%m.%Y", "%Y-%m-%d", "%d/%m/%y"):
+                try:
+                    dt = datetime.strptime(date_text, fmt)
+                    age_days = max(0, (datetime.now() - dt).days)
+                    recency_score = max(0.1, 1.0 / (1.0 + age_days / 365.0))
+                    break
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # Penalties for out-of-scope instruments
+        penalty = 0.0
+        noise_terms = ["warrant", "certificate"]
+        for term in noise_terms:
+            if term in doc_type:
+                penalty += 0.2
+
+        # Combine
+        weights = {
+            "name": 0.55,
+            "doctype": 0.3,
+            "recency": 0.15,
+            "penalty": -1.0
+        }
+        score = (
+            weights["name"] * name_sim +
+            weights["doctype"] * doc_type_score +
+            weights["recency"] * recency_score +
+            weights["penalty"] * penalty
+        )
+        return max(0.0, min(1.0, score)), {
+            "name_sim": round(name_sim, 3),
+            "doc_type": doc_type_score,
+            "recency": round(recency_score, 3),
+            "penalty": round(penalty, 3)
+        }
+
+    def _write_audit_rows(self, company: str, rows: List[Dict[str, Any]]) -> None:
+        sanitized = re.sub(r'[\\/:*?"<>|]', '_', company)
+        out_dir = self.audit_dir / sanitized
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "esma_rows.csv"
+        fieldnames = [
+            "issuer_name", "doc_type", "date", "isin", "url", "fuzzy_score",
+            "score", "name_sim", "doc_type_score", "recency", "penalty",
+            "is_green", "green_confidence", "kept", "already_seen"
+        ]
+        try:
+            write_header = not out_path.exists()
+            with open(out_path, 'a', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                if write_header:
+                    writer.writeheader()
+                for r in rows:
+                    writer.writerow({k: r.get(k, '') for k in fieldnames})
+        except Exception as e:
+            self.logger.error(f"Failed to write audit rows: {e}")
+
+    def search_and_process(self, company_name: str, min_score: float = 0.55) -> List[Dict[str, Any]]:
+        """End-to-end: navigate, search, set 100/page, score rows, download above threshold.
+
+        Returns a list of downloaded file paths with metadata.
+        """
+        self.current_company = company_name
+        profile = self._build_company_profile(company_name)
+
+        # Choose a broad token for search (first token or alias)
+        # Always prefer the first token (short token)
+        search_token = profile.get("search_tokens", [company_name.split(" ")[0]])[0]
+
+        self.logger.info(f"Starting search_and_process for '{company_name}' using token '{search_token}'")
+        self.navigate_to_search()
+        ok = self.search_company(search_token)
+        if not ok:
+            self.logger.error(f"Search failed for {company_name}")
+            return []
+
+        # Ensure 100 rows per page once results present
+        time.sleep(4)
+        self.set_results_per_page(100)
+
+        # Process the current single page
+        rows = self.process_results(company_name)
+        scored_rows = []
+        for r in rows:
+            score, parts = self._compute_multi_signal_score(r, profile)
+            g = self._classify_green(r)
+            kept = (score >= min_score)
+            r.update({
+                "score": round(score, 3),
+                "name_sim": parts["name_sim"],
+                "doc_type_score": parts["doc_type"],
+                "recency": parts["recency"],
+                "penalty": parts["penalty"],
+                "is_green": g["is_green"],
+                "green_confidence": g["confidence"],
+                "kept": kept,
+            })
+            scored_rows.append(r)
+
+        # Audit log
+        self._write_audit_rows(company_name, scored_rows)
+
+        # Download kept rows (skip already seen)
+        downloads = []
+        for r in scored_rows:
+            if not r.get('kept'):
+                continue
+            url = r.get('url')
+            if not url:
+                continue
+            if url in self.seen_urls:
+                self.logger.info(f"Skipping already-seen URL: {url}")
+                continue
+            path = self.download_document(
+                url=url,
+                doc_id=r.get('isin') or r.get('issuer_name'),
+                doc_type_hint=r.get('doc_type'),
+                date_hint=r.get('date')
+            )
+            if path:
+                self.seen_urls.add(url)
+                downloads.append({
+                    "file_path": path,
+                    "issuer_name": r.get('issuer_name'),
+                    "doc_type": r.get('doc_type'),
+                    "date": r.get('date'),
+                    "isin": r.get('isin'),
+                    "score": r.get('score'),
+                    "is_green": r.get('is_green'),
+                })
+
+        # Persist seen urls
+        self._save_seen_urls()
+        return downloads
 
 # Example usage (optional, for testing)
 if __name__ == "__main__":

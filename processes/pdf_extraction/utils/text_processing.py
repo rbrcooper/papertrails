@@ -103,20 +103,115 @@ class TextProcessor:
     
     def extract_sections(self, text: str) -> Dict[str, str]:
         """
-        Extract standard sections from text.
+        Extract document sections from text.
         
         Args:
             text: The text to extract sections from
             
         Returns:
-            Dictionary with section names as keys and extracted text as values
+            Dictionary mapping section names to section text
         """
-        sections = {}
+        if not text:
+            return {}
         
-        # Extract standard sections
-        sections['distribution'] = self.find_section(text, 'distribution', 'stabilization')
-        sections['management'] = self.find_section(text, 'managers', 'stabilization')
-        sections['stabilisation'] = self.find_section(text, 'stabilization', 'listing')
+        # List of section patterns to match against
+        section_patterns = [
+            # Numbered section headers (e.g., "1. Introduction")
+            r'(?:^|\n)(\d+\.\s+[A-Z][A-Za-z\s]+)(?:\n|:|$)',
+            
+            # Capital letter section headers (e.g., "INTRODUCTION")
+            r'(?:^|\n)([A-Z][A-Z\s]{3,}:?)(?:\n|:|$)',
+            
+            # Title case section headers (e.g., "Summary of Terms")
+            r'(?:^|\n)([A-Z][a-zA-Z\s]+:)(?:\n|:|$)',
+            
+            # Specific financial sections
+            r'(?:^|\n)((?:Final )?Terms and Conditions:?)(?:\n|:|$)',
+            r'(?:^|\n)(Issuer?:?)(?:\n|:|$)',
+            r'(?:^|\n)(Issue Size:?)(?:\n|:|$)',
+            r'(?:^|\n)(Issue Date:?)(?:\n|:|$)',
+            r'(?:^|\n)(Maturity Date:?)(?:\n|:|$)',
+            r'(?:^|\n)(Coupon:?)(?:\n|:|$)',
+            r'(?:^|\n)(Interest:?)(?:\n|:|$)',
+            r'(?:^|\n)(Redemption:?)(?:\n|:|$)',
+            r'(?:^|\n)(Lead Manager:?)(?:\n|:|$)',
+            r'(?:^|\n)(Book Runner:?)(?:\n|:|$)',
+            r'(?:^|\n)(Arranger:?)(?:\n|:|$)',
+        ]
         
-        # Remove None values
-        return {k: v for k, v in sections.items() if v} 
+        # Extract section headers and their positions
+        sections = []
+        for pattern in section_patterns:
+            for match in re.finditer(pattern, text, re.MULTILINE):
+                section_title = match.group(1).strip()
+                start_pos = match.start()
+                sections.append((start_pos, section_title))
+        
+        # Sort sections by their position in the text
+        sections.sort(key=lambda x: x[0])
+        
+        # If no sections were found, return the whole text as one section
+        if not sections:
+            return {'Document': text}
+        
+        # Extract section content
+        result = {}
+        for i in range(len(sections)):
+            start_pos = sections[i][0]
+            section_title = sections[i][1]
+            
+            # For the last section, content goes to end of text
+            if i == len(sections) - 1:
+                section_content = text[start_pos:].strip()
+            else:
+                # Otherwise, content goes until next section
+                end_pos = sections[i + 1][0]
+                section_content = text[start_pos:end_pos].strip()
+            
+            # Remove the section title from the content if it starts with it
+            if section_content.startswith(section_title):
+                section_content = section_content[len(section_title):].strip()
+            
+            # Normalize section titles to remove potential duplicates
+            normalized_title = section_title.replace(':', '').strip()
+            
+            # Handle duplicate section names by appending a number
+            base_title = normalized_title
+            counter = 1
+            while normalized_title in result:
+                normalized_title = f"{base_title} ({counter})"
+                counter += 1
+            
+            result[normalized_title] = section_content
+        
+        # Add special summary section for top of document (first 10% of text)
+        summary_length = max(min(len(text) // 10, 5000), 1000)  # Between 1000-5000 chars
+        if summary_length < len(text):
+            result['Summary'] = text[:summary_length].strip()
+        
+        return result
+
+    def extract_paragraphs(self, text: str) -> List[str]:
+        """
+        Extract paragraphs from text.
+        
+        Args:
+            text: The text to extract paragraphs from
+            
+        Returns:
+            List of paragraphs
+        """
+        if not text:
+            return []
+        
+        # Split text into paragraphs
+        paragraphs = re.split(r'\n\s*\n', text)
+        
+        # Clean paragraphs
+        cleaned_paragraphs = []
+        for para in paragraphs:
+            para = para.strip()
+            if para and len(para) > 10:  # Ignore very short paragraphs
+                cleaned_paragraphs.append(para)
+            
+        return cleaned_paragraphs 

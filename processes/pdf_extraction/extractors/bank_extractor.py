@@ -1,21 +1,38 @@
 import re
-from typing import Dict, List, Any, Optional
+import os
+from typing import Dict, List, Any, Optional, Tuple
 from ..utils.pattern_registry import PatternRegistry
 from ..utils.text_processing import TextProcessor
 from .base_extractor import BaseExtractor
+from ...utils.bank_standardizer import BankStandardizer
 
 class BankExtractor(BaseExtractor):
     """Extracts bank names and roles from text."""
     
-    def __init__(self, text_processor: Optional[TextProcessor] = None):
+    def __init__(self, text_processor: Optional[TextProcessor] = None, debug_mode: bool = False):
         """
         Initialize the bank extractor.
         
         Args:
             text_processor: Text processor instance for section extraction
+            debug_mode: Enable debug prints
         """
         self.patterns = PatternRegistry.get_bank_patterns()
         self.text_processor = text_processor or TextProcessor()
+        self.debug_mode = debug_mode # Set the debug_mode attribute
+        
+        # Calculate absolute path to bank_names.json
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        processes_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        bank_names_path = os.path.join(processes_dir, "data", "bank_names.json")
+        
+        # Initialize bank standardizer with absolute path
+        self.bank_standardizer = BankStandardizer(bank_names_file=bank_names_path, debug_mode=self.debug_mode) # Pass debug_mode
+        if self.debug_mode:
+            if self.bank_standardizer.bank_data:
+                print(f"BankExtractor: BankStandardizer initialized with {len(self.bank_standardizer.bank_data)} bank entries.")
+            else:
+                print("BankExtractor: BankStandardizer initialized with NO bank entries. Check bank_names.json.")
         
     def extract(self, text: str) -> Dict[str, Any]:
         """
@@ -47,61 +64,128 @@ class BankExtractor(BaseExtractor):
             Dictionary with extracted banks and related information
         """
         result = {
-            'extracted_banks': [],
+            # This will store the list of dicts as per prompt's standardized_banks
+            'banks': [], 
             'bank_sections': {},
-            'bank_info': {}
+            # 'bank_info' might be deprecated or restructured if not needed by caller
+            # For now, let's focus on getting 'banks' list correct.
+            # We can still populate bank_info if other parts of system rely on it.
+            'bank_info_debug': {} # Temp for preserving some old logic if needed for roles
         }
         
         if not text:
             return result
             
-        # Find relevant sections in the text
         sections = {}
         for section_type in ['distribution', 'management', 'stabilisation']:
             section = self.text_processor.find_section(text, section_type)
             if section:
                 sections[section_type] = section
                 
-        # If no specific sections found, use the entire text
         if not sections:
             sections['full_text'] = text
             
-        # Process each section
+        processed_standardized_banks = set() # To avoid duplicates in the final 'banks' list
+
         for section_name, section_text in sections.items():
             result['bank_sections'][section_name] = section_text
+            bank_roles_in_section = self._find_bank_roles(section_text) # Renamed for clarity
+            raw_extracted_banks = self._extract_banks(section_text) # Renamed for clarity
             
-            # Find bank roles in the section
-            bank_roles = self._find_bank_roles(section_text)
-            
-            # Find banks in the section
-            extracted_banks = self._extract_banks(section_text)
-            
-            # Associate banks with roles
-            for bank in extracted_banks:
-                cleaned_bank = self.clean_bank_name(bank)
-                if cleaned_bank and self.is_valid_bank_name(cleaned_bank):
-                    if cleaned_bank not in result['bank_info']:
-                        result['bank_info'][cleaned_bank] = {
-                            'roles': [],
-                            'sections': []
-                        }
+            for raw_bank_name in raw_extracted_banks:
+                # Standardize using the updated BankStandardizer
+                # The standardize_name method in BankStandardizer handles cleaning internally.
+                standardization_output = self._standardize_bank_name(raw_bank_name)
+                
+                standardized_name = standardization_output['standardized_name']
+                confidence = standardization_output['confidence']
+                method = standardization_output['method']
+
+                # Apply confidence threshold from prompt (Task 1.2)
+                if confidence >= 0.85 and self.is_valid_bank_name(standardized_name): # also check validity
+                    current_bank_roles = []
+                    # Try to associate with roles found in this section
+                    # This logic might need refinement to be more precise
+                    context_for_roles = self._get_text_around(section_text, raw_bank_name, window=100)
+                    for role in bank_roles_in_section:
+                        if role in context_for_roles.lower(): # Check role in context of raw_bank_name
+                            current_bank_roles.append(role)
                     
-                    # Add section to bank info
-                    if section_name not in result['bank_info'][cleaned_bank]['sections']:
-                        result['bank_info'][cleaned_bank]['sections'].append(section_name)
+                    bank_entry = {
+                        'raw_name': raw_bank_name,
+                        'standardized_name': standardized_name,
+                        'confidence': confidence,
+                        'method': method,
+                        'roles': list(set(current_bank_roles)), # Unique roles for this instance
+                        'found_in_section': section_name
+                    }
+
+                    # Avoid adding exact duplicate entries (standardized_name + roles)
+                    # A simpler check: add if standardized_name is new, or if new roles are found for existing name.
+                    # The prompt for extract_banks just lists them. Let's handle complex merging later if needed.
+                    # For now, ensure we don't add the *exact same bank_entry object* multiple times if a bank appears
+                    # multiple times with the exact same details from the same extraction pass.
+                    # A better approach might be to group by standardized_name and merge roles/raw_names.
                     
-                    # Try to associate with roles
-                    for role in bank_roles:
-                        role_text = self._get_text_around(section_text, bank, 100)
-                        if role in role_text.lower():
-                            if role not in result['bank_info'][cleaned_bank]['roles']:
-                                result['bank_info'][cleaned_bank]['roles'].append(role)
+                    # Key for uniqueness check: standardized name + sorted roles string
+                    unique_key = (standardized_name, tuple(sorted(bank_entry['roles'])))
+
+                    is_existing = False
+                    for i, existing_entry in enumerate(result['banks']):
+                        if (existing_entry['standardized_name'] == standardized_name and
+                            tuple(sorted(existing_entry['roles'])) == tuple(sorted(bank_entry['roles']))):
+                            # Could update raw_names list or sections if needed, for now just mark as existing
+                            is_existing = True
+                            # Potentially merge raw_names or other fields if this new find is better
+                            if len(raw_bank_name) < len(existing_entry['raw_name']):
+                                result['banks'][i]['raw_name'] = raw_bank_name # Prefer shorter raw name for same std name
+                            break
                     
-                    # Add to extracted banks list if not already there
-                    if cleaned_bank not in result['extracted_banks']:
-                        result['extracted_banks'].append(cleaned_bank)
+                    if not is_existing:
+                        result['banks'].append(bank_entry)
+                        processed_standardized_banks.add(unique_key)
+                elif self.debug_mode: # Added from my DateExtractor pattern
+                    print(f"BankExtractor: Skipping bank '{raw_bank_name}' (std: '{standardized_name}') due to low confidence ({confidence:.2f}) or invalidity.")
+
+        # The prompt wants extract_banks to return {'banks': standardized_banks, 'validation_flags': ...}
+        # The current _extract_banks_and_roles returns a more complex dict. 
+        # The main extract() method then processes this.
+        # For now, let's ensure result['banks'] is correctly populated.
+        # The 'validation_flags' part would be generated by a different component or needs new logic.
+        # For now, only return what is calculable here.
+        # The original result structure had 'extracted_banks', 'bank_sections', 'bank_info'.
+        # We have populated result['banks'] and result['bank_sections'].
+        # We'll simplify the return of this specific method to be closer to the prompt's example
+        # for `extract_banks` if it's the final step for this data.
+        # However, the calling `extract` method expects a certain structure.
         
-        return result
+        # Let's adapt the old `result['extracted_banks']` to the new format.
+        # The old `result['bank_info']` needs to be reviewed based on new `result['banks']`
+        # The prompt structure `{'banks': standardized_banks}` is simple.
+        # Current `extract` returns `_extract_banks_and_roles` directly.
+        # So, the output of THIS function becomes the main output for bank extraction.
+        
+        final_output = {
+            'banks': result['banks'], 
+            'bank_sections_debug': result['bank_sections'], 
+            'validation_flags': self._generate_validation_flags(result['banks'])
+        }
+        return final_output
+
+    def _generate_validation_flags(self, standardized_banks: List[Dict[str, Any]]) -> List[str]:
+        """ Generates basic validation flags based on standardized banks. """
+        flags = []
+        if not standardized_banks:
+            flags.append("no_banks_extracted_or_confident_enough")
+        
+        low_confidence_count = sum(1 for bank in standardized_banks if bank['confidence'] < 0.90) # Example threshold
+        if standardized_banks and low_confidence_count == len(standardized_banks):
+            flags.append("all_extracted_banks_have_low_confidence")
+        elif low_confidence_count > 0:
+            flags.append(f"{low_confidence_count}_banks_with_low_confidence")
+            
+        # Add more validation flags as needed
+        return flags
     
     def _find_bank_roles(self, text: str) -> List[str]:
         """
@@ -224,37 +308,26 @@ class BankExtractor(BaseExtractor):
         # Normalize spaces
         cleaned = re.sub(r'\s+', ' ', cleaned).strip()
         
-        # Standard name replacements
-        replacements = {
-            'j.p. morgan': 'JPMorgan',
-            'j. p. morgan': 'JPMorgan',
-            'jp morgan': 'JPMorgan',
-            'jpmorgan chase': 'JPMorgan',
-            'bank of america merrill lynch': 'Bank of America',
-            'bofa': 'Bank of America',
-            'bofa securities': 'Bank of America',
-            'barclays capital': 'Barclays',
-            'bnp': 'BNP Paribas',
-            'socgen': 'Societe Generale',
-            'société générale': 'Societe Generale',
-            'deutsche': 'Deutsche Bank',
-            'ubs ag': 'UBS',
-            'rbc capital': 'RBC',
-            'rbc capital markets': 'RBC',
-            'royal bank of canada': 'RBC'
-        }
+        # Keep the basic cleaning here for backward compatibility
+        # The more sophisticated standardization is done by standardize_bank_name
         
-        # Check for name standardization
-        cleaned_lower = cleaned.lower()
-        for old, new in replacements.items():
-            if cleaned_lower == old or cleaned_lower.startswith(old + ' '):
-                return new
-                
         return cleaned
-        
+    
+    def _standardize_bank_name(self, bank_name: str) -> Dict[str, Any]:
+        """Standardize a single bank name using the BankStandardizer."""
+        if not self.bank_standardizer:
+            self.logger.warning("BankStandardizer not initialized. Returning raw name.")
+            return {
+                'standardized_name': bank_name,
+                'confidence': 0.0,
+                'method': 'no_standardizer'
+            }
+        # Corrected method call
+        return self.bank_standardizer.standardize_name(bank_name)
+    
     def is_valid_bank_name(self, bank: str) -> bool:
         """
-        Check if a string is likely a valid bank name.
+        Check if a string is likely to be a valid bank name.
         
         Args:
             bank: The bank name to check
@@ -262,35 +335,39 @@ class BankExtractor(BaseExtractor):
         Returns:
             True if likely a valid bank name, False otherwise
         """
-        if not bank or len(bank) < 3:
+        if not bank or len(bank.strip()) < 3:
             return False
             
-        # Check for common non-bank terms that might be mistaken for banks
-        invalid_terms = [
-            'issuer', 'notes', 'bonds', 'securities', 'issue date', 'maturity date',
-            'interest rate', 'coupon', 'form', 'date', 'page', 'terms', 'conditions',
-            'final terms', 'base prospectus', 'offering', 'offer', 'document', 'series',
-            'rating', 'summary', 'financial', 'amount', 'size', 'currency'
+        # Check for common terms that are not banks
+        common_terms = [
+            r'\b(?:page|terms|size|amount|total|date|final|interest|reference|rate|notes)\b', 
+            r'\b(?:issuer|issue|maturity|coupon|annex|section|document|prospectus)\b',
+            r'\b(?:number|code|identifier|id|isin|cusip|lei)\b'
         ]
         
-        bank_lower = bank.lower()
-        for term in invalid_terms:
-            if term == bank_lower or f"{term}s" == bank_lower:
+        for term in common_terms:
+            if re.search(term, bank, re.IGNORECASE):
                 return False
                 
-        # Check against common bank patterns for higher confidence
-        for pattern in self.patterns['common_banks']:
-            if re.search(pattern, bank, re.IGNORECASE):
-                return True
-                
-        # Additional checks for likely bank names
-        # Common bank endings
-        if re.search(r'(?:bank|capital|securities|asset|credit|invest|partners|financial|markets)$', bank_lower):
+        # Check for too many words (banks usually have 1-5 words)
+        word_count = len(bank.split())
+        if word_count > 6:
+            return False
+            
+        # Check for mostly numbers or symbols
+        alphachars = sum(c.isalpha() for c in bank)
+        if alphachars < len(bank) * 0.5:
+            return False
+            
+        # Check if standardizer recognizes this as a bank
+        standardized = self._standardize_bank_name(bank)
+        if standardized is not None:
             return True
             
-        # Has multiple capitalized words (like "Bank of America")
-        if re.search(r'^[A-Z][a-z]+(?:\s+(?:of|and|&)\s+[A-Z][a-z]+)+$', bank):
-            return True
-            
-        # Default to accepting strings that look like proper names
-        return re.search(r'^[A-Z][a-zA-Z\s&\']+$', bank) is not None 
+        # Otherwise, use heuristics
+        return True 
+
+    def _post_process_banks(self, extracted_banks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Post-process extracted bank names to standardize and add confidence."""
+        # Implementation of _post_process_banks method
+        # ...
