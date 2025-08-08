@@ -681,40 +681,40 @@ class ESMAScraper:
         try:
             # Use more specific selectors based on the table structure
             cells = result_element.find_elements(By.TAG_NAME, "td")
-            if len(cells) < 10: # Expecting at least 10 columns based on screenshot
-                self.logger.warning(f"Row has fewer than 10 cells, skipping. HTML: {result_element.get_attribute('innerHTML')}")
+            if len(cells) < 11: # Expecting 11 columns based on actual table structure
+                self.logger.warning(f"Row has fewer than 11 cells, skipping. HTML: {result_element.get_attribute('innerHTML')}")
                 return None
 
-            # Extract details based on column position from screenshot
-            details['issuer_name'] = cells[4].text.strip()
+            # Extract details based on column position from actual table structure
+            # Column 4: Issuer(s) Name / LEI - extract just the company name part
+            full_issuer = cells[4].text.strip()
+            # Split on " - " to separate company name from LEI code
+            if " - " in full_issuer:
+                details['issuer_name'] = full_issuer.split(" - ")[0].strip()
+            else:
+                details['issuer_name'] = full_issuer
+            
             details['doc_type'] = cells[1].text.strip()
             details['date'] = cells[3].text.strip()
-            # Try to detect ISIN if present (best-effort; may be empty)
+            # Try to detect ISIN if present (Column 5: ISIN)
             try:
-                details['isin'] = cells[6].text.strip()
+                details['isin'] = cells[5].text.strip()
             except Exception:
                 details['isin'] = ''
 
-            # The PDF icon location varies; robustly search for first anchor with a PDF href
+            # The PDF download link is in column 9 (Physical Document column)
             link_href = None
-            # First try a few likely columns
-            candidate_indices = [7, 9, len(cells)-2, len(cells)-1]
-            tried_indices = set()
-            for ci in candidate_indices:
-                if 0 <= ci < len(cells) and ci not in tried_indices:
-                    tried_indices.add(ci)
-                    try:
-                        a = cells[ci].find_element(By.TAG_NAME, "a")
-                        href = a.get_attribute('href')
-                        if href and href.lower().endswith('.pdf'):
-                            link_href = href
-                            break
-                    except Exception:
-                        pass
-            # Fallback: any anchor in the row
-            if not link_href:
+            try:
+                # Column 9 contains the PDF download link
+                pdf_cell = cells[9]
+                a = pdf_cell.find_element(By.TAG_NAME, "a")
+                href = a.get_attribute('href')
+                if href and 'downloadFile' in href:
+                    link_href = href
+            except Exception:
+                # Fallback: search for any PDF download link in the row
                 try:
-                    a = result_element.find_element(By.CSS_SELECTOR, "a[href$='.pdf']")
+                    a = result_element.find_element(By.CSS_SELECTOR, "a[href*='downloadFile']")
                     link_href = a.get_attribute('href')
                 except Exception:
                     link_href = None
