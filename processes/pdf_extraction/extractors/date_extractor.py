@@ -240,13 +240,12 @@ class DateExtractor(BaseExtractor):
                 maturity_date_confidence = None
                 if self.debug_mode: print("DateExtractor: Invalidated both dates due to conflict and similar confidence.")
 
-        # Fallback: if key dates are missing, try fuzzy extraction (adapted from old logic)
         if not issue_date or not maturity_date:
             if self.debug_mode:
                 print("DateExtractor: One or more key dates missing, attempting fuzzy extraction.")
-            fuzzy_results = self._extract_dates_fuzzy(original_text) # Expects normalized text
+            fuzzy_results = self._extract_dates_fuzzy_dt(original_text) # Returns datetimes
             if not issue_date and fuzzy_results.get('issue_date'):
-                parsed_fuzzy_issue = self._parse_date_string(fuzzy_results['issue_date'])
+                parsed_fuzzy_issue = fuzzy_results['issue_date']
                 if parsed_fuzzy_issue:
                     # Check against existing maturity_date if any
                     if maturity_date and parsed_fuzzy_issue > maturity_date:
@@ -257,7 +256,7 @@ class DateExtractor(BaseExtractor):
                         if self.debug_mode: print(f"DateExtractor: Set issue date from fuzzy: {issue_date.strftime('%Y-%m-%d')}")
             
             if not maturity_date and fuzzy_results.get('maturity_date'):
-                parsed_fuzzy_maturity = self._parse_date_string(fuzzy_results['maturity_date'])
+                parsed_fuzzy_maturity = fuzzy_results['maturity_date']
                 if parsed_fuzzy_maturity:
                      # Check against existing issue_date if any
                     if issue_date and parsed_fuzzy_maturity < issue_date:
@@ -344,39 +343,26 @@ class DateExtractor(BaseExtractor):
             
         return sections
 
-    def _extract_dates_fuzzy(self, text: str) -> Dict[str, str]:
+    def _extract_dates_fuzzy_dt(self, text: str) -> Dict[str, datetime]:
         """
         Use a fuzzy approach to extract dates when specific patterns fail.
-        This is a fallback mechanism.
-        Args:
-            text: The NORMALIZED text to extract dates from
-        Returns:
-            Dictionary with potential 'issue_date' and 'maturity_date' (as strings).
+        Returns datetime objects to avoid double-parsing issues.
         """
         result = {}
         if self.debug_mode:
             print(f"DateExtractor: Starting fuzzy date extraction.")
 
-        # Simpler fuzzy extraction: find all dates, then try to assign them.
-        # This uses dateutil.parser.parse with fuzzy=True on segments of text.
-        # We rely on _parse_date_string which itself uses dateutil.parser.
-        
-        # Heuristic: Look for "issue date" and "maturity date" keywords and parse nearby text.
-        # Keywords should be in lowercase as text is normalized.
         issue_keywords = ['issue date', 'settlement date', 'dated date', 'issuance date']
         maturity_keywords = ['maturity date', 'redemption date', 'due date', 'final maturity']
 
-        found_dates_with_context = [] # Store (datetime_obj, keyword_proximity_score, original_str)
+        found_dates_with_context = []
 
-        # A simple way to get date strings: find any plausible date string in text
-        # This pattern is very general.
         generic_date_like_pattern = r'(?:(?:\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})|(?:(?:january|february|march|april|may|june|july|august|september|october|november|december)[\s-]+\d{1,2}[,\s-]+\d{2,4})|(?:\d{1,2}[\s-]+(?:january|february|march|april|may|june|july|august|september|october|november|december)[\s-]+\d{2,4}))'
         
         for match in re.finditer(generic_date_like_pattern, text, re.IGNORECASE):
             date_str = match.group(0)
-            parsed_dt = self._parse_date_string(date_str, fuzzy_parse=True) # Use fuzzy for this
+            parsed_dt = self._parse_date_string(date_str, fuzzy_parse=True)
             if parsed_dt:
-                # Check proximity to keywords
                 context_window = text[max(0, match.start() - 100):min(len(text), match.end() + 100)]
                 is_issue = any(kw in context_window for kw in issue_keywords)
                 is_maturity = any(kw in context_window for kw in maturity_keywords)
@@ -385,29 +371,25 @@ class DateExtractor(BaseExtractor):
                     found_dates_with_context.append({'type': 'issue', 'date': parsed_dt, 'original_str': date_str, 'pos':match.start()})
                 elif is_maturity and not is_issue:
                     found_dates_with_context.append({'type': 'maturity', 'date': parsed_dt, 'original_str': date_str, 'pos':match.start()})
-                # If both or neither, it's ambiguous for this simple fuzzy logic.
 
         if self.debug_mode and found_dates_with_context:
             print(f"DateExtractor (fuzzy): Found {len(found_dates_with_context)} potential dates with context.")
 
         potential_issue_dates = sorted([fd['date'] for fd in found_dates_with_context if fd['type'] == 'issue'], key=lambda d: d)
-        potential_maturity_dates = sorted([fd['date'] for fd in found_dates_with_context if fd['type'] == 'maturity'], key=lambda d: d, reverse=True) # often last one
+        potential_maturity_dates = sorted([fd['date'] for fd in found_dates_with_context if fd['type'] == 'maturity'], key=lambda d: d, reverse=True)
 
         if potential_issue_dates:
-            result['issue_date'] = potential_issue_dates[0].strftime('%Y-%m-%d') # typically the earliest
-            if self.debug_mode: print(f"DateExtractor (fuzzy): Tentative issue date: {result['issue_date']}")
+            result['issue_date'] = potential_issue_dates[0]
+            if self.debug_mode: print(f"DateExtractor (fuzzy): Tentative issue date: {result['issue_date'].strftime('%Y-%m-%d')}")
         
         if potential_maturity_dates:
-            result['maturity_date'] = potential_maturity_dates[0].strftime('%Y-%m-%d') # typically the latest reasonable
-            if self.debug_mode: print(f"DateExtractor (fuzzy): Tentative maturity date: {result['maturity_date']}")
+            result['maturity_date'] = potential_maturity_dates[0]
+            if self.debug_mode: print(f"DateExtractor (fuzzy): Tentative maturity date: {result['maturity_date'].strftime('%Y-%m-%d')}")
 
-        # Simple validation
         if result.get('issue_date') and result.get('maturity_date'):
-            iss_dt = datetime.strptime(result['issue_date'], '%Y-%m-%d')
-            mat_dt = datetime.strptime(result['maturity_date'], '%Y-%m-%d')
-            if mat_dt < iss_dt:
-                if self.debug_mode: print(f"DateExtractor (fuzzy): Maturity {result['maturity_date']} before issue {result['issue_date']}. Invalidating fuzzy maturity.")
-                del result['maturity_date'] # Or issue, depending on other heuristics not implemented here
+            if result['maturity_date'] < result['issue_date']:
+                if self.debug_mode: print(f"DateExtractor (fuzzy): Maturity {result['maturity_date'].strftime('%Y-%m-%d')} before issue {result['issue_date'].strftime('%Y-%m-%d')}. Invalidating fuzzy maturity.")
+                del result['maturity_date']
 
         return result
 

@@ -104,14 +104,16 @@ class CouponExtractor(BaseExtractor):
         if not text:
             return results
             
-        # Check for zero coupon first as it's a special case
-        if re.search(r'zero\s+coupon|discount|no\s+(?:periodic\s+)?(?:interest|coupon)', text, re.IGNORECASE):
-            results['coupon_rate'] = '0'
-            results['coupon_type'] = 'zero coupon'
+        # Try to find a fixed rate coupon
+        fixed_rate_match = self._extract_fixed_rate(text)
+        if fixed_rate_match:
+            results['coupon_rate'] = fixed_rate_match['rate']
+            results['coupon_rate_type'] = 'fixed'
+            results['coupon_type'] = 'fixed rate'
             if self.debug_mode:
-                print("CouponExtractor: Detected zero coupon bond")
+                print(f"CouponExtractor: Detected fixed rate coupon with rate: {fixed_rate_match['rate']}")
             return results
-            
+
         # Check for floating rate / reference rate patterns
         reference_rate_match = self._extract_reference_rate(text)
         if reference_rate_match:
@@ -133,15 +135,18 @@ class CouponExtractor(BaseExtractor):
             if self.debug_mode:
                 print(f"CouponExtractor: Detected {step_match['type']} coupon with initial rate: {step_match['initial_rate']}")
             return results
-            
-        # Try to find a fixed rate coupon
-        fixed_rate_match = self._extract_fixed_rate(text)
-        if fixed_rate_match:
-            results['coupon_rate'] = fixed_rate_match['rate']
-            results['coupon_type'] = 'fixed rate'
-            if self.debug_mode:
-                print(f"CouponExtractor: Detected fixed rate coupon with rate: {fixed_rate_match['rate']}")
-            return results
+
+        # Check for zero coupon - moved AFTER fixed/floating to avoid false positives
+        # Also made stricter to require more explicit mentions or stand-alone keywords
+        if re.search(r'\b(?:zero\s+coupon|non\s+interest\s+bearing|non-interest\s+bearing)\b', text, re.IGNORECASE) and not results['coupon_rate']:
+             # Double check this isn't in a disclaimer
+             # Patterns like "not... zero coupon" should be ignored
+             if not re.search(r'(?:not|neither|no)\s+.*?zero\s+coupon', text, re.IGNORECASE):
+                results['coupon_rate'] = '0'
+                results['coupon_type'] = 'zero coupon'
+                if self.debug_mode:
+                    print("CouponExtractor: Detected zero coupon bond")
+                return results
             
         # If we still don't have a rate or type, look for any rate mention
         # This is a fallback method
@@ -233,12 +238,16 @@ class CouponExtractor(BaseExtractor):
             Dictionary with rate if found, None otherwise
         """
         fixed_patterns = [
-            r'(?:fixed|coupon)\s+(?:interest\s+)?rate\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)',
+            r'(?:fixed|coupon|period)\s+(?:interest\s+)?rate\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)',
             r'(?:interest\s+(?:is|shall\s+be)\s+payable\s+at|bears\s+interest\s+at|pays\s+a\s+coupon\s+of)\s+(?:a\s+(?:fixed\s+)?rate\s+of\s+)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)',
-            r'(?:interest\s+rate|rate\s+of\s+interest)\s*[:\-]?\s*(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)',
-            r'(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)(?:\s+(?:fixed\s+)?(?:rate\s+)?(?:interest|coupon))',
+            r'(?:interest\s+rate|rate(?:s)?(?:\(s\))?\s+of\s+interest|interest\s+basis)\s*[:\-]?\s*(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)',
+            r'(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)(?:\s+(?:fixed\s+)?(?:rate\s+)?(?:interest|coupon|basis))',
             r'(?:bear\s+interest\s+at|pays|with|carries|offering|bearing)(?:\s+a)?\s*(?:fixed\s+)?(?:rate\s+)?(?:coupon\s+)?(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)',
-            r'fixed\s+(?:rate\s+)?notes?\s+(?:due\s+\d{4}\s+)?(?:with|paying|at|of|bearing)\s+(?:a\s+(?:coupon|interest)\s+(?:rate\s+)?(?:of\s+)?)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)'
+            r'fixed\s+(?:rate\s+)?notes?\s+(?:due\s+\d{4}\s+)?(?:with|paying|at|of|bearing)\s+(?:a\s+(?:coupon|interest)\s+(?:rate\s+)?(?:of\s+)?)?(\d+(?:\.\d+)?)\s*(?:per\s*(?:cent\.?|%)|%)',
+            # German-language patterns
+            r'(?:j.hrlich|jhrlich)\s+(\d+(?:\.\d+)?)\s*%\s*(?:pro\s+jahr|p\.?\s*a\.?)?',
+            r'(?:zinssatz|festzinssatz|kupon)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*%',
+            r'(\d+(?:\.\d+)?)\s*%\s*(?:pro\s+jahr|p\.?\s*a\.?|per\s+annum)\s*(?:fest|fixed)?',
         ]
         
         for i, pattern in enumerate(fixed_patterns):
@@ -417,13 +426,15 @@ class CouponExtractor(BaseExtractor):
                 }
                 
         # Check for general floating rate mentions
-        if re.search(r'floating|variable', text, re.IGNORECASE):
-            return {
-                'reference_rate': None,
-                'spread': None,
-                'tenor': None,
-                'details': 'floating rate'
-            }
+        # Check for general floating rate mentions - must be followed by "applicable" and NOT "not applicable"
+        if re.search(r'(?:floating|variable)\s+(?:interest\s+)?rate\s+note\s+provisions\s+applicable', text, re.IGNORECASE):
+            if not re.search(r'not\s+applicable', text[max(0, text.lower().find('floating')):text.lower().find('floating')+100], re.IGNORECASE):
+                return {
+                    'reference_rate': None,
+                    'spread': None,
+                    'tenor': None,
+                    'details': 'floating rate'
+                }
             
         return None
         
@@ -579,6 +590,8 @@ class CouponExtractor(BaseExtractor):
         
         # Replace decimal separators if needed
         normalized = re.sub(r'(\d+),(\d+)', r'\1.\2', normalized)
+        # Handle dash as decimal separator if followed by 3 digits (e.g., 4-000)
+        normalized = re.sub(r'(\d+)-(\d{3})\b', r'\1.\2', normalized)
         
         # Standardize step-up/step-down spelling
         normalized = re.sub(r'step\s+up', 'step-up', normalized, flags=re.IGNORECASE)

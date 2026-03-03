@@ -151,48 +151,69 @@ class PatternRegistry:
     @staticmethod
     def get_currency_patterns():
         """Get patterns for currency and issue size extraction."""
+        currency_codes = [
+            r'USD', r'EUR', r'GBP', r'JPY', r'CHF', r'AUD', r'CAD', 
+            r'NZD', r'HKD', r'SGD', r'CNY', r'CNH', r'SEK', r'NOK', 
+            r'DKK', r'CZK', r'HUF', r'PLN', r'RUB', r'TRY', r'ZAR',
+            r'MXN', r'BRL', r'AED', r'SAR', r'QAR', r'KWD', r'INR',
+            # Additional currency codes
+            r'IDR', r'THB', r'VND', r'MYR', r'PHP', r'ILS', r'CLP',
+            r'COP', r'PEN', r'ARS', r'UYU', r'RON', r'BGN', r'HRK',
+            r'ISK', r'NGN', r'KES', r'UAH', r'KZT', r'MAD', r'EGP'
+        ]
+        currency_names = [
+            'euro', 'euros', 'dollar', 'dollars', 'pound', 'pounds', 'yen', 
+            'franc', 'francs', 'kroner', 'krone', 'krona', 'ruble', 'rubles', 
+            'lira', 'rupee', 'rupees', 'rand'
+        ]
+        currency_symbols = [
+            r'\$', r'€', r'£', r'¥', r'Fr', r'kr', r'₽', r'₺', r'R\s', r'₹',
+            # Additional currency symbols
+            r'A\$', r'C\$', r'HK\$', r'S\$', r'NZ\$', r'₦', r'₱', r'฿', r'₫',
+            r'RM', r'₪', r'₡', r'₲', r'₴', r'₸', r'₼', r'₾', r'лв', r'zł'
+        ]
+
+        # Helper patterns for issue size
+        # Allow dash as decimal separator for specific cases like 4-000
+        amount_pattern = r'(\d[\d,.-]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?'
+        codes_pattern = r'(?:' + '|'.join(currency_codes) + r')'
+        names_pattern = r'(?:' + '|'.join(currency_names) + r')'
+        symbols_pattern = r'(?:' + '|'.join(currency_symbols) + r')'
+
         return {
-            'currency_codes': [
-                r'USD', r'EUR', r'GBP', r'JPY', r'CHF', r'AUD', r'CAD', 
-                r'NZD', r'HKD', r'SGD', r'CNY', r'CNH', r'SEK', r'NOK', 
-                r'DKK', r'CZK', r'HUF', r'PLN', r'RUB', r'TRY', r'ZAR',
-                r'MXN', r'BRL', r'AED', r'SAR', r'QAR', r'KWD', r'INR',
-                # Additional currency codes
-                r'IDR', r'THB', r'VND', r'MYR', r'PHP', r'ILS', r'CLP',
-                r'COP', r'PEN', r'ARS', r'UYU', r'RON', r'BGN', r'HRK',
-                r'ISK', r'NGN', r'KES', r'UAH', r'KZT', r'MAD', r'EGP'
-            ],
-            'currency_symbols': [
-                r'\$', r'€', r'£', r'¥', r'Fr', r'kr', r'₽', r'₺', r'R\s', r'₹',
-                # Additional currency symbols
-                r'A\$', r'C\$', r'HK\$', r'S\$', r'NZ\$', r'₦', r'₱', r'฿', r'₫',
-                r'RM', r'₪', r'₡', r'₲', r'₴', r'₸', r'₼', r'₾', r'лв', r'zł'
-            ],
+            'currency_codes': [rf'\b{code}\b' for code in currency_codes],
+            'currency_symbols': currency_symbols,
             'issue_size': [
-                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*[\d,.]+\s*(?:million|billion|m|bn)?(?:\s*([A-Z]{3}))?',
-                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s*[\d,.]+\s*(?:million|billion|m|bn)?',
-                r'[A-Z]{3}[-\s]denominated\s+(?:senior\s+)?(?:unsecured\s+)?notes?\s+(?:due\s+\d{4}\s+)?(?:in\s+(?:the\s+)?(?:aggregate\s+)?(?:principal\s+)?(?:amount\s+)?(?:of\s+)?)?\s*([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*[\d,.]+\s*(?:million|billion|m|bn)?',
-                r'[\d,.]+\s*(?:million|billion|m|bn)?\s*([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)\s+(?:aggregate\s+(?:principal\s+)?amount|(?:issue|principal)\s+(?:size|amount))',
-                r'[\d,.]+\s*(?:million|billion|m|bn)?\s*((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s+(?:aggregate\s+(?:principal\s+)?amount|(?:issue|principal)\s+(?:size|amount))',
+                # Generic pattern for "750,000,000 euro", "750 million EUR", etc.
+                rf"\b({amount_pattern})\s*({codes_pattern}|{names_pattern})\b",
+                # Pattern for "EUR 750,000,000", "€750 million", etc.
+                rf"\b({codes_pattern}|{symbols_pattern}|{names_pattern})\s*({amount_pattern})\b",
+                # Pattern for "750,000,000 (euro)", etc.
+                rf"({amount_pattern})\s*\(\s*({codes_pattern}|{names_pattern})\s*\)",
+                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?(?:\s*([A-Z]{3}))?',
+                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?',
+                r'[A-Z]{3}[-\s]denominated\s+(?:senior\s+)?(?:unsecured\s+)?notes?\s+(?:due\s+\d{4}\s+)?(?:in\s+(?:the\s+)?(?:aggregate\s+)?(?:principal\s+)?(?:amount\s+)?(?:of\s+)?)?\s*([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?',
+                r'(\d[\d,.]*)\s*(?:million|billion|m|bn)?\s*([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)\s+(?:aggregate\s+(?:nominal\s+)?amount|(?:issue|principal)\s+(?:size|amount))',
+                r'(\d[\d,.]*)\s*(?:million|billion|m|bn)?\s*((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s+(?:aggregate\s+(?:principal\s+)?amount|(?:issue|principal)\s+(?:size|amount))',
                 # New patterns for issue size
-                r'(?:issue|offering)\s+(?:size|amount)\s*[:\-]?\s*(?:of\s+)?(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?',
-                r'(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?\s*(?:in\s+(?:principal|nominal)\s+amount)',
-                r'(?:amount|size)\s+of\s+(?:the\s+)?(?:offering|issuance)\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?',
-                r'(?:issue|offering)\s+of\s+(?:up\s+to\s+)?(?:approximately\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|m|bn)',
-                r'(?:expected\s+(?:aggregate\s+)?(?:principal|nominal)\s+amount)\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?',
-                r'(?:maximum\s+(?:aggregate\s+)?(?:issuance|amount))\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?',
-                r'(?:between|from)\s+([A-Z]{3}|\$|€|£|¥)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?\s*(?:and|to|-)\s*([A-Z]{3}|\$|€|£|¥)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?',
+                r'(?:issue|offering)\s+(?:size|amount)\s*[:\-]?\s*(?:of\s+)?(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?',
+                r'(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?\s*(?:in\s+(?:principal|nominal)\s+amount)',
+                r'(?:amount|size)\s+of\s+(?:the\s+)?(?:offering|issuance)\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?',
+                r'(?:issue|offering)\s+of\s+(?:up\s+to\s+)?(?:approximately\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)',
+                r'(?:expected\s+(?:aggregate\s+)?(?:principal|nominal)\s+amount)\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?',
+                r'(?:maximum\s+(?:aggregate\s+)?(?:issuance|amount))\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?',
+                r'(?:between|from)\s+([A-Z]{3}|\$|€|£|¥)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?\s*(?:and|to|-)\s*([A-Z]{3}|\$|€|£|¥)?\s*(\d[\d,.]*)\s*(?:million|billion|m|bn)?',
                 # Additional enhanced patterns
-                r'(?:up\s+to\s+)?(?:a\s+)?(?:maximum\s+(?:aggregate\s+)?amount\s+of\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
-                r'(?:up\s+to\s+)?((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s*([\d,.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
-                r'(?:programme\s+size|issuance\s+limit|facility\s+amount)\s*(?:of\s+)?(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
-                r'(?:issue|issuance)\s+volume\s*(?:of\s+)?(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
-                r'(?:total\s+size\s+of\s+the\s+bond)\s*(?:is\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
-                r'(?:value|size)\s+of\s+(?:the\s+)?(?:issue|issuance|offering)\s*[:\-]?\s*([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
-                r'(?:issued|issuance)\s+in\s+(?:the\s+)?(?:amount\s+of\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*([\d,.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
+                r'(?:up\s+to\s+)?(?:a\s+)?(?:maximum\s+(?:aggregate\s+)?amount\s+of\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
+                r'(?:up\s+to\s+)?((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s*(\d[\d,.]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
+                r'(?:programme\s+size|issuance\s+limit|facility\s+amount)\s*(?:of\s+)?(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
+                r'(?:issue|issuance)\s+volume\s*(?:of\s+)?(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
+                r'(?:total\s+size\s+of\s+the\s+bond)\s*(?:is\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
+                r'(?:value|size)\s+of\s+(?:the\s+)?(?:issue|issuance|offering)\s*[:\-]?\s*([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
+                r'(?:issued|issuance)\s+in\s+(?:the\s+)?(?:amount\s+of\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d,.]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
                 # European format handling (dot as thousands separator)
-                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*[\d.]+(?:,\d+)?\s*(?:million|billion|m|bn)?(?:\s*([A-Z]{3}))?',
-                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s*[\d.]+(?:,\d+)?\s*(?:million|billion|m|bn)?'
+                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d.]*)(?:,\d+)?\s*(?:million|billion|m|bn)?(?:\s*([A-Z]{3}))?',
+                r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s*(\d[\d.]*)(?:,\d+)?\s*(?:million|billion|m|bn)?'
             ]
         }
     

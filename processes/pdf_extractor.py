@@ -41,6 +41,7 @@ from processes.pdf_extraction.extractors.currency_extractor import CurrencyExtra
 from processes.pdf_extraction.extractors.coupon_extractor import CouponExtractor
 from processes.pdf_extraction.extractors.bank_extractor import BankExtractor
 from processes.pdf_extraction.extractors.ai_bank_extractor import AIBankExtractor
+from processes.pdf_extraction.extractors.ai_metadata_extractor import AIMetadataExtractor
 from processes.utils.decorators import retry
 
 class PDFExtractor:
@@ -80,15 +81,17 @@ class PDFExtractor:
             'bank': BankExtractor(debug_mode=debug_mode)
         }
         
-        # Initialize AI extractor if enabled
+        # Initialize AI extractors if enabled
         if self.use_ai_extraction:
             self.ai_extractor = AIBankExtractor(debug_mode=debug_mode)
+            self.ai_metadata_extractor = AIMetadataExtractor(debug_mode=debug_mode)
             if self.debug_mode:
-                self.logger.info("AI bank extraction enabled")
+                self.logger.info("AI bank and metadata extraction enabled")
         else:
             self.ai_extractor = None
+            self.ai_metadata_extractor = None
             if self.debug_mode:
-                self.logger.info("AI bank extraction disabled")
+                self.logger.info("AI extraction disabled")
         
         # PDF text cache to avoid re-reading the same file
         self.text_cache = {}
@@ -162,15 +165,29 @@ class PDFExtractor:
         if currency_info.get('issue_size_range'):
             result['metadata']['issue_size_range'] = currency_info.get('issue_size_range')
         
+        # AI fallback for currency if regex returned low confidence
+        if currency_info.get('confidence') == 'low' and self.ai_metadata_extractor:
+            if self.debug_mode:
+                self.logger.info("Currency regex returned low confidence, trying AI fallback...")
+            try:
+                if self.ai_metadata_extractor.test_connection():
+                    ai_currency = self.ai_metadata_extractor.extract_currency(text)
+                    if ai_currency.get('currency') and not result['metadata']['currency']:
+                        result['metadata']['currency'] = ai_currency['currency']
+                    if ai_currency.get('issue_size') and not result['metadata']['issue_size']:
+                        result['metadata']['issue_size'] = ai_currency['issue_size']
+                    if result['metadata']['currency'] and result['metadata']['issue_size']:
+                        result['metadata']['currency_extraction_method'] = 'ai_fallback'
+                        if self.debug_mode:
+                            self.logger.info(f"AI fallback found currency: {result['metadata']['currency']}, size: {result['metadata']['issue_size']}")
+            except Exception as e:
+                self.logger.warning(f"AI currency fallback failed: {e}")
+        
         # Validate currency info
         if not result['metadata']['currency'] or not result['metadata']['issue_size']:
             result['validation_flags'].append('no_currency_info_extracted')
             if self.debug_mode:
                 self.logger.warning("Failed to extract currency information")
-                if not result['metadata']['currency']:
-                    self.logger.warning("No currency extracted")
-                if not result['metadata']['issue_size']:
-                    self.logger.warning("No issue size extracted")
         
         # Extract coupon information
         if self.debug_mode:
@@ -182,16 +199,30 @@ class PDFExtractor:
         
         if coupon_info.get('reference_rate'):
             result['metadata']['reference_rate'] = coupon_info.get('reference_rate')
+        
+        # AI fallback for coupon if regex returned low confidence
+        if coupon_info.get('confidence') == 'low' and self.ai_metadata_extractor:
+            if self.debug_mode:
+                self.logger.info("Coupon regex returned low confidence, trying AI fallback...")
+            try:
+                if self.ai_metadata_extractor.test_connection():
+                    ai_coupon = self.ai_metadata_extractor.extract_coupon(text)
+                    if ai_coupon.get('coupon_rate') and not result['metadata']['coupon_rate']:
+                        result['metadata']['coupon_rate'] = ai_coupon['coupon_rate']
+                    if ai_coupon.get('coupon_type') and not result['metadata']['coupon_type']:
+                        result['metadata']['coupon_type'] = ai_coupon['coupon_type']
+                    if result['metadata']['coupon_rate']:
+                        result['metadata']['coupon_extraction_method'] = 'ai_fallback'
+                        if self.debug_mode:
+                            self.logger.info(f"AI fallback found coupon: {result['metadata']['coupon_rate']}, type: {result['metadata']['coupon_type']}")
+            except Exception as e:
+                self.logger.warning(f"AI coupon fallback failed: {e}")
             
         # Validate coupon info
         if not result['metadata']['coupon_rate'] or not result['metadata']['coupon_type']:
             result['validation_flags'].append('no_coupon_info_extracted')
             if self.debug_mode:
                 self.logger.warning("Failed to extract coupon information")
-                if not result['metadata']['coupon_rate']:
-                    self.logger.warning("No coupon rate extracted")
-                if not result['metadata']['coupon_type']:
-                    self.logger.warning("No coupon type extracted")
         
         # Extract bank information
         try:

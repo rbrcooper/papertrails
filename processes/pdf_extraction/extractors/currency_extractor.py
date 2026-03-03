@@ -139,110 +139,76 @@ class CurrencyExtractor(BaseExtractor):
                 print(f"CurrencyExtractor: Trying issue size pattern {i+1}")
                 
             matches = re.finditer(pattern, text, re.IGNORECASE)
-            match_count = 0
             
             for match in matches:
-                match_count += 1
-                # Extract the full match to analyze
                 full_match = match.group(0)
                 
                 if self.debug_mode:
                     context = text[max(0, match.start() - 30):min(len(text), match.end() + 30)]
                     print(f"CurrencyExtractor: Found match using pattern {i+1}: '{full_match}' in '...{context}...'")
                 
-                # Extract currency symbol or code
+                # Extract currency and issue size from groups if possible
                 currency = None
-                for j, currency_pattern in enumerate(self.patterns['currency_codes']):
-                    if re.search(r'\b' + currency_pattern + r'\b', full_match, re.IGNORECASE):
-                        currency = currency_pattern
-                        if self.debug_mode:
-                            print(f"CurrencyExtractor: Found currency code: {currency}")
-                        break
-                        
-                if not currency:
-                    for j, symbol_pattern in enumerate(self.patterns['currency_symbols']):
-                        if re.search(symbol_pattern, full_match):
-                            # Map currency symbol to code
-                            symbol_map = {
-                                '$': 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY',
-                                'Fr': 'CHF', 'kr': 'NOK', '₽': 'RUB', '₺': 'TRY',
-                                'R\\s': 'ZAR', '₹': 'INR', 'A\\$': 'AUD', 'C\\$': 'CAD',
-                                'HK\\$': 'HKD', 'S\\$': 'SGD', 'NZ\\$': 'NZD', '₦': 'NGN',
-                                '₱': 'PHP', '฿': 'THB', '₫': 'VND'
-                            }
-                            for symbol, code in symbol_map.items():
-                                if re.search(symbol, full_match):
-                                    currency = code
-                                    if self.debug_mode:
-                                        print(f"CurrencyExtractor: Found currency symbol mapped to code: {currency}")
-                                    break
+                issue_size = None
+                groups = match.groups()
+                
+                # Try to find currency in groups (excluding the amount)
+                for group in groups:
+                    if group and not any(c.isdigit() for c in group):
+                        # Potential currency name or code
+                        mapped = self._map_symbol_to_code(group)
+                        if mapped:
+                            currency = mapped
                             break
                 
-                # Extract issue size
-                issue_size = None
-                issue_size_range = None
+                # If no currency found in groups, search full_match
+                if not currency:
+                    # Check for explicit currency codes (e.g., USD, EUR)
+                    for code in self.patterns['currency_codes']:
+                        search_code = code.strip(r'\b')
+                        if re.search(r'\b' + re.escape(search_code) + r'\b', full_match, re.IGNORECASE):
+                            currency = search_code.upper()
+                            break
+                            
+                    if not currency:
+                        for symbol in self.patterns['currency_symbols']:
+                            search_sym = symbol.replace('\\', '')
+                            if search_sym in full_match:
+                                currency = self._map_symbol_to_code(search_sym)
+                                break
                 
-                # Check for range format
-                if is_range:
-                    # Look for two numbers in the pattern "X to Y" or "between X and Y"
-                    range_match = re.search(r'(?:between|from)?\s*([\d,.]+)\s*(?:million|billion|m|bn)?\s*(?:and|to|-)\s*([\d,.]+)\s*(?:million|billion|m|bn)?', full_match, re.IGNORECASE)
-                    if range_match:
-                        min_value = self._normalize_number(range_match.group(1))
-                        max_value = self._normalize_number(range_match.group(2))
-                        
-                        # Apply multipliers
-                        min_value = self._apply_multiplier(min_value, range_match.group(0))
-                        max_value = self._apply_multiplier(max_value, range_match.group(0))
-                        
-                        issue_size_range = {
-                            'min': min_value,
-                            'max': max_value
-                        }
-                        # Use average as the main issue_size value
-                        try:
-                            issue_size = str((float(min_value) + float(max_value)) / 2)
-                            if self.debug_mode:
-                                print(f"CurrencyExtractor: Found issue size range: {min_value} to {max_value}, using average: {issue_size}")
-                        except (ValueError, TypeError):
-                            # Use the max if we can't compute average
-                            issue_size = max_value or min_value
-                            if self.debug_mode:
-                                print(f"CurrencyExtractor: Found issue size range but couldn't compute average, using: {issue_size}")
+                # Extract issue size from groups or match
+                # Usually the largest numeric group is the amount
+                numeric_groups = []
+                for group in groups:
+                    if group and any(c.isdigit() for c in group):
+                        normalized = self._normalize_number(group)
+                        if normalized:
+                            numeric_groups.append(normalized)
+                
+                if numeric_groups:
+                    # Use the first numeric group as primary
+                    issue_size = numeric_groups[0]
                 else:
-                    # Find numbers in the match
-                    size_match = re.search(r'([\d,.]+)(?:\s*(?:million|billion|m|bn))?', full_match)
+                    # Fallback to searching the full match
+                    size_match = re.search(r'([\d,.-]+)(?:\s*(?:million|billion|m|bn))?', full_match)
                     if size_match:
                         issue_size = self._normalize_number(size_match.group(1))
-                        issue_size = self._apply_multiplier(issue_size, full_match)
-                        
-                        if self.debug_mode:
-                            print(f"CurrencyExtractor: Found issue size: {issue_size}")
-                        
-                        # Handle qualifiers
-                        if is_up_to:
-                            issue_size_range = {'max': issue_size}
-                            if self.debug_mode:
-                                print(f"CurrencyExtractor: Treating as 'up to' value: {issue_size}")
-                        elif is_at_least:
-                            issue_size_range = {'min': issue_size}
-                            if self.debug_mode:
-                                print(f"CurrencyExtractor: Treating as 'at least' value: {issue_size}")
-                        elif is_approximate:
-                            # For approximate values, create a range of ±10%
-                            try:
-                                value = float(issue_size)
-                                issue_size_range = {
-                                    'min': str(value * 0.9),
-                                    'max': str(value * 1.1)
-                                }
-                                if self.debug_mode:
-                                    print(f"CurrencyExtractor: Treating as approximate value: {issue_size} with range {issue_size_range}")
-                            except (ValueError, TypeError):
-                                if self.debug_mode:
-                                    print(f"CurrencyExtractor: Failed to create approximate range for value: {issue_size}")
                 
-                if currency or issue_size:
-                    return currency, issue_size, issue_size_range
+                if issue_size:
+                    issue_size = self._apply_multiplier(issue_size, full_match)
+                
+                # Basic validation: ignore programme sizes if clearly marked
+                if re.search(r'programme|limit|ceiling', full_match, re.IGNORECASE) or \
+                   re.search(r'programme|limit|ceiling', text[max(0, match.start()-50):match.start()], re.IGNORECASE):
+                    if self.debug_mode:
+                        print(f"CurrencyExtractor: Skipping potential programme/limit match: {full_match}")
+                    continue
+
+                if currency and issue_size:
+                    if self.debug_mode:
+                        print(f"CurrencyExtractor: Successfully extracted currency {currency} and size {issue_size}")
+                    return currency, issue_size, None # Could add range support back if needed
                     
             if self.debug_mode and match_count == 0:
                 print(f"CurrencyExtractor: No matches for issue size pattern {i+1}")
@@ -501,6 +467,11 @@ class CurrencyExtractor(BaseExtractor):
                 num_str = re.sub(r'\.', '', num_str)
                 num_str = re.sub(r',', '.', num_str)
                 
+        # Handle potential dash as decimal separator if others are absent
+        if '-' in num_str and '.' not in num_str and ',' not in num_str:
+             if re.search(r'\d-\d{3}', num_str): # Likely 4-000
+                 num_str = num_str.replace('-', '.')
+        
         # Remove any remaining non-numeric characters except decimal point
         num_str = re.sub(r'[^\d.]', '', num_str)
         
@@ -568,17 +539,20 @@ class CurrencyExtractor(BaseExtractor):
             if symbol.upper() == code:
                 return code
                 
-        # Map symbols to codes
-        symbol_map = {
+        # Map symbols and names to codes
+        mapping = {
             '$': 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY',
             'Fr': 'CHF', 'kr': 'NOK', '₽': 'RUB', '₺': 'TRY',
             'R': 'ZAR', '₹': 'INR', 'A$': 'AUD', 'C$': 'CAD',
             'HK$': 'HKD', 'S$': 'SGD', 'NZ$': 'NZD', '₦': 'NGN',
-            '₱': 'PHP', '฿': 'THB', '₫': 'VND'
+            '₱': 'PHP', '฿': 'THB', '₫': 'VND',
+            'euro': 'EUR', 'euros': 'EUR', 'dollar': 'USD', 'dollars': 'USD',
+            'pound': 'GBP', 'pounds': 'GBP', 'yen': 'JPY', 'franc': 'CHF'
         }
         
-        for s, code in symbol_map.items():
-            if s in symbol:
+        lower_symbol = symbol.lower().strip()
+        for key, code in mapping.items():
+            if key in lower_symbol or key == lower_symbol:
                 return code
                 
-        return None 
+        return None
