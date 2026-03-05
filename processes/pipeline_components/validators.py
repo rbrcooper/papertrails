@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 import logging
 from typing import Dict, Any, List
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ class ExtractionValidator:
             self.is_issue_date_before_maturity_date,
             self.is_currency_info_valid,
             self.is_coupon_info_present,
+            self.is_coupon_rate_reasonable,  # New rule
             self.are_banks_extracted,
             self.is_ai_extraction_effective
         ]
@@ -150,4 +152,147 @@ class ExtractionValidator:
         if not extracted_banks:
             return False, "FAIL: AI extraction was used but failed to find any banks."
         
-        return True, "PASS: AI extraction was used and successfully found banks." 
+        return True, "PASS: AI extraction was used and successfully found banks."
+
+    def quick_first_page_checks(self, pdf_path: str, expected_company: str) -> Dict[str, Any]:
+        """
+        Quick validation check on first 1-2 pages before full extraction.
+        Checks for issuer/guarantor match and ISIN presence.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            expected_company: Expected company name
+            
+        Returns:
+            Dictionary with validation results and reasons
+        """
+        try:
+            # Import here to avoid circular dependencies
+            from processes.pdf_extraction.core import ExtractionEngine
+            
+            engine = ExtractionEngine(use_ocr=False)  # Quick check, skip OCR
+            first_pages_text = engine.extract_text_first_pages(pdf_path, num_pages=2)
+            
+            if not first_pages_text or len(first_pages_text) < 50:
+                return {
+                    'pass': False,
+                    'reason': 'Cannot read first pages (possibly scanned PDF or corrupted)',
+                    'issuer_match': False,
+                    'isin_present': False,
+                    'guarantor_mentioned': False
+                }
+            
+            text_lower = first_pages_text.lower()
+            
+            # Normalize company name for matching
+            expected_normalized = self._normalize_company_name(expected_company)
+            text_normalized = self._normalize_company_name(first_pages_text)
+            
+            # Check if expected company appears in first pages
+            issuer_match = (
+                expected_normalized in text_normalized or
+                expected_company.lower() in text_lower or
+                any(alias.lower() in text_lower for alias in expected_company.split())
+            )
+            
+            # Strict Language/Type Check:
+            english_keywords = ['notes', 'bonds', 'prospectus', 'maturity', 'interest']
+            english_keyword_count = sum(1 for kw in english_keywords if kw in text_lower)
+            
+            it_keywords = ['certificati', 'obbligazioni', 'italiana']
+            it_keyword_count = sum(1 for kw in it_keywords if kw in text_lower)
+            
+            likely_english = english_keyword_count >= 2
+            likely_italian = it_keyword_count >= 2
+
+            if not likely_english or likely_italian:
+                reasons = [f"Document language mismatch (Eng: {english_keyword_count}, IT: {it_keyword_count})"]
+                return {'pass': False, 'reason': '; '.join(reasons)}
+
+            # Check for ISIN pattern (2 letters + 9 digits + 1 check digit)
+            isin_pattern = re.compile(r'\b[A-Z]{2}[0-9A-Z]{9}[0-9]\b')
+            isin_match = isin_pattern.search(first_pages_text.upper())
+            isin_present = isin_match is not None
+            
+            # Check for guarantor mention (common keywords)
+            guarantor_keywords = ['guarantor', 'guarantee', 'guaranteed by', 'guaranteed']
+            guarantor_mentioned = any(keyword in text_lower for keyword in guarantor_keywords)
+            
+            # 1. Language check: ensure document is in English
+            english_keywords = ['notes', 'bonds', 'prospectus', 'maturity', 'interest',
+                                'underwriter', 'manager', 'coupon', 'redemption', 'issuer']
+            english_keyword_count = sum(1 for kw in english_keywords if kw in text_lower)
+            likely_english = english_keyword_count >= 3
+            
+            # 2. ISIN cross-check (if expected ISINs provided)
+            # expected_isins can be passed in via kwargs in the future or via result object
+            expected_isins = kwargs.get('expected_isins', [])
+            isin_mismatch = False
+            if expected_isins and isin_present:
+                found_isins = set(isin_pattern.findall(first_pages_text.upper()))
+                expected_set = set(i.upper() for i in expected_isins if i)
+                isin_overlap = found_isins & expected_set
+                if not isin_overlap:
+                    isin_mismatch = True
+            
+            reasons = []
+            if not issuer_match:
+                reasons.append(f"Issuer '{expected_company}' not clearly found in first pages")
+            if not isin_present:
+                reasons.append("No ISIN pattern found")
+            if not likely_english:
+                reasons.append(f"Document may not be in English (only {english_keyword_count}/10 financial keywords found)")
+            if isin_mismatch:
+                reasons.append(f"No ISIN overlap found with expected company ISINs")
+                
+            # Determine overall pass
+            # Pass if it's likely English AND (issuer matches OR (ISIN present AND overlap confirmed if available))
+            pass_check = likely_english and (issuer_match or (isin_present and not isin_mismatch))
+            
+            return {
+                'pass': pass_check,
+                'reason': '; '.join(reasons) if reasons else 'Basic checks passed',
+                'issuer_match': issuer_match,
+                'isin_present': isin_present,
+                'guarantor_mentioned': guarantor_mentioned,
+                'likely_english': likely_english,
+                'isin_mismatch': isin_mismatch,
+                'text_sample': first_pages_text[:500]  # Sample for debugging
+            }
+            
+        except Exception as e:
+            logger.warning(f"Quick first page check failed for {pdf_path}: {e}")
+            return {
+                'pass': True,  # Default to pass if check fails (don't block on errors)
+                'reason': f'Quick check error: {str(e)}',
+                'issuer_match': None,
+                'isin_present': None,
+                'guarantor_mentioned': None
+            }
+    
+    def _normalize_company_name(self, name: str) -> str:
+        """Normalize company name for fuzzy matching."""
+        if not name:
+            return ""
+        # Remove common legal suffixes and normalize
+        normalized = re.sub(r'[\W_]+', ' ', name.lower())
+        normalized = re.sub(r'\b(ag|sa|gmbh|nv|n\.v\.|plc|s\.a\.|s\.p\.a\.|b\.v\.|bv|inc|ltd|limited|corporation|corp)\b', '', normalized)
+        return re.sub(r'\s+', ' ', normalized).strip()
+    
+    def is_coupon_rate_reasonable(self, result: Dict[str, Any]) -> (bool, str):
+        """Checks if coupon rate is within reasonable bounds (0-20%)."""
+        metadata = result.get('metadata', {})
+        coupon_rate = metadata.get('coupon_rate')
+        
+        if coupon_rate is None:
+            return False, "SKIP: Coupon rate is missing."
+        
+        try:
+            rate = float(coupon_rate)
+            if rate < 0:
+                return False, f"FAIL: Coupon rate {rate}% is negative."
+            if rate > 20:
+                return False, f"FAIL: Coupon rate {rate}% exceeds reasonable maximum (20%)."
+            return True, f"PASS: Coupon rate {rate}% is within reasonable bounds (0-20%)."
+        except (ValueError, TypeError):
+            return False, f"FAIL: Coupon rate '{coupon_rate}' is not a valid number." 

@@ -15,12 +15,33 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class CompanyListHandler:
-    """Handles loading and managing the list of companies to process"""
+    """Handles loading and managing the list of companies to process.
     
-    def __init__(self, excel_path: str = 'data/raw/urgewald GOGEL 2023 V1.2.xlsx', eu_countries: list = None):
-        """Initialize the handler with the path to the Excel file"""
+    Supports both the legacy GOGEL Excel format and the new GOGEL 2025 CSV
+    with financial identifiers (LEI, ISIN, PermID, FIGI).
+    """
+
+    EU_COUNTRIES = {
+        'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic',
+        'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary',
+        'Ireland', 'Italy', 'Latvia', 'Lithuania', 'Luxembourg', 'Malta',
+        'Netherlands', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
+        'Spain', 'Sweden'
+    }
+
+    def __init__(self, excel_path: str = 'data/raw/Urgewald GOGEL 2025 V1.2 with identifiers.csv',
+                 region_filter: str = 'all', eu_countries: list = None):
+        """Initialize the handler.
+        
+        Args:
+            excel_path: Path to the GOGEL data file (.csv or .xlsx).
+            region_filter: 'all' to load every company, 'eu' for EU-only,
+                           or a comma-separated list of country names.
+            eu_countries: Explicit list of EU countries (overrides default).
+        """
         self.excel_path = Path(excel_path)
-        self.eu_countries = eu_countries
+        self.region_filter = region_filter
+        self.eu_countries = set(eu_countries) if eu_countries else self.EU_COUNTRIES
         self.companies = []
         self.processed_companies = set()
         self.processed_companies_file = Path('data/processed/processed_companies.txt')
@@ -29,7 +50,7 @@ class CompanyListHandler:
         self.downloaded_docs = set()
         self.company_stats = {}
         
-        # Load companies from Excel
+        # Load companies from file
         self.load_companies()
         
         # Load progress if exists
@@ -42,6 +63,20 @@ class CompanyListHandler:
         self.load_company_stats()
         
         self._ensure_files_exist()
+
+    @staticmethod
+    def _parse_multi_value(raw: str) -> list:
+        """Parse a semicolon-separated field (possibly quoted) into a list of clean strings.
+        
+        Handles values like: "XS123; XS456; XS789" or just "XS123" or "." or NaN.
+        Returns an empty list for missing / placeholder values.
+        """
+        if not isinstance(raw, str) or raw.strip() in ('', '.', 'NA', 'nan'):
+            return []
+        # Strip surrounding quotes if present
+        raw = raw.strip().strip('"')
+        parts = [v.strip() for v in raw.split(';') if v.strip() and v.strip() != '.']
+        return parts
     
     def _ensure_files_exist(self):
         """Ensure the tracking files exist."""
@@ -77,46 +112,129 @@ class CompanyListHandler:
             logger.error(f"Error saving company stats: {str(e)}")
     
     def load_companies(self):
-        """Load companies from Excel file"""
+        """Load companies from the GOGEL data file.
+        
+        Auto-detects CSV vs Excel format. For the new GOGEL 2025 CSV, extracts
+        financial identifiers (LEI, ISINs, PermID, FIGI) and attaches them to
+        each company dict. Applies region filtering based on self.region_filter.
+        """
         try:
             logger.info(f"Loading companies from {self.excel_path}")
             
-            # Read the Excel file, skipping the first 3 rows which are headers
-            df = pd.read_excel(self.excel_path, sheet_name='Upstream', skiprows=3)
-            
-            # List of EU countries
-            if self.eu_countries:
-                eu_countries = set(self.eu_countries)
+            suffix = self.excel_path.suffix.lower()
+            if suffix == '.csv':
+                df = self._load_csv(self.excel_path)
+            elif suffix in ('.xlsx', '.xls'):
+                df = self._load_excel(self.excel_path)
             else:
-                eu_countries = {
-                    'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic',
-                    'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary',
-                    'Ireland', 'Italy', 'Latvia', 'Lithuania', 'Luxembourg', 'Malta',
-                    'Netherlands', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
-                    'Spain', 'Sweden'
-                }
+                logger.error(f"Unsupported file format: {suffix}")
+                self.companies = []
+                return
             
-            # Convert DataFrame to list of dictionaries
-            self.companies = []
-            for _, row in df.iterrows():
-                # Get company name and country from columns
-                company_name = row.iloc[0]  # Company Name is in the first column
-                country = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ''  # Country is typically in the third column
-                
-                # Only include companies from EU countries
-                if pd.notna(company_name) and isinstance(company_name, str) and country in eu_countries:
-                    company = {
-                        'name': company_name,
-                        'country': country,
-                        'status': 'Active'  # Default status
-                    }
-                    self.companies.append(company)
-                
-            logger.info(f"Loaded {len(self.companies)} EU companies")
+            if df is None or df.empty:
+                logger.warning("No data loaded from file")
+                self.companies = []
+                return
+
+            # Apply region filter
+            df = self._apply_region_filter(df)
+            
+            logger.info(f"Loaded {len(self.companies)} companies (filter: {self.region_filter})")
             
         except Exception as e:
             logger.error(f"Error loading companies: {str(e)}")
             self.companies = []
+
+    def _load_csv(self, path: Path) -> 'pd.DataFrame':
+        """Load and parse the GOGEL 2025 CSV with financial identifiers."""
+        df = pd.read_csv(path, sep=';', encoding='utf-8')
+        logger.info(f"CSV loaded: {len(df)} rows, columns: {list(df.columns)[:10]}...")
+
+        # Expected column mapping (GOGEL 2025 CSV)
+        name_col = 'name_company'
+        country_col = 'hq_country'
+
+        if name_col not in df.columns:
+            # Fallback: try the first column
+            logger.warning(f"Column '{name_col}' not found, using first column ({df.columns[0]})")
+            name_col = df.columns[0]
+        if country_col not in df.columns:
+            logger.warning(f"Column '{country_col}' not found, using third column")
+            country_col = df.columns[2] if len(df.columns) > 2 else None
+
+        self.companies = []
+        for _, row in df.iterrows():
+            company_name = row.get(name_col) if isinstance(row.get(name_col), str) else None
+            if not company_name or not company_name.strip():
+                continue
+
+            country = str(row.get(country_col, '')).strip() if country_col else ''
+            
+            company = {
+                'name': company_name.strip(),
+                'country': country,
+                'status': 'Active',
+                # Financial identifiers
+                'lei': str(row.get('lei', '')).strip() if pd.notna(row.get('lei', '')) else '',
+                'isin_equity': str(row.get('isin_equity', '')).strip() if pd.notna(row.get('isin_equity', '')) else '',
+                'isins_bonds': self._parse_multi_value(str(row.get('isins_bonds', ''))),
+                'isins_bonds_subsidiaries': self._parse_multi_value(str(row.get('isins_bonds_subsidiaries', ''))),
+                'permid': str(row.get('lseg_permid', '')).strip() if pd.notna(row.get('lseg_permid', '')) else '',
+                'figi': str(row.get('bloomberg_figi', '')).strip() if pd.notna(row.get('bloomberg_figi', '')) else '',
+                # GOGEL metadata
+                'hierarchy': str(row.get('company_hierarchy', '')).strip() if pd.notna(row.get('company_hierarchy', '')) else '',
+                'parent_company': str(row.get('parent_company', '')).strip() if pd.notna(row.get('parent_company', '')) else '',
+            }
+            self.companies.append(company)
+        
+        return df
+
+    def _load_excel(self, path: Path) -> 'pd.DataFrame':
+        """Load the legacy GOGEL Excel format (positional columns, 'Upstream' sheet)."""
+        df = pd.read_excel(path, sheet_name='Upstream', skiprows=3)
+        logger.info(f"Excel loaded: {len(df)} rows")
+
+        self.companies = []
+        for _, row in df.iterrows():
+            company_name = row.iloc[0]
+            country = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ''
+            
+            if pd.notna(company_name) and isinstance(company_name, str):
+                company = {
+                    'name': company_name.strip(),
+                    'country': country,
+                    'status': 'Active',
+                    # No identifiers in legacy format
+                    'lei': '',
+                    'isin_equity': '',
+                    'isins_bonds': [],
+                    'isins_bonds_subsidiaries': [],
+                    'permid': '',
+                    'figi': '',
+                    'hierarchy': '',
+                    'parent_company': '',
+                }
+                self.companies.append(company)
+        
+        return df
+
+    def _apply_region_filter(self, df) -> 'pd.DataFrame':
+        """Filter self.companies in-place based on self.region_filter."""
+        if self.region_filter == 'all':
+            # No filtering
+            return df
+        
+        if self.region_filter == 'eu':
+            allowed_countries = self.eu_countries
+        else:
+            # Treat as comma-separated list of country names
+            allowed_countries = {c.strip() for c in self.region_filter.split(',')}
+        
+        self.companies = [
+            c for c in self.companies
+            if c.get('country', '') in allowed_countries
+        ]
+        return df
     
     def get_all_companies(self):
         """Get list of all companies"""

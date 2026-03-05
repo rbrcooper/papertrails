@@ -60,6 +60,7 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from fuzzywuzzy import fuzz
 from .company_list_handler import CompanyListHandler
+from .utils.decorators import retry, NETWORK_ERRORS
 from functools import wraps
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
@@ -184,6 +185,13 @@ class ESMAScraper:
         # self.min_similarity = 80 # Potentially unused, replaced by fuzzy_match_threshold?
         self.company_list_handler = CompanyListHandler()
         
+        # User-Agent rotation support
+        self.user_agent = self._select_user_agent()
+        
+        # Proxy configuration from environment
+        self.http_proxy = os.environ.get('HTTP_PROXY')
+        self.https_proxy = os.environ.get('HTTPS_PROXY')
+        
         # Session configuration
         self.session_start_time = time.time()
         self.requests_count = 0
@@ -223,7 +231,7 @@ class ESMAScraper:
                 options = self.setup_chrome_options()
 
                 # Detect installed Chrome major version to align driver
-                version_main = self._detect_chrome_major_version(default=138)
+                version_main = self._detect_chrome_major_version(default=141)
                 self.logger.info(f"Detected Chrome major version: {version_main}")
                 self.driver = uc.Chrome(options=options, version_main=version_main)
                 
@@ -269,9 +277,23 @@ class ESMAScraper:
         options.add_argument('--start-maximized') # May not work in headless
         options.add_argument('--window-size=1920,1080') # Set a default window size
 
-        # User agent rotation (optional, example)
-        # user_agents = [...] # List of user agents
-        # options.add_argument(f"user-agent={random.choice(user_agents)}")
+        # User agent rotation - use selected UA
+        if self.user_agent:
+            options.add_argument(f"user-agent={self.user_agent}")
+            self.logger.debug(f"Using User-Agent: {self.user_agent[:50]}...")
+        
+        # Proxy configuration from environment
+        # Chrome only supports one proxy setting, so prioritize HTTPS if both are set
+        proxy_to_use = None
+        if self.https_proxy:
+            proxy_to_use = self.https_proxy
+            self.logger.info(f"Using HTTPS proxy: {self.https_proxy}")
+        elif self.http_proxy:
+            proxy_to_use = self.http_proxy
+            self.logger.info(f"Using HTTP proxy: {self.http_proxy}")
+        
+        if proxy_to_use:
+            options.add_argument(f'--proxy-server={proxy_to_use}')
         
         # Set up download preferences
         prefs = {
@@ -284,7 +306,7 @@ class ESMAScraper:
         options.add_experimental_option("prefs", prefs)
         return options
 
-    def _detect_chrome_major_version(self, default: int = 138) -> int:
+    def _detect_chrome_major_version(self, default: int = 145) -> int:
         """Best-effort detection of installed Chrome major version on Windows.
 
         Falls back to provided default if detection fails.
@@ -311,6 +333,28 @@ class ESMAScraper:
         except Exception:
             pass
         return default
+    
+    def _select_user_agent(self) -> str:
+        """Select a user agent, optionally rotating based on environment."""
+        # Check if UA rotation is enabled
+        ua_rotation_enabled = os.environ.get('SCRAPER_UA_ROTATION', 'false').lower() == 'true'
+        
+        # Curated list of modern user agents
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ]
+        
+        if ua_rotation_enabled:
+            selected_ua = random.choice(user_agents)
+            self.logger.info(f"UA rotation enabled, selected: {selected_ua[:50]}...")
+            return selected_ua
+        else:
+            # Default UA (same as current default)
+            return user_agents[0]
 
     def close(self):
         """Close the browser and clean up resources."""
@@ -624,12 +668,19 @@ class ESMAScraper:
                     row_data = self.get_document_details(row)
                     if not row_data or not row_data.get('url'):
                         continue
+                        
+                    # Improved 'already_seen' logic as per Phase 2 plan
                     url = row_data['url']
-                    # Skip if already seen in previous runs
-                    row_data['already_seen'] = url in self.seen_urls
-                    documents.append(row_data)
+                    is_seen = url in self.seen_urls
+                    row_data['already_seen'] = is_seen
+                    
+                    if not is_seen:
+                        documents.append(row_data)
+                    else:
+                        self.logger.debug(f"Skipping already-seen URL in process_results: {url}")
+                        
                 except Exception as e:
-                    self.logger.warning(f"Skipping row {idx+1} due to error: {e}")
+                    self.logger.warning(f"Skipping row {idx+idx} due to error: {e}")
 
         except Exception as e:
             self.logger.error(f"Failed to process current results page: {e}", exc_info=True)
@@ -642,11 +693,11 @@ class ESMAScraper:
         # Use a more flexible XPath that handles common variations
         cookie_button_locator = (By.XPATH, COOKIE_ACCEPT_BUTTON_SELECTOR)
         try:
-            # Use a shorter wait time for non-critical elements like cookie banners
-            short_wait = WebDriverWait(self.driver, 5) 
+            # Increased timeout to 10s as per Phase 2 improvement plan
+            short_wait = WebDriverWait(self.driver, 10) 
             cookie_button = short_wait.until(
                 EC.element_to_be_clickable(cookie_button_locator),
-                message="Cookie button not found or not clickable within 5s."
+                message="Cookie button not found or not clickable within 10s."
             )
             self.logger.info("Cookie acceptance button found. Clicking...")
             cookie_button.click()
@@ -755,8 +806,12 @@ class ESMAScraper:
             self.logger.error(f"Error calculating hash for {file_path}: {e}", exc_info=True)
             return None
 
+    @retry(max_retries=3, delay=5, backoff=2, exceptions=NETWORK_ERRORS)
     def download_document(self, url: str, doc_id: str = None, doc_type_hint: Optional[str] = None, date_hint: Optional[str] = None) -> Optional[str]:
-        """Downloads a document using requests, checks for duplicates, and organizes it."""
+        """Downloads a document using requests, checks for duplicates, and organizes it.
+        
+        Retries network errors with exponential backoff.
+        """
         self.logger.info(f"Attempting to download document: {doc_id or url}")
         self.requests_count += 1 # Increment request count for session management
 
@@ -764,12 +819,38 @@ class ESMAScraper:
         try:
             # Use requests for potentially faster/more reliable downloads than browser clicks
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                # Add other headers if needed (e.g., Referer, Cookies from Selenium session)
-                # 'Referer': self.driver.current_url,
-                # 'Cookie': '; '.join([f"{c['name']}={c['value']}" for c in self.driver.get_cookies()])
+                'User-Agent': self.user_agent  # Use the same UA as Chrome session
             }
-            response = requests.get(url, headers=headers, stream=True, timeout=60) # Increased timeout
+            
+            # Add Referer from current page if driver is available
+            if self.driver:
+                try:
+                    headers['Referer'] = self.driver.current_url
+                    self.logger.debug(f"Added Referer: {self.driver.current_url}")
+                except Exception as e:
+                    self.logger.debug(f"Could not get Referer from driver: {e}")
+            
+            # Add cookies from Selenium session if available
+            if self.driver:
+                try:
+                    cookies = self.driver.get_cookies()
+                    if cookies:
+                        cookie_str = '; '.join([f"{c['name']}={c['value']}" for c in cookies])
+                        headers['Cookie'] = cookie_str
+                        self.logger.debug(f"Added {len(cookies)} cookies from Selenium session")
+                except Exception as e:
+                    self.logger.debug(f"Could not get cookies from driver: {e}")
+            
+            # Configure proxy for requests if set
+            proxies = None
+            if self.http_proxy or self.https_proxy:
+                proxies = {
+                    'http': self.http_proxy,
+                    'https': self.https_proxy or self.http_proxy
+                }
+                self.logger.debug(f"Using proxies for requests: {proxies}")
+            
+            response = requests.get(url, headers=headers, stream=True, timeout=60, proxies=proxies) # Increased timeout
             response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
 
             # --- Filename Determination --- 
@@ -987,29 +1068,68 @@ class ESMAScraper:
         normalized = re.sub(r"\b(ag|sa|gmbh|nv|n\.v\.|plc|s\.a\.|s\.p\.a\.|b\.v\.|bv|inc|ltd)\b", "", normalized)
         return re.sub(r"\s+", " ", normalized)
 
-    def _build_company_profile(self, company_name: str) -> Dict[str, Any]:
-        # Optional: load enriched profile from disk if provided by user
+    def _build_company_profile(self, company_name: str, company_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Build company profile, merging disk profile and GOGEL identifiers.
+        
+        Args:
+            company_name: The canonical company name.
+            company_data: Optional dict from CompanyListHandler with financial
+                identifiers (lei, isin_equity, isins_bonds, etc.).
+        """
+        # Build default profile
+        base = company_name
+        base_norm = self._normalize_name(base)
+        short_token = base.split(" ")[0]
+        tokens = [short_token, base]
+        default_profile = {
+            "canonical_name": base,
+            "aliases": [base, base_norm, base.replace(" Aktiengesellschaft", ""), base.split(" ")[0]],
+            "lei_codes": [],
+            "isins": [],
+            "negative_keywords": [],
+            "search_tokens": tokens,
+        }
+        
+        # Merge financial identifiers from GOGEL CSV data if available
+        if company_data and isinstance(company_data, dict):
+            lei = company_data.get('lei', '')
+            if lei:
+                default_profile['lei_codes'] = [lei]
+            
+            # Collect all known ISINs into a single flat list for matching
+            all_isins = []
+            isin_eq = company_data.get('isin_equity', '')
+            if isin_eq:
+                all_isins.append(isin_eq)
+            all_isins.extend(company_data.get('isins_bonds', []))
+            all_isins.extend(company_data.get('isins_bonds_subsidiaries', []))
+            default_profile['isins'] = list(dict.fromkeys(all_isins))  # dedupe, preserve order
+            
+            self.logger.info(f"Profile for '{company_name}': {len(default_profile['isins'])} ISINs, LEI={'yes' if lei else 'no'}")
+        
+        # Load and merge disk profile if present
         profiles_path = Path("data/company_profiles.json")
         if profiles_path.exists():
             try:
                 with open(profiles_path, 'r', encoding='utf-8') as f:
                     profiles = json.load(f)
                 if company_name in profiles:
-                    return profiles[company_name]
+                    disk_profile = profiles[company_name]
+                    merged = default_profile.copy()
+                    merged.update(disk_profile)
+                    if 'aliases' in disk_profile and isinstance(disk_profile['aliases'], list):
+                        merged['aliases'] = list(dict.fromkeys(default_profile['aliases'] + disk_profile['aliases']))
+                    if 'search_tokens' in disk_profile and isinstance(disk_profile['search_tokens'], list):
+                        merged['search_tokens'] = list(dict.fromkeys(default_profile['search_tokens'] + disk_profile['search_tokens']))
+                    # Preserve GOGEL ISINs even when disk profile exists
+                    if default_profile.get('isins'):
+                        merged['isins'] = list(dict.fromkeys(default_profile['isins'] + merged.get('isins', [])))
+                    self.logger.info(f"Loaded and merged profile for '{company_name}' from disk")
+                    return merged
             except Exception as e:
                 self.logger.warning(f"Could not load company profiles: {e}")
 
-        base = company_name
-        base_norm = self._normalize_name(base)
-        # Prefer short token (first word) to capture subsidiaries (e.g., 'OMV' not 'OMV AG')
-        short_token = base.split(" ")[0]
-        tokens = [short_token, base]
-        return {
-            "canonical_name": base,
-            "aliases": [base, base_norm, base.replace(" Aktiengesellschaft", ""), base.split(" ")[0]],
-            "lei_codes": [],
-            "search_tokens": tokens,
-        }
+        return default_profile
 
     def _classify_green(self, details: Dict[str, Any]) -> Dict[str, Any]:
         green_keywords = [
@@ -1024,12 +1144,37 @@ class ESMAScraper:
         }
 
     def _compute_multi_signal_score(self, details: Dict[str, Any], profile: Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
-        # Name similarity against aliases
-        issuer = self._normalize_name(details.get('issuer_name', ''))
+        """Score a result row against a company profile using multiple signals.
+        
+        When the profile contains ISINs (from GOGEL 2025 CSV), an exact ISIN
+        match produces a near-perfect score (0.95+), making fuzzy name matching
+        a fallback rather than the primary signal.
+        """
+        # --- ISIN match (definitive identifier) ---
+        isin_match = 0.0
+        row_isin = (details.get('isin') or '').strip()
+        known_isins = profile.get('isins', [])
+        if row_isin and len(row_isin) >= 12 and known_isins:
+            if row_isin in known_isins:
+                isin_match = 1.0
+                self.logger.debug(f"ISIN match: {row_isin}")
+
+        # --- LEI match (check if LEI appears in the issuer field) ---
+        lei_match = 0.0
+        lei_codes = profile.get('lei_codes', [])
+        issuer_raw = details.get('issuer_name', '') or ''
+        for lei in lei_codes:
+            if lei and lei in issuer_raw:
+                lei_match = 1.0
+                self.logger.debug(f"LEI match in issuer field: {lei}")
+                break
+
+        # --- Name similarity against aliases ---
+        issuer = self._normalize_name(issuer_raw)
         name_sims = [fuzz.token_set_ratio(issuer, self._normalize_name(a)) / 100.0 for a in profile.get('aliases', [])]
         name_sim = max(name_sims) if name_sims else 0.0
 
-        # Doc type relevance
+        # --- Doc type relevance ---
         doc_type = (details.get('doc_type') or '').lower()
         if 'final' in doc_type:
             doc_type_score = 1.0
@@ -1038,11 +1183,10 @@ class ESMAScraper:
         else:
             doc_type_score = 0.3
 
-        # Recency score from date (yyyy or dd/mm/yyyy etc.)
+        # --- Recency score ---
         date_text = details.get('date', '')
         recency_score = 0.5
         try:
-            # try multiple formats
             for fmt in ("%d/%m/%Y", "%d.%m.%Y", "%Y-%m-%d", "%d/%m/%y"):
                 try:
                     dt = datetime.strptime(date_text, fmt)
@@ -1054,31 +1198,35 @@ class ESMAScraper:
         except Exception:
             pass
 
-        # Penalties for out-of-scope instruments
+        # --- Penalties ---
         penalty = 0.0
         noise_terms = ["warrant", "certificate"]
         for term in noise_terms:
             if term in doc_type:
                 penalty += 0.2
 
-        # Combine
-        weights = {
-            "name": 0.55,
-            "doctype": 0.3,
-            "recency": 0.15,
-            "penalty": -1.0
-        }
-        score = (
-            weights["name"] * name_sim +
-            weights["doctype"] * doc_type_score +
-            weights["recency"] * recency_score +
-            weights["penalty"] * penalty
-        )
+        # --- Combine ---
+        # If we have a definitive identifier match (ISIN or LEI), use a
+        # simplified high-confidence score. Otherwise fall back to fuzzy scoring.
+        if isin_match > 0 or lei_match > 0:
+            identifier_base = max(isin_match, lei_match) * 0.95
+            score = identifier_base + 0.05 * doc_type_score - penalty
+        else:
+            weights = {"name": 0.55, "doctype": 0.3, "recency": 0.15, "penalty": -1.0}
+            score = (
+                weights["name"] * name_sim +
+                weights["doctype"] * doc_type_score +
+                weights["recency"] * recency_score +
+                weights["penalty"] * penalty
+            )
+        
         return max(0.0, min(1.0, score)), {
             "name_sim": round(name_sim, 3),
             "doc_type": doc_type_score,
             "recency": round(recency_score, 3),
-            "penalty": round(penalty, 3)
+            "penalty": round(penalty, 3),
+            "isin_match": isin_match,
+            "lei_match": lei_match,
         }
 
     def _write_audit_rows(self, company: str, rows: List[Dict[str, Any]]) -> None:
@@ -1102,16 +1250,23 @@ class ESMAScraper:
         except Exception as e:
             self.logger.error(f"Failed to write audit rows: {e}")
 
-    def search_and_process(self, company_name: str, min_score: float = 0.55) -> List[Dict[str, Any]]:
+    def search_and_process(self, company_name: str, company_data: Dict[str, Any] = None,
+                           min_score: float = 0.55) -> List[Dict[str, Any]]:
         """End-to-end: navigate, search, set 100/page, score rows, download above threshold.
+
+        Args:
+            company_name: The company name to search for.
+            company_data: Optional dict from CompanyListHandler with identifiers
+                (lei, isin_equity, isins_bonds, etc.). When provided, the scraper
+                can do ISIN-based searches and use identifier matching.
+            min_score: Minimum multi-signal score to keep a result row.
 
         Returns a list of downloaded file paths with metadata.
         """
         self.current_company = company_name
-        profile = self._build_company_profile(company_name)
+        profile = self._build_company_profile(company_name, company_data=company_data)
 
         # Choose a broad token for search (first token or alias)
-        # Always prefer the first token (short token)
         search_token = profile.get("search_tokens", [company_name.split(" ")[0]])[0]
 
         self.logger.info(f"Starting search_and_process for '{company_name}' using token '{search_token}'")
@@ -1125,8 +1280,28 @@ class ESMAScraper:
         time.sleep(4)
         self.set_results_per_page(100)
 
-        # Process the current single page
+        # Process the current single page (name-based search)
         rows = self.process_results(company_name)
+
+        # If we have a primary ISIN (equity), do a second search to catch
+        # documents that don't match by name but do match by identifier.
+        isin_eq = (company_data or {}).get('isin_equity', '') if company_data else ''
+        if isin_eq and len(isin_eq) >= 12:
+            self.logger.info(f"Running supplementary ISIN search: {isin_eq}")
+            self.navigate_to_search()
+            isin_ok = self.search_company(isin_eq)
+            if isin_ok:
+                time.sleep(4)
+                self.set_results_per_page(100)
+                isin_rows = self.process_results(company_name)
+                # Merge, avoiding duplicate URLs
+                seen_urls_in_rows = {r.get('url') for r in rows if r.get('url')}
+                for ir in isin_rows:
+                    if ir.get('url') and ir['url'] not in seen_urls_in_rows:
+                        rows.append(ir)
+                        seen_urls_in_rows.add(ir['url'])
+                self.logger.info(f"After ISIN merge: {len(rows)} total rows")
+
         scored_rows = []
         for r in rows:
             score, parts = self._compute_multi_signal_score(r, profile)
@@ -1138,6 +1313,8 @@ class ESMAScraper:
                 "doc_type_score": parts["doc_type"],
                 "recency": parts["recency"],
                 "penalty": parts["penalty"],
+                "isin_match": parts.get("isin_match", 0.0),
+                "lei_match": parts.get("lei_match", 0.0),
                 "is_green": g["is_green"],
                 "green_confidence": g["confidence"],
                 "kept": kept,
@@ -1174,6 +1351,7 @@ class ESMAScraper:
                     "isin": r.get('isin'),
                     "score": r.get('score'),
                     "is_green": r.get('is_green'),
+                    "isin_match": r.get('isin_match', 0.0),
                 })
 
         # Persist seen urls

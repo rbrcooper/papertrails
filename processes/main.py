@@ -32,14 +32,12 @@ The script will:
 import logging
 from pathlib import Path
 import json
-import time # Not strictly needed by this simplified version
-# import random # Not strictly needed by this simplified version
+import time
 import colorlog
 import os
 import argparse
-# import sys # sys.path manipulation commented out
 from typing import Dict, List
-import re # Added for sanitizing company names
+import re
 
 # Relative imports for running with python -m processes.main
 from .pdf_extractor import PDFExtractor
@@ -52,6 +50,7 @@ from .pipeline_components.validators import ExtractionValidator
 from .pipeline_components.aggregation import DataAggregator
 from .pipeline_components.outputs import OutputGenerator
 from .pipeline_components.reporting import ValidationReporter
+from .utils.decorators import log_error_with_category
 
 # Add parent directory to sys.path to allow imports when run directly
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -103,6 +102,30 @@ def process_company_pdfs(company_name: str, pdf_dir: Path, pdf_extractor_instanc
         pdf_file_path_str = str(pdf_file_path_obj)
         try:
             logger.info(f"Processing {pdf_file_path_str} for {company_name}")
+            
+            # Quick first-page validation check before full extraction
+            quick_check = validator_instance.quick_first_page_checks(pdf_file_path_str, company_name)
+            
+            if not quick_check.get('pass', True):
+                logger.warning(f"Skipping {pdf_file_path_str} - quick check failed: {quick_check.get('reason', 'Unknown reason')}")
+                processed_pdf_results.append({
+                    'company_name': company_name,
+                    'pdf_path': pdf_file_path_str,
+                    'extraction_result': None,
+                    'validation_result': {
+                        'is_valid': False,
+                        'quick_check_failed': True,
+                        'quick_check_reason': quick_check.get('reason', 'Unknown reason'),
+                        'quick_check_details': {
+                            'issuer_match': quick_check.get('issuer_match'),
+                            'isin_present': quick_check.get('isin_present'),
+                            'guarantor_mentioned': quick_check.get('guarantor_mentioned')
+                        }
+                    },
+                    'error': f"Quick validation failed: {quick_check.get('reason', 'Unknown reason')}"
+                })
+                continue
+            
             # The raw extraction_result from PDFExtractor
             extraction_data = pdf_extractor_instance.process_single_pdf(pdf_file_path_str)
             
@@ -132,7 +155,7 @@ def process_company_pdfs(company_name: str, pdf_dir: Path, pdf_extractor_instanc
             processed_pdf_results.append(pdf_result_package)
 
         except Exception as e:
-            logger.error(f"Error processing PDF {pdf_file_path_str} for {company_name}: {str(e)}", exc_info=True)
+            log_error_with_category(e, f"processing PDF {pdf_file_path_str} for {company_name}", logger)
             processed_pdf_results.append({
                 'company_name': company_name,
                 'pdf_path': pdf_file_path_str,
@@ -145,27 +168,38 @@ def process_company_pdfs(company_name: str, pdf_dir: Path, pdf_extractor_instanc
 
 def main():
     parser = argparse.ArgumentParser(description="ESMA document processing pipeline")
-    parser.add_argument("--companies-file", default=os.path.join("data", "raw", "urgewald GOGEL 2023 V1.2.xlsx"), 
-                        help="Path to the companies Excel file")
+    parser.add_argument("--companies-file",
+                        default=os.path.join("data", "raw", "Urgewald GOGEL 2025 V1.2 with identifiers.csv"),
+                        help="Path to the GOGEL data file (.csv or .xlsx)")
     parser.add_argument("--output-dir", default="data/processed", help="Directory to save output files")
     parser.add_argument("--limit-companies", type=int, default=None, help="Limit the number of companies to process for testing")
     parser.add_argument("--skip-scraping", action='store_true', help="Skip the scraping step and use local PDFs")
+    parser.add_argument("--max-workers", type=int, default=4, help="Maximum number of workers for parallel PDF processing (default: 4)")
+    parser.add_argument("--region-filter", default="all",
+                        help="Region filter: 'all', 'eu', or comma-separated country names (default: all)")
     args = parser.parse_args()
     
     output_data_dir = Path(args.output_dir)
     output_data_dir.mkdir(parents=True, exist_ok=True)
     
-    scraper = None  # Initialize scraper to None
+    scraper = None
+    pipeline_start = time.time()
+    run_metrics = {
+        "total_companies": 0, "companies_succeeded": 0, "companies_failed": 0,
+        "total_pdfs_processed": 0, "pdfs_stored_successfully": 0,
+    }
     try:
         logger.info("Starting ESMA document processing pipeline")
         
         # Initialize handlers and processors
-        company_handler = CompanyListHandler(args.companies_file)
+        company_handler = CompanyListHandler(args.companies_file, region_filter=args.region_filter)
         # Initialize scraper only if scraping is enabled
         if not args.skip_scraping:
-            scraper = ESMAScraper(debug_mode=True, headless=False)  # Run headed for easier debugging
+            # Get headless setting from environment or CLI arg (default to False for debugging)
+            headless_mode = os.environ.get('HEADLESS', 'false').lower() == 'true'
+            scraper = ESMAScraper(debug_mode=True, headless=headless_mode)
         db_handler = DatabaseHandler()
-        pdf_extractor = PDFExtractor(debug_mode=True)
+        pdf_extractor = PDFExtractor(debug_mode=True, max_workers=args.max_workers)
         validator = ExtractionValidator()
         aggregator = DataAggregator(db_handler)
         reporter = ValidationReporter(db_handler)
@@ -181,15 +215,20 @@ def main():
             current_company_name = company['name']
             logger.info(f"Processing company: {current_company_name}")
 
+            run_metrics["total_companies"] += 1
+
             if not args.skip_scraping:
                 logger.info(f"Scraping documents for {current_company_name}")
                 try:
-                    downloads = scraper.search_and_process(current_company_name)
+                    downloads = scraper.search_and_process(
+                        current_company_name, company_data=company
+                    )
                     logger.info(f"Downloaded {len(downloads)} documents for {current_company_name}")
                 except Exception as scrape_e:
-                    logger.error(f"An unexpected error occurred during scraping for {current_company_name}: {scrape_e}", exc_info=True)
+                    log_error_with_category(scrape_e, f"scraping documents for {current_company_name}", logger)
+                    run_metrics["companies_failed"] += 1
                     logger.info("Continuing to the next company.")
-                    continue # Move to the next company
+                    continue
             
             # Standardize the company name for directory path
             sanitized_company_name = re.sub(r'[\\\\/:*?\"<>|]', '_', current_company_name)
@@ -198,6 +237,11 @@ def main():
             # Process all PDFs for the current company
             company_pdf_processing_results = process_company_pdfs(current_company_name, company_pdf_download_dir, pdf_extractor, validator)
             
+            # Track if at least one PDF was successfully stored in the database
+            successful_db_stores = 0
+            
+            run_metrics["total_pdfs_processed"] += len(company_pdf_processing_results) if company_pdf_processing_results else 0
+
             if not company_pdf_processing_results:
                 logger.info(f"No PDFs processed or found for {current_company_name} in {company_pdf_download_dir}.")
             else:
@@ -206,7 +250,11 @@ def main():
                 # Store results for each PDF
                 for pdf_package in company_pdf_processing_results:
                     if pdf_package.get('error'):
-                        logger.error(f"Skipping database storage for {pdf_package.get('pdf_path')} due to processing error: {pdf_package['error']}")
+                        log_error_with_category(
+                            Exception(pdf_package['error']), 
+                            f"storing {pdf_package.get('pdf_path')}", 
+                            logger
+                        )
                         continue
 
                     extraction_data = pdf_package.get('extraction_result')
@@ -232,20 +280,33 @@ def main():
                         db_payload['metadata']['extraction_confidence'] = validation_data.get('overall_confidence', 0.0)
                         db_payload['metadata']['validation_checks'] = validation_data.get('validation_checks', [])
 
-                    db_handler.store_extraction_result(
-                        pdf_package['company_name'], 
-                        db_payload
-                    )
+                    try:
+                        db_handler.store_extraction_result(
+                            pdf_package['company_name'], 
+                            db_payload
+                        )
+                        successful_db_stores += 1
+                        run_metrics["pdfs_stored_successfully"] += 1
+                    except Exception as db_e:
+                        log_error_with_category(db_e, f"storing extraction result for {pdf_package.get('pdf_path')}", logger)
             
                 # Save per-company summary JSON
                 company_summary_output_file = output_data_dir / f"{sanitized_company_name}_extraction_summary.json"
-                with open(company_summary_output_file, 'w', encoding='utf-8') as f:
-                    json.dump(company_pdf_processing_results, f, indent=2, ensure_ascii=False)
-                logger.info(f"Saved extraction summary for {current_company_name} to {company_summary_output_file}")
+                try:
+                    with open(company_summary_output_file, 'w', encoding='utf-8') as f:
+                        json.dump(company_pdf_processing_results, f, indent=2, ensure_ascii=False)
+                    logger.info(f"Saved extraction summary for {current_company_name} to {company_summary_output_file}")
+                except Exception as json_e:
+                    log_error_with_category(json_e, f"saving summary JSON for {current_company_name}", logger)
 
-            # Mark company as processed after all its PDFs are handled
-            company_handler.mark_company_as_processed(current_company_name)
-            logger.info(f"Finished processing and marked '{current_company_name}' as processed.")
+            # Mark company as processed ONLY if at least one PDF was successfully stored in DB
+            if successful_db_stores > 0:
+                company_handler.mark_company_as_processed(current_company_name)
+                run_metrics["companies_succeeded"] += 1
+                logger.info(f"Finished processing and marked '{current_company_name}' as processed ({successful_db_stores} PDF(s) stored in DB).")
+            else:
+                run_metrics["companies_failed"] += 1
+                logger.warning(f"NOT marking '{current_company_name}' as processed - no PDFs were successfully stored in database. Will retry on next run.")
 
         # Aggregation, Reporting, and Output Generation (after all companies are processed)
         logger.info("Attempting final aggregation, reporting, and output generation for all processed companies...")
@@ -267,13 +328,25 @@ def main():
                 logger.info("Final output generation complete.")
 
         except Exception as e:
-            logger.error(f"Error during final aggregation/reporting/output generation: {str(e)}", exc_info=True)
+            log_error_with_category(e, "final aggregation/reporting/output generation", logger)
 
         logger.info("Pipeline completed for all companies.")
 
     except Exception as e:
-        logger.error(f"Error in main: {str(e)}", exc_info=True)
+        log_error_with_category(e, "main pipeline execution", logger)
     finally:
+        # Write run metrics
+        run_metrics["pipeline_duration_seconds"] = round(time.time() - pipeline_start, 1)
+        run_metrics["run_timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        metrics_path = Path("logs/run_metrics.json")
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(metrics_path, 'w') as f:
+                json.dump(run_metrics, f, indent=2)
+            logger.info(f"Run metrics saved to {metrics_path}")
+        except Exception as me:
+            logger.error(f"Failed to write run metrics: {me}")
+
         if scraper:
             scraper.close()
 

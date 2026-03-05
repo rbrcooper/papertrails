@@ -1,0 +1,62 @@
+{
+    "description": "Ground truth for extraction quality benchmark. Populated from manual inspection of PDF text dumps.",
+    "test_cases": [
+        {
+            "pdf_path": "data/downloads/AKER BP ASA - 549300NFTY73920OYK69/Base prospectus without Final terms_02_11_2023.pdf",
+            "expected": {
+                "metadata": {
+                    "issue_date": "2024-05-29",
+                    "maturity_date": "2032-05-29",
+                    "currency": "EUR",
+                    "coupon_rate": "4.000"
+                },
+                "banks": [
+                    "ABN AMRO Bank N.V.",
+                    "Barclays Bank Ireland PLC",
+                    "Nordea Bank Abp",
+                    "Skandinaviska Enskilda Banken AB (publ)",
+                    "UniCredit Bank GmbH",
+                    "Wells Fargo Securities Europe S.A."
+                ]
+            }
+        },
+        {
+            "pdf_path": "data/downloads/OMV/Final_terms_including_the_summ_30082024_2f76b574.pdf",
+            "expected": {
+                "metadata": {
+                    "issue_date": "2024-09-04",
+                    "maturity_date": "2031-09-04",
+                    "currency": "EUR",
+                    "coupon_rate": "3.250"
+                },
+                "banks": [
+                    "Barclays Bank Ireland PLC",
+                    "Erste Group Bank AG",
+                    "Mizuho Securities Europe GmbH",
+                    "Raiffeisen Bank International AG",
+                    "Société Générale",
+                    "UniCredit Bank GmbH"
+                ]
+            }
+        },
+        {
+            "pdf_path": "data/downloads/TotalEnergies SE/base_prospectus_17320281_47bb733a.pdf",
+            "expected": {
+                "metadata": {
+                    "issue_date": "2024-11-19",
+                    "maturity_date": null,
+                    "currency": "EUR",
+                    "coupon_rate": "4.500"
+                },
+                "banks": [
+                    "Barclays Bank Ireland PLC",
+                    "Goldman Sachs Bank Europe SE",
+                    "BofA Securities Europe SA",
+                    "HSBC Continental Europe",
+                    "Natixis",
+                    "SMBC Bank EU AG"
+                ]
+            }
+        }
+    ]
+}

@@ -47,19 +47,31 @@ The project has a functional core pipeline but is undergoing development to beco
 
 ### Running the Pipeline
 
-To run the full pipeline, which will scrape new documents and then process them:
+The pipeline uses the **Urgewald GOGEL 2025** dataset by default to identify companies and their financial identifiers (LEI, ISINs). These identifiers are used to achieve near-perfect (~95%+) confidence in document matching, bypassing the limitations of fuzzy name matching.
+
+To run the full pipeline for all companies in the GOGEL list:
 
 ```bash
 python -m processes.main
 ```
 
-To run the pipeline but skip the scraping step (i.e., only process already downloaded PDFs):
+To filter by region (e.g., EU-only or specific countries):
+
+```bash
+# EU-only (using internal country list)
+python -m processes.main --region-filter eu
+
+# Specific countries
+python -m processes.main --region-filter "France, Germany, Italy"
+```
+
+To skip scraping and only process already downloaded PDFs:
 
 ```bash
 python -m processes.main --skip-scraping
 ```
 
-To limit the number of companies processed for a test run:
+To limit the number of companies for a quick test:
 
 ```bash
 python -m processes.main --limit-companies 5

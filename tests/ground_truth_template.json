@@ -1,0 +1,21 @@
+{
+    "description": "Ground truth for extraction quality benchmark. Fill in correct values by reading each PDF manually.",
+    "test_cases": [
+        {
+            "pdf_path": "data/downloads/AKER BP ASA - 549300NFTY73920OYK69/Final terms, including the  summary of the individual issue annexed to them_28_05_2024.pdf",
+            "expected": {
+                "metadata": {
+                    "issue_date": "YYYY-MM-DD",
+                    "maturity_date": "YYYY-MM-DD",
+                    "currency": "EUR",
+                    "coupon_rate": "X.XXX",
+                    "coupon_type": "fixed rate"
+                },
+                "banks": [
+                    "Bank Name 1",
+                    "Bank Name 2"
+                ]
+            }
+        }
+    ]
+}

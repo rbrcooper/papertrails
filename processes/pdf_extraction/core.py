@@ -100,6 +100,38 @@ class ExtractionEngine:
                 
         return ""
     
+    def extract_text_first_pages(self, pdf_path: str, num_pages: int = 2) -> str:
+        """
+        Extract text from only the first N pages of a PDF (lightweight for quick checks).
+        
+        Args:
+            pdf_path: Path to the PDF file
+            num_pages: Number of pages to extract (default: 2)
+            
+        Returns:
+            Extracted text from first pages
+        """
+        if not os.path.exists(pdf_path):
+            self.logger.error(f"PDF file not found: {pdf_path}")
+            return ""
+            
+        try:
+            with fitz.open(pdf_path) as doc:
+                text = ""
+                pages_to_extract = min(num_pages, len(doc))
+                
+                for page_num in range(pages_to_extract):
+                    page = doc[page_num]
+                    text += page.get_text()
+                
+                # Clean the extracted text
+                text = self.text_processor.clean_text(text)
+                return text
+                
+        except Exception as e:
+            self.logger.error(f"Failed to extract text from first pages: {e}")
+            return ""
+    
     def _extract_text_with_ocr(self, pdf_path: str) -> str:
         """
         Extract text from a PDF using OCR.

@@ -7,28 +7,26 @@
 *   **Data Source:** ESMA Prospectus Register.
 *   **Technology Stack:** Python (Selenium (`undetected-chromedriver`), PyMuPDF, pdfplumber, pandas, **Ollama + Llama3.1**) for backend/scraping. Development environment: VSCode with Cursor AI assistant.
 
-## 🎯 **UPDATED STATUS (December 2024): 60% Complete**
+## 🎯 **UPDATED STATUS (December 2024): ~75% Complete**
 
 ## Current Status & Evidence
 
-### ✅ **Completed Components**
-*   **[x] ESMA Scraper:** Fully functional - 1,200+ lines of production code with retry logic, deduplication, progress tracking
-*   **[x] Document Downloads:** 200+ PDFs successfully downloaded across 20+ companies (evidence in `/data/downloads/`)
-*   **[x] Database Schema:** Complete SQLite implementation with normalized tables and relationships 
-*   **[x] Test Infrastructure:** 30+ test files including debug tools, visualization, and batch processing
-*   **[x] Architecture:** Well-structured modular design with proper error handling and logging
-*   **[x] Bank Standardization:** Sophisticated fuzzy matching system with confidence scoring
-*   **[x] AI Integration:** **NEW** - Ollama + Llama3.1:8b for intelligent bank extraction with 85% success rate
-*   **[x] Hybrid Extraction:** **NEW** - AI for banks, regex for metadata (dates, currency, coupon)
-*   **[x] Testing Script:** **NEW** - Functional testing script for single company processing
+### ✅ **Completed Components (Updated)**
+*   **[x] ESMA Scraper:** Single-page 100-row flow, robust row parsing, fuzzy matching, multi-signal scoring, URL dedupe, audit CSV, green tagging
+*   **[x] Document Downloads:** Organized by company with sanitized names and standardized filenames
+*   **[x] Database:** SQLite storage with flexible bank payload handling
+*   **[x] Validators:** Rule-based `ExtractionValidator` with overall confidence and detailed checks
+*   **[x] AI Integration:** Ollama + Llama3.1:8b bank extraction with smart chunking
+*   **[x] Hybrid Extraction:** AI for banks + regex for dates/currency/coupon
+*   **[x] Orchestration:** `main.py` loops companies, supports `--limit-companies`, `--skip-scraping`
+*   **[x] Test Script:** Single-company test runner
 
-### ⚠️ **Critical Limitations**
-*   **[ ] Production Pipeline:** Current main.py is a testing script, not production-ready
-*   **[ ] Multi-Company Processing:** Only handles "RWE AG" (hardcoded)
-*   **[ ] Web Scraping Integration:** Not integrated into main pipeline
-*   **[ ] Real Validation System:** Only placeholder validation implemented
-*   **[ ] Robust Error Handling:** Basic error handling, no retry mechanisms
-*   **[ ] Batch Processing:** Processes PDFs one by one, not scalable
+### ⚠️ **Current Limitations**
+*   **[ ] Scraper Hardening:** Bot detection variability; needs UA rotation, optional proxies, adaptive headless
+*   **[ ] Entity Disambiguation:** Subsidiaries/aliases can cause false positives; expand canonical profiles
+*   **[ ] Post-Download Validation:** Add quick issuer/guarantor/ISIN checks pre-extraction for better precision
+*   **[ ] Batch/Resume:** Limited parallelism and checkpointing; add resume + rate limits
+*   **[ ] Observability:** Metrics, dashboards, and alerting not yet implemented
 
 ### 🎉 **BREAKTHROUGH: AI Bank Extraction Solved Core Problem**
 
@@ -40,79 +38,41 @@
 
 ## 🎯 **Production Readiness Assessment**
 
-### ❌ **NOT Production Ready**
-**Missing Critical Features**:
-1. **Multi-Company Processing**: Only handles single company (RWE AG)
-2. **Web Scraping Integration**: No automatic PDF downloads
-3. **Real Validation System**: Placeholder validation only
-4. **Robust Error Handling**: No retry mechanisms
-5. **Batch Processing**: No parallel processing for multiple companies
-
-### ✅ **Solid Foundation**
-**What Works Well**:
-1. **AI Integration**: Excellent bank extraction accuracy
-2. **Modular Design**: Clean, extensible architecture
-3. **Hybrid Approach**: AI + regex provides reliability
-4. **Testing Framework**: Comprehensive test suite
-5. **Documentation**: Well-documented codebase
+### ◻ Approaching Production
+Solid foundation with integrated scraping and hybrid extraction. Needs operational hardening, richer profiles, and expanded validation to reach >98% effectiveness.
 
 ## 📋 **Remaining Tasks (40% - Core Production Features)**
 
-### 🔄 **Priority 1: Multi-Company Processing (CRITICAL)**
-- [ ] Enable `CompanyListHandler` in main.py
-- [ ] Remove hardcoded "RWE AG" limitation
-- [ ] Implement company-by-company processing loop
-- [ ] Test with multiple companies
-- [ ] Add progress tracking for multiple companies
+### 🔄 **Priority 1: Scraper Hardening (CRITICAL)**
+- [ ] UA rotation, adaptive headless/stealth, optional proxies
+- [ ] Resilient waits and recovery for intermittent ESMA throttling
+- [ ] Expand canonical company profiles (aliases, LEIs, subsidiaries)
 
-### 🔄 **Priority 2: Web Scraping Integration (CRITICAL)**
-- [ ] Enable `ESMAScraper` in main.py
-- [ ] Integrate document downloading into pipeline
-- [ ] Implement proper error handling for web scraping
-- [ ] Add retry mechanisms for failed downloads
-- [ ] Test end-to-end scraping and processing
+### 🔄 **Priority 2: Post-Download Validation (CRITICAL)**
+- [ ] First-page issuer/guarantor/ISIN quick checks
+- [ ] Early discard of false positives before heavy extraction
 
-### 🔄 **Priority 3: Real Validation System (CRITICAL)**
-- [ ] Replace placeholder validation with real quality checks
-- [ ] Implement data completeness validation
-- [ ] Add format validation for extracted data
-- [ ] Create confidence scoring system
-- [ ] Add validation reporting
+### 🔄 **Priority 3: Validation Depth (IMPORTANT)**
+- [ ] Extend rules (dates, currency/locale, coupon plausibility)
+- [ ] Confidence calibration and reporting
 
-### 🔄 **Priority 4: Robust Error Handling (CRITICAL)**
-- [ ] Add retry mechanisms for all operations
-- [ ] Implement exponential backoff
-- [ ] Add comprehensive error tracking
-- [ ] Create error recovery procedures
-- [ ] Add monitoring and alerting
+### 🔄 **Priority 4: Batch/Resume & Observability (IMPORTANT)**
+- [ ] Per-company checkpoints and resume support
+- [ ] Limited parallelism with rate limits
+- [ ] Metrics, dashboards, and alerting
 
-### 🔄 **Priority 5: Batch Processing (CRITICAL)**
-- [ ] Implement parallel processing for multiple companies
-- [ ] Add progress tracking and resume capability
-- [ ] Optimize performance for large datasets
-- [ ] Add memory management for large batches
-- [ ] Implement batch error handling
+### 🔄 **Priority 5: Web/API (IMPORTANT)**
+- [ ] Expose documents/issuers/banks/search endpoints
+- [ ] Basic frontend to browse and filter
 
 ### 🔄 **Priority 6: Production Configuration (IMPORTANT)**
-- [ ] Create production configuration system
-- [ ] Add environment-specific settings
-- [ ] Implement logging configuration
-- [ ] Add performance monitoring
-- [ ] Create deployment scripts
+- [ ] Env-specific settings; logging config; deployment scripts
 
-### 🔄 **Priority 7: Testing & Validation (IMPORTANT)**
-- [ ] Create comprehensive integration tests
-- [ ] Add performance benchmarks
-- [ ] Implement automated testing pipeline
-- [ ] Add regression testing
-- [ ] Create user acceptance testing
+### 🔄 **Priority 7: Testing (IMPORTANT)**
+- [ ] Integration tests; performance benchmarks; regression tests
 
-### 🔄 **Priority 8: Documentation & Deployment (IMPORTANT)**
-- [ ] Update all documentation for production
-- [ ] Create deployment guide
-- [ ] Add troubleshooting documentation
-- [ ] Create user manual
-- [ ] Add API documentation
+### 🔄 **Priority 8: Documentation (IMPORTANT)**
+- [ ] Runbook, troubleshooting, deployment; API documentation
 
 ## 🎯 **Success Criteria for Production**
 
@@ -139,24 +99,21 @@
 
 ## 📊 **Progress Tracking**
 
-### **Current Progress: 60% Complete**
+### **Current Progress: ~75% Complete**
 - **Core Architecture**: 100% ✅
 - **AI Integration**: 100% ✅
-- **Testing Framework**: 100% ✅
-- **Documentation**: 90% ✅
-- **Multi-Company Processing**: 0% ❌
-- **Web Scraping Integration**: 0% ❌
-- **Real Validation**: 10% ⚠️
-- **Error Handling**: 30% ⚠️
-- **Batch Processing**: 0% ❌
-- **Production Configuration**: 20% ⚠️
+- **Scraper Integration**: 80% ✅
+- **Validation**: 50% ⚠️
+- **Docs**: 85% ✅
+- **Batch/Resume**: 20% ⚠️
+- **Observability**: 10% ⚠️
 
 ### **Estimated Timeline**
-- **Priority 1-2**: 2-3 weeks (Multi-company + Web scraping)
-- **Priority 3-4**: 2-3 weeks (Validation + Error handling)
-- **Priority 5-6**: 2-3 weeks (Batch processing + Configuration)
-- **Priority 7-8**: 1-2 weeks (Testing + Documentation)
-- **Total**: 7-11 weeks to production-ready
+- **Priority 1-2**: 1-2 weeks (Scraper hardening + Post-download validation)
+- **Priority 3-4**: 1-2 weeks (Validation depth + Batch/resume/metrics)
+- **Priority 5-6**: 1-2 weeks (API + Production config)
+- **Priority 7-8**: 1 week (Testing + Docs)
+- **Total**: ~4-7 weeks to production-ready, depending on labeling/tuning
 
 ## 🎯 **Next Steps**
 
@@ -180,6 +137,6 @@
 
 ---
 
-**Current Status**: The project has **excellent AI integration and solid architecture** but is currently a **testing script, not production-ready**. Significant work is needed to handle 100+ companies automatically. The foundation is strong, but core production features are missing.
+**Current Status**: Strong hybrid extraction with integrated scraping and validation baseline. Needs operational hardening, richer entity profiles, and deeper validation to approach >98% effectiveness.
 
-**Bottom Line**: The AI breakthrough solved the main accuracy problem, but the system needs substantial enhancements to be truly production-ready for processing large numbers of companies automatically.
+**Bottom Line**: Foundation is solid; focus now on reliability, precision at scale, and observability.

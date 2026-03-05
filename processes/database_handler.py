@@ -8,14 +8,85 @@ import sqlite3
 import json
 from pathlib import Path
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
+import re
 
 class DatabaseHandler:
     def __init__(self, db_path: str = "data/bond_data.db"):
         self.db_path = db_path
         self.logger = logging.getLogger(__name__)
         self._init_db()
+        
+        # Load canonical bank mappings
+        self.bank_canonical_map = self._load_bank_canonical_map()
+        
+        # Define role enum for normalization
+        self.role_normalization = {
+            'lead manager': 'Lead Manager',
+            'lead': 'Lead Manager',
+            'lead arranger': 'Lead Manager',
+            'joint lead manager': 'Joint Lead Manager',
+            'joint lead': 'Joint Lead Manager',
+            'joint lead arranger': 'Joint Lead Manager',
+            'bookrunner': 'Bookrunner',
+            'book runner': 'Bookrunner',
+            'book-runner': 'Bookrunner',
+            'co-manager': 'Co-Manager',
+            'co manager': 'Co-Manager',
+            'dealer': 'Dealer',
+            'market maker': 'Dealer'
+        }
+        
+    def _load_bank_canonical_map(self) -> Dict[str, Dict[str, Any]]:
+        """Load canonical bank mappings from disk."""
+        canonical_map_file = Path("data/bank_names.json")
+        if not canonical_map_file.exists():
+            self.logger.info(f"Bank canonical map not found at {canonical_map_file}, proceeding without canonicalization")
+            return {}
+        
+        try:
+            with open(canonical_map_file, 'r', encoding='utf-8') as f:
+                map_data = json.load(f)
+                self.logger.info(f"Loaded {len(map_data)} bank canonical mappings")
+                return map_data
+        except Exception as e:
+            self.logger.warning(f"Could not load bank canonical map: {e}")
+            return {}
+    
+    def _normalize_bank_name(self, raw_name: str) -> str:
+        """
+        Normalize bank name to canonical form using mapping.
+        Returns standard_name if found, otherwise returns raw_name.
+        """
+        if not raw_name or not isinstance(raw_name, str):
+            return raw_name
+        
+        raw_name = raw_name.strip()
+        if not raw_name:
+            return raw_name
+        
+        # Exact match on lookup key (case-insensitive)
+        for key, mapping in self.bank_canonical_map.items():
+            if key.lower() == raw_name.lower():
+                return mapping.get('standard_name', mapping.get('canonical_name', key))
+        
+        # Check aliases
+        for key, mapping in self.bank_canonical_map.items():
+            aliases = mapping.get('aliases', [])
+            if any(alias.lower() == raw_name.lower() for alias in aliases):
+                return mapping.get('standard_name', mapping.get('canonical_name', key))
+        
+        # No match found, return original
+        return raw_name
+    
+    def _normalize_role(self, role: str) -> str:
+        """Normalize role to enum value."""
+        if not role or not isinstance(role, str):
+            return 'Unknown'
+        
+        role_lower = role.lower().strip()
+        return self.role_normalization.get(role_lower, 'Unknown')
         
     def _init_db(self):
         """Initialize database tables."""
@@ -156,29 +227,84 @@ class DatabaseHandler:
                     # Handle both simple strings and dictionary entries for banks
                     if isinstance(bank_entry, dict):
                         bank_name = bank_entry.get('raw_name')
-                        standard_name = bank_entry.get('standard_name')
-                        role = bank_entry.get('role')
+                        # Use canonical mapping to get standard_name
+                        standard_name = self._normalize_bank_name(bank_name)
+                        role_raw = bank_entry.get('role', 'Unknown')
+                        role = self._normalize_role(role_raw)  # Normalize role to enum
                         confidence = bank_entry.get('confidence', 1.0)
                     else:
                         bank_name = str(bank_entry)
-                        standard_name = None  # Or run standardization here if needed
-                        role = 'Unknown'
+                        standard_name = self._normalize_bank_name(bank_name)  # Canonicalize
+                        role = 'Unknown'  # Normalized role
                         confidence = 0.75 # Assign a default confidence for regex/simple extractions
                     
                     if not bank_name:
                         continue
 
-                    cursor.execute(
-                        "INSERT OR IGNORE INTO banks (name, standard_name) VALUES (?, ?)",
-                        (bank_name, standard_name)
-                    )
-                    bank_id = cursor.lastrowid or cursor.execute(
-                        "SELECT id FROM banks WHERE name = ?",
-                        (bank_name,)
-                    ).fetchone()[0]
+                    # Normalize bank name and get canonical form
+                    # Check if bank already exists by canonical name first to avoid duplicates
+                    bank_id = None
+                    
+                    # First, try to find existing bank by canonical name
+                    # This prevents duplicates when multiple aliases map to the same canonical name
+                    if standard_name:  # Only check if we have a canonical name
+                        cursor.execute(
+                            "SELECT id FROM banks WHERE standard_name = ?",
+                            (standard_name,)
+                        )
+                        row = cursor.fetchone()
+                        if row:
+                            bank_id = row[0]
+                    
+                    # If not found by canonical, try by raw name (for backward compatibility)
+                    # Also check for legacy entries where standard_name might be NULL but name matches
+                    if not bank_id:
+                        cursor.execute(
+                            "SELECT id, standard_name FROM banks WHERE name = ?",
+                            (bank_name,)
+                        )
+                        row = cursor.fetchone()
+                        if row:
+                            bank_id = row[0]
+                            existing_standard = row[1]
+                            # Update to set canonical name if it wasn't set or needs updating
+                            if not existing_standard or (standard_name and existing_standard != standard_name):
+                                cursor.execute(
+                                    "UPDATE banks SET standard_name = ? WHERE id = ?",
+                                    (standard_name, bank_id)
+                                )
+                    
+                    # Also check if canonical name exists as a bank name (legacy entry)
+                    # Handles case: legacy entry has name="JPMorgan" with standard_name=NULL,
+                    # and we're inserting an alias "J.P. Morgan" that maps to "JPMorgan"
+                    if not bank_id and standard_name and standard_name != bank_name:
+                        cursor.execute(
+                            "SELECT id FROM banks WHERE name = ? AND (standard_name IS NULL OR standard_name = '')",
+                            (standard_name,)
+                        )
+                        row = cursor.fetchone()
+                        if row:
+                            bank_id = row[0]
+                            # Update existing entry to set the canonical name
+                            cursor.execute(
+                                "UPDATE banks SET standard_name = ? WHERE id = ?",
+                                (standard_name, bank_id)
+                            )
+                    
+                    # If still not found, insert new bank
+                    if not bank_id:
+                        cursor.execute(
+                            "INSERT INTO banks (name, standard_name) VALUES (?, ?)",
+                            (bank_name, standard_name)
+                        )
+                        bank_id = cursor.lastrowid
+                    
+                    if not bank_id:
+                        self.logger.warning(f"Could not get or create bank_id for {bank_name}")
+                        continue
                     
                     cursor.execute(
-                        "INSERT INTO bond_banks (bond_id, bank_id, role, confidence) VALUES (?, ?, ?, ?)",
+                        "INSERT OR IGNORE INTO bond_banks (bond_id, bank_id, role, confidence) VALUES (?, ?, ?, ?)",
                         (bond_id, bank_id, role, confidence)
                     )
                 
