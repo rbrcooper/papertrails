@@ -4,11 +4,11 @@ Debug script for ESMA scraper scoring and row processing
 """
 import logging
 import sys
-import time
 from pathlib import Path
+import time
 
-# Add current directory to path
-sys.path.append('.')
+# Ensure project root is on sys.path
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from processes.esma_scraper import ESMAScraper
 
@@ -39,11 +39,11 @@ def debug_row_processing():
         
         if not scraper.navigate_to_search():
             logger.error("Navigation failed")
-            return
+            return []
             
         if not scraper.search_company(test_company):
             logger.error("Search failed") 
-            return
+            return []
             
         # Wait and set results per page
         time.sleep(4)
@@ -104,21 +104,6 @@ def debug_row_processing():
             
             scored_results.append(result)
         
-        # Summary
-        kept_results = [r for r in scored_results if r.get('kept')]
-        logger.info(f"\n=== SUMMARY ===")
-        logger.info(f"Total results processed: {len(scored_results)}")
-        logger.info(f"Results above threshold: {len(kept_results)}")
-        logger.info(f"Threshold used: {min_score}")
-        
-        if len(kept_results) == 0:
-            logger.warning("No results above threshold! Consider lowering threshold.")
-            # Show top results
-            sorted_results = sorted(scored_results, key=lambda x: x.get('score', 0), reverse=True)
-            logger.info("Top 5 results by score:")
-            for i, result in enumerate(sorted_results[:5]):
-                logger.info(f"  {i+1}. {result.get('issuer_name')} - Score: {result.get('score'):.3f}")
-        
         return scored_results
         
     except Exception as e:
@@ -132,3 +117,5 @@ if __name__ == "__main__":
     results = debug_row_processing()
     print(f"\nDebug completed. Check logs/debug_scoring.log for detailed output.")
     print(f"Processed {len(results)} results.")
+
+

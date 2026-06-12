@@ -246,7 +246,11 @@ class CompanyListHandler:
     
     def get_unprocessed_eu_companies(self):
         """Get list of unprocessed EU companies"""
-        return [c for c in self.companies if c['name'] not in self.processed_companies]
+        return [
+            c
+            for c in self.companies
+            if c.get("country", "") in self.eu_countries and c["name"] not in self.processed_companies
+        ]
     
     def mark_company_as_processed(self, company_name):
         """Mark a company as processed"""

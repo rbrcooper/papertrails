@@ -4,9 +4,10 @@ Diagnostic script to examine the actual table structure on ESMA website
 """
 import logging
 import sys
+from pathlib import Path
 
-# Add current directory to path
-sys.path.append('.')
+# Ensure project root is on sys.path
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from processes.esma_scraper import ESMAScraper
 
@@ -105,3 +106,5 @@ def diagnose_table_structure():
 
 if __name__ == "__main__":
     diagnose_table_structure()
+
+

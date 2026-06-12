@@ -1,6 +1,6 @@
 import re
 import locale
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from ..utils.pattern_registry import PatternRegistry
 from .base_extractor import BaseExtractor
 
@@ -89,9 +89,48 @@ class CurrencyExtractor(BaseExtractor):
         else:
             currency_info['confidence'] = 'low'
         
+        currency_info = self._sanitize_issue_size(currency_info, text)
+
         if self.debug_mode:
             print(f"CurrencyExtractor: Final results - currency: {currency_info['currency']}, issue_size: {currency_info['issue_size']}, confidence: {currency_info['confidence']}")
             
+        return currency_info
+
+    def _sanitize_issue_size(self, currency_info: Dict[str, Any], text: str) -> Dict[str, Any]:
+        """Drop bogus small matches; prefer bond-level EUR amounts over programme limits."""
+        size = currency_info.get("issue_size")
+        try:
+            if size is not None and float(size) < 1_000_000:
+                currency_info["issue_size"] = None
+        except (TypeError, ValueError):
+            currency_info["issue_size"] = None
+
+        if currency_info.get("issue_size"):
+            return currency_info
+
+        values: List[int] = []
+        for m in re.finditer(
+            r"\bEUR\s*(\d{1,3}(?:[.,]\d{3})+|\d[\d,]*)\b",
+            text,
+            re.IGNORECASE,
+        ):
+            raw = m.group(1)
+            if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", raw):
+                num = int(raw.replace(".", ""))
+            elif re.fullmatch(r"\d{1,3}(?:,\d{3})+", raw):
+                num = int(raw.replace(",", ""))
+            else:
+                num = int(re.sub(r"[^\d]", "", raw) or "0")
+            if num >= 50_000_000:
+                values.append(num)
+
+        if not values:
+            return currency_info
+
+        bond_sizes = [v for v in values if v <= 3_000_000_000]
+        if bond_sizes:
+            currency_info["issue_size"] = str(max(bond_sizes))
+            currency_info["currency"] = currency_info.get("currency") or "EUR"
         return currency_info
         
     def _extract_issue_size_currency(self, text: str) -> Tuple[Optional[str], Optional[str], Optional[Dict]]:

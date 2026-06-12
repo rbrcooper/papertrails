@@ -6,14 +6,44 @@ Addresses the main issue: AI only seeing first 1500 characters by analyzing mult
 """
 
 import json
+import re
 import time
 import logging
+import os
 import requests
 import hashlib
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from datetime import datetime
 from ...utils.decorators import retry, NETWORK_ERRORS
+
+_DEALER_TABLE_ANCHOR = re.compile(
+    r"dealer/management group\s*\(specify\)|platzeur/bankenkonsortium\s*\(angeben\)"
+    r"|(?:global coordinators and )?active bookrunners",
+    re.IGNORECASE,
+)
+_BANK_LEGAL_SUFFIX = (
+    r"Bank Ireland PLC|Bank AG|Bank GmbH|Bank Europe GmbH|Bank International AG|"
+    r"Group Bank AG|Securities Europe GmbH|Soci[eé]t[eé]\s+G[eé]n[eé]rale|Socit Gnrale"
+)
+_FTWS_DEALER_LEGAL_NAMES = (
+    "Barclays Bank Ireland PLC",
+    "Erste Group Bank AG",
+    "Mizuho Securities Europe GmbH",
+    "Raiffeisen Bank International AG",
+    "UniCredit Bank GmbH",
+    "Goldman Sachs Bank Europe SE",
+    "BofA Securities Europe SA",
+    "HSBC Continental Europe",
+    "HSBC Bank plc",
+    "Natixis",
+    "SMBC Bank EU AG",
+    "ABN AMRO Bank N.V.",
+    "Nordea Bank Abp",
+    "Skandinaviska Enskilda Banken AB (publ)",
+    "Wells Fargo Securities Europe S.A.",
+)
+_SOC_GEN_RE = re.compile(r"Soci[eé]t[eé]\s+G[eé]n[eé]rale|Socit\s+Gnrale", re.IGNORECASE)
 
 class AIBankExtractor:
     """
@@ -40,6 +70,8 @@ class AIBankExtractor:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_index_file = self.cache_dir / "cache_index.json"
         self.cache_index = self._load_cache_index()
+        
+        self.request_timeout = int(os.environ.get("OLLAMA_TIMEOUT", "120"))
         
         # Load known banks for prompting hints
         self.known_banks = self._load_known_banks()
@@ -143,13 +175,87 @@ class AIBankExtractor:
         except Exception as e:
             self.logger.warning(f"Could not save cache entry: {e}")
     
-    def find_bank_sections(self, text: str) -> List[Dict[str, Any]]:
-        """Find sections likely to contain bank information"""
-        bank_section_keywords = [
-            "underwriter", "manager", "arranger", "dealer", "syndicate",
-            "bookrunner", "lead", "co-manager", "agent", "advisor",
-            "joint lead", "co-lead", "global coordinator"
-        ]
+    def extract_dealer_management_banks(self, text: str) -> List[Dict[str, Any]]:
+        """Regex extraction for FTWS dealer/management tables (OMV-style final terms)."""
+        match = _DEALER_TABLE_ANCHOR.search(text)
+        if not match:
+            return []
+
+        start = match.end()
+        text_l = text.lower()
+        end = min(len(text), start + 6000)
+        for marker in (
+            "platzeur/bankenkonsortium",
+            "subscription agreement",
+            "firm commitment",
+            "management/underwriting commission",
+            "stabilisation manager",
+            "if non-syndicated",
+            "u.s. selling restrictions",
+        ):
+            pos = text_l.find(marker, start)
+            if pos != -1:
+                end = min(end, pos)
+
+        block = text[start:end]
+        seen: set[str] = set()
+        banks: List[Dict[str, Any]] = []
+
+        def _add(name: str) -> None:
+            key = re.sub(r"\s+", " ", name.lower())
+            if key in seen:
+                return
+            seen.add(key)
+            banks.append({"raw_name": name, "role": "Dealer", "confidence": 0.92})
+
+        for legal_name in _FTWS_DEALER_LEGAL_NAMES:
+            if legal_name in block:
+                _add(legal_name)
+
+        if _SOC_GEN_RE.search(block):
+            _add("Société Générale")
+
+        if self.known_banks:
+            extra: List[str] = []
+            for info in self.known_banks.values():
+                std = info.get("standard_name") or ""
+                if len(std) >= 12 and std not in _FTWS_DEALER_LEGAL_NAMES:
+                    extra.append(std)
+                for alias in info.get("aliases", []):
+                    if len(alias) >= 14:
+                        extra.append(alias)
+            for name in sorted(set(extra), key=len, reverse=True):
+                if name in block:
+                    _add(name)
+
+        # Drop shorter names that are substrings of a longer match (e.g. "Goldman Sachs").
+        pruned: List[Dict[str, Any]] = []
+        for b in sorted(banks, key=lambda x: len(x["raw_name"]), reverse=True):
+            key = b["raw_name"].lower()
+            if any(
+                key != other["raw_name"].lower() and key in other["raw_name"].lower()
+                for other in pruned
+            ):
+                continue
+            pruned.append(b)
+        return pruned
+
+    def find_bank_sections(self, text: str, syndicate_only: bool = False) -> List[Dict[str, Any]]:
+        """Find sections likely to contain bank information."""
+        if syndicate_only:
+            bank_section_keywords = [
+                "dealer/management group",
+                "platzeur/bankenkonsortium",
+                "joint lead manager", "lead manager", "bookrunner", "book runner",
+                "active bookrunner", "global coordinator", "underwriter", "syndicate",
+                "joint lead", "co-lead", "management and underwriting",
+            ]
+        else:
+            bank_section_keywords = [
+                "bookrunner", "book runner", "joint lead manager", "lead manager",
+                "global coordinator", "active bookrunner", "underwriter", "syndicate",
+                "joint lead", "co-lead", "manager", "dealer", "arranger", "co-manager", "agent",
+            ]
         
         sections = []
         text_lower = text.lower()
@@ -157,6 +263,18 @@ class AIBankExtractor:
         for keyword in bank_section_keywords:
             pos = text_lower.find(keyword)
             if pos != -1:
+                if keyword == "syndicate" and syndicate_only:
+                    ctx = text_lower[max(0, pos - 250): pos + 250]
+                    if any(
+                        x in ctx
+                        for x in (
+                            "shareholder",
+                            "change of control",
+                            "core shareholder",
+                            "beteiligungs",
+                        )
+                    ):
+                        continue
                 # Extract context around the keyword (expanded for better coverage)
                 context_start = max(0, pos - 750)
                 context_end = min(len(text), pos + 2250)
@@ -168,9 +286,8 @@ class AIBankExtractor:
                     'context': context
                 })
         
-        # Sort by position and return top 3
         sections.sort(key=lambda x: x['position'])
-        return sections[:3]
+        return sections[:5]
     
     @retry(max_retries=3, delay=5, backoff=2, exceptions=NETWORK_ERRORS)
     def extract_banks_from_chunk(self, text_chunk: str, chunk_info: str = "") -> List[Dict[str, Any]]:
@@ -244,7 +361,7 @@ Return ONLY a JSON array. No other text."""
                     "stream": False,
                     "options": {"temperature": 0.1, "num_ctx": 4096}
                 },
-                timeout=120
+                timeout=self.request_timeout
             )
             
             if response.status_code == 200:
@@ -277,7 +394,7 @@ Return ONLY the JSON array, nothing else."""
                         "stream": False,
                         "options": {"temperature": 0.05, "num_ctx": 4096}
                     },
-                        timeout=120
+                        timeout=self.request_timeout
                     )
                     
                     if retry_response.status_code == 200:
@@ -362,8 +479,12 @@ Return ONLY the JSON array, nothing else."""
         Clean and validate bank objects, ensuring they conform to schema.
         Handles both new structured format and legacy string lists.
         """
+        blocklist = {
+            "fiscal agent", "paying agent", "clearing system", "clearing",
+            "registrar", "calculation agent", "any leading bank", "the managers",
+        }
         cleaned = []
-        
+
         for bank in banks:
             # Handle legacy string format
             if isinstance(bank, str):
@@ -383,10 +504,13 @@ Return ONLY the JSON array, nothing else."""
                     continue
                 
                 raw_name = raw_name.strip()
-                if len(raw_name) < 2:
+                if len(raw_name) < 2 or raw_name.lower() in blocklist:
                     continue
-                
+
                 role = bank.get('role', 'Unknown')
+                rl = role.lower()
+                if any(x in rl for x in ("fiscal agent", "paying agent", "clearing", "registrar")):
+                    continue
                 if not isinstance(role, str):
                     role = 'Unknown'
                 
@@ -403,59 +527,63 @@ Return ONLY the JSON array, nothing else."""
         
         return cleaned
     
-    def extract(self, text: str) -> Dict[str, Any]:
+    def extract(self, text: str, section_only: bool = False, max_pdf_chars: int = 80000) -> Dict[str, Any]:
         """
-        Extract bank information using AI with smart chunking
-        
-        Args:
-            text: PDF text content
-            
-        Returns:
-            Dictionary with extracted banks and metadata
+        Extract bank information using AI with smart chunking.
+
+        For large documents (FTWS), syndicate sections only — no full-document fallback.
         """
-        start_time = time.time()
-        
         if self.debug_mode:
-            self.logger.info(f"AI extraction for text ({len(text)} chars)")
-        
-        # Test connection first
+            self.logger.info(f"AI extraction for text ({len(text)} chars), section_only={section_only}")
+
         if not self.test_connection():
             return {
                 'extracted_banks': [],
                 'bank_sections': {},
                 'error': 'Ollama not available',
-                'extraction_method': 'ai_failed'
+                'extraction_method': 'ai_failed',
             }
-        
-        # Find bank sections
-        bank_sections = self.find_bank_sections(text)
+
+        large_doc = len(text) > max_pdf_chars
+        syndicate_only = section_only or large_doc
+
+        if syndicate_only:
+            dealer_banks = self.extract_dealer_management_banks(text)
+            if len(dealer_banks) >= 3:
+                return {
+                    "extracted_banks": dealer_banks,
+                    "bank_sections": {"dealer_table": "regex"},
+                    "extraction_method": "dealer_table_regex",
+                }
+
+        bank_sections = self.find_bank_sections(text, syndicate_only=syndicate_only)
         all_banks = []
-        
+
         if self.debug_mode:
             self.logger.info(f"Found {len(bank_sections)} potential bank sections")
-        
-        # Extract from each section
+
         for i, section in enumerate(bank_sections, 1):
             chunk_info = f"section {i} ({section['keyword']})"
             banks = self.extract_banks_from_chunk(section['context'], chunk_info)
             all_banks.extend(banks)
-        
-        # If no banks found, try document chunks
-        if not all_banks:
-            if self.debug_mode:
-                self.logger.info("No banks found in sections, trying document chunks...")
-            
-            # First chunk (expanded)
+
+        if not all_banks and not syndicate_only:
             first_chunk = text[:3000]
-            banks = self.extract_banks_from_chunk(first_chunk, "beginning")
-            all_banks.extend(banks)
-            
-            # Middle chunk (expanded)
+            all_banks.extend(self.extract_banks_from_chunk(first_chunk, "beginning"))
             if len(text) > 6000:
                 middle_start = len(text) // 2 - 1500
-                middle_chunk = text[middle_start:middle_start + 3000]
-                banks = self.extract_banks_from_chunk(middle_chunk, "middle")
-                all_banks.extend(banks)
+                all_banks.extend(
+                    self.extract_banks_from_chunk(
+                        text[middle_start:middle_start + 3000], "middle"
+                    )
+                )
+        elif not all_banks and syndicate_only:
+            return {
+                'extracted_banks': [],
+                'bank_sections': {},
+                'extraction_method': 'ftws_section_not_found',
+                'error': 'No syndicate section found in large document',
+            }
         
         # Deduplicate and merge banks found across multiple chunks
         merged_banks = {}

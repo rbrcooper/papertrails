@@ -4,9 +4,10 @@ Test script to check scoring threshold issues
 """
 import logging
 import sys
+from pathlib import Path
 
-# Add current directory to path
-sys.path.append('.')
+# Ensure project root is on sys.path
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from processes.esma_scraper import ESMAScraper
 
@@ -53,3 +54,5 @@ def test_different_thresholds():
 
 if __name__ == "__main__":
     test_different_thresholds()
+
+

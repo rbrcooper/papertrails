@@ -4,11 +4,10 @@ Test script for ESMA scraper to validate recent updates
 """
 import logging
 import sys
-import time
 from pathlib import Path
 
-# Add current directory to path
-sys.path.append('.')
+# Ensure project root is on sys.path
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from processes.esma_scraper import ESMAScraper
 
@@ -160,3 +159,5 @@ if __name__ == "__main__":
     else:
         logger.error("💥 SOME TESTS FAILED")
         sys.exit(1)
+
+

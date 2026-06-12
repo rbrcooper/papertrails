@@ -1,0 +1,39 @@
+{
+  "OMV": {
+    "canonical_name": "OMV Aktiengesellschaft",
+    "aliases": [
+      "OMV",
+      "OMV AG",
+      "OMV Aktiengesellschaft",
+      "OMV PETROM SA",
+      "OMV Petrom S.A. Bucuresti"
+    ],
+    "leis": [
+      "549300V62YJ9HTLRI486",
+      "549300UKYDM6L8HEPU79"
+    ],
+    "search_tokens": [
+      "OMV"
+    ],
+    "negative_keywords": [
+      "Issuance B.V.",
+      "structured notes",
+      "certificates"
+    ],
+    "is_green_focus": false
+  },
+  "RWE": {
+    "canonical_name": "RWE AG",
+    "aliases": [
+      "RWE",
+      "RWE AG",
+      "RWE Aktiengesellschaft"
+    ],
+    "leis": [],
+    "search_tokens": [
+      "RWE"
+    ],
+    "negative_keywords": [],
+    "is_green_focus": true
+  }
+}

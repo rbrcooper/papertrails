@@ -1,27 +1,11 @@
 {
-    "description": "Ground truth for extraction quality benchmark. Populated from manual inspection of PDF text dumps.",
+    "description": "Benchmark extraction ground truth. tier1 = production bond docs; programme = negative/regression only.",
     "test_cases": [
         {
-            "pdf_path": "data/downloads/AKER BP ASA - 549300NFTY73920OYK69/Base prospectus without Final terms_02_11_2023.pdf",
-            "expected": {
-                "metadata": {
-                    "issue_date": "2024-05-29",
-                    "maturity_date": "2032-05-29",
-                    "currency": "EUR",
-                    "coupon_rate": "4.000"
-                },
-                "banks": [
-                    "ABN AMRO Bank N.V.",
-                    "Barclays Bank Ireland PLC",
-                    "Nordea Bank Abp",
-                    "Skandinaviska Enskilda Banken AB (publ)",
-                    "UniCredit Bank GmbH",
-                    "Wells Fargo Securities Europe S.A."
-                ]
-            }
-        },
-        {
-            "pdf_path": "data/downloads/OMV/Final_terms_including_the_summ_30082024_2f76b574.pdf",
+            "pdf_path": "data/downloads/OMV/Final_terms_including_the_summ_20240905_2f76b574.pdf",
+            "doc_kind": "tier1",
+            "expect_exact_banks": true,
+            "benchmark": "OMV",
             "expected": {
                 "metadata": {
                     "issue_date": "2024-09-04",
@@ -40,7 +24,79 @@
             }
         },
         {
+            "pdf_path": "data/downloads/AKER BP ASA - 549300NFTY73920OYK69/Final_terms_including_the_summ_20240529_ee2fb289.pdf",
+            "doc_kind": "tier1",
+            "expect_exact_banks": true,
+            "benchmark": "AKER",
+            "expected": {
+                "metadata": {
+                    "issue_date": "2024-05-29",
+                    "maturity_date": "2032-05-29",
+                    "currency": "EUR",
+                    "coupon_rate": "4.000"
+                },
+                "banks": [
+                    "ABN AMRO Bank N.V.",
+                    "Barclays Bank Ireland PLC",
+                    "Nordea Bank Abp",
+                    "Skandinaviska Enskilda Banken AB (publ)",
+                    "UniCredit Bank GmbH",
+                    "Wells Fargo Securities Europe S.A."
+                ]
+            }
+        },
+        {
+            "pdf_path": "data/downloads/TotalEnergies SE/Final_terms_including_the_summ_20241120_46702e01.pdf",
+            "doc_kind": "tier1",
+            "expect_exact_banks": true,
+            "benchmark": "TotalEnergies",
+            "notes": "L2-downloaded FTWS; override via logs/benchmark_tier1_paths.json if needed",
+            "expected": {
+                "metadata": {
+                    "issue_date": "2024-11-19",
+                    "maturity_date": null,
+                    "currency": "EUR",
+                    "coupon_rate": "4.500"
+                },
+                "banks": [
+                    "Barclays Bank Ireland PLC",
+                    "Goldman Sachs Bank Europe SE",
+                    "BofA Securities Europe SA",
+                    "HSBC Continental Europe",
+                    "Natixis",
+                    "SMBC Bank EU AG"
+                ]
+            }
+        },
+        {
+            "pdf_path": "data/downloads/AKER BP ASA - 549300NFTY73920OYK69/Base prospectus without Final terms_02_11_2023.pdf",
+            "doc_kind": "programme",
+            "expect_exact_banks": false,
+            "benchmark": "AKER",
+            "notes": "Programme doc; excluded from L1 ship gate",
+            "expected": {
+                "metadata": {
+                    "issue_date": "2024-05-29",
+                    "maturity_date": "2032-05-29",
+                    "currency": "EUR",
+                    "coupon_rate": "4.000"
+                },
+                "banks": [
+                    "ABN AMRO Bank N.V.",
+                    "Barclays Bank Ireland PLC",
+                    "Nordea Bank Abp",
+                    "Skandinaviska Enskilda Banken AB (publ)",
+                    "UniCredit Bank GmbH",
+                    "Wells Fargo Securities Europe S.A."
+                ]
+            }
+        },
+        {
             "pdf_path": "data/downloads/TotalEnergies SE/base_prospectus_17320281_47bb733a.pdf",
+            "doc_kind": "programme",
+            "expect_exact_banks": false,
+            "benchmark": "TotalEnergies",
+            "notes": "Programme doc; excluded from L1 ship gate",
             "expected": {
                 "metadata": {
                     "issue_date": "2024-11-19",

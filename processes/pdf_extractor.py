@@ -105,7 +105,7 @@ class PDFExtractor:
         self.logger = logging.getLogger(__name__)
     
     @retry(max_retries=3, delay=5, backoff=2)
-    def process_single_pdf(self, pdf_path: str) -> Dict[str, Any]:
+    def process_single_pdf(self, pdf_path: str, section_only: bool = False) -> Dict[str, Any]:
         """
         Process a single PDF and extract all relevant information.
         
@@ -233,7 +233,11 @@ class PDFExtractor:
             if self.ai_extractor and self.ai_extractor.test_connection():
                 if self.debug_mode:
                     self.logger.debug("Using AI extraction for banks...")
-                bank_info = self.ai_extractor.extract(text)
+                bank_info = self.ai_extractor.extract(
+                    text, section_only=section_only or len(text) > 80000
+                )
+                if bank_info.get('extraction_method') == 'ftws_section_not_found':
+                    result['validation_flags'].append('ftws_section_not_found')
                 result['extracted_banks'] = bank_info.get('extracted_banks', [])
                 result['bank_sections'] = bank_info.get('bank_sections', {})
                 result['ai_extraction_used'] = True

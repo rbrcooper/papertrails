@@ -3,7 +3,7 @@ ESMA Web Scraper
 ---------------
 A web scraper for extracting prospectus documents from the ESMA (European Securities and Markets Authority) website.
 
-**ONLY EVER USE THIS WEBSITE**: https://registers.esma.europa.eu/publication/searchRegister?core=esma_registers_priii_documents
+**ONLY EVER USE THIS WEBSITE**: https://registers.esma.europa.eu/publication/searchRegister?core=esma_registers_priii_securities
 
 Key Features:
 - Automated navigation of ESMA's document registry
@@ -44,6 +44,7 @@ import sys
 import time
 import json
 import logging
+import base64
 import requests
 import random
 import hashlib
@@ -67,14 +68,36 @@ from selenium.webdriver.common.keys import Keys
 import re
 import shutil
 from urllib.parse import urlparse
+from .pipeline_components.validators import classify_doc_tier, select_esma_rows, _parse_doc_type_code
 
-# Constants for selectors (Example - Adjust based on actual website inspection)
-SEARCH_INPUT_ID = "keywordField" # Corrected ID based on inspection
-SEARCH_BUTTON_ID = "searchSolrButton" # Corrected ID based on inspection
-RESULTS_CONTAINER_ID = "resultsTable" # ID of the DIV containing the results table
-RESULTS_TABLE_ID = "T01" # ID of the TABLE element itself (inside the container)
-COOKIE_ACCEPT_BUTTON_SELECTOR = "//button[contains(text(), 'Accept') or contains(text(), 'Agree')]" # Example XPath
-RESULTS_PER_PAGE_DROPDOWN_ID = "tablePageSize" # Corrected ID based on inspection
+# Constants for selectors (Prospectus III Securities register)
+SECURITIES_URL = "https://registers.esma.europa.eu/publication/searchRegister?core=esma_registers_priii_securities"
+DOCUMENTS_URL = "https://registers.esma.europa.eu/publication/searchRegister?core=esma_registers_priii_documents"
+LEI_INPUT_SELECTOR = "input[name='issuer_lei']"
+ISIN_INPUT_SELECTOR = "input[name='sec_isin']"
+KEYWORD_INPUT_ID = "keywordField"
+ISSUER_NAME_INPUT_SELECTOR = f"#{KEYWORD_INPUT_ID}"
+SEARCH_INPUT_ID = KEYWORD_INPUT_ID
+SEARCH_BUTTON_ID = "searchSolrButton"
+MAX_BOND_ISIN_SEARCHES = 10
+RESULTS_CONTAINER_ID = "resultsTable"
+RESULTS_TABLE_ID = "resultsTable"  # wrapper; data table is nested (#T01)
+RESULTS_DATA_ROW_SELECTOR = "#resultsTable table tbody tr"
+SECURITIES_DETAILS_CORE = "esma_registers_priii_securities"
+COOKIE_ACCEPT_SELECTOR = "//a[text()='OK'] | //button[contains(text(), 'Accept')]" 
+RESULTS_PER_PAGE_DROPDOWN_ID = "tablePageSize"
+SOLR_SECURITIES_URL = "https://registers.esma.europa.eu/solr/esma_registers_priii_securities/select"
+
+
+def resolve_download_url(row: Dict) -> str:
+    """Return downloadFile URL only (never the details-page href)."""
+    dl = (row.get("download_url") or "").strip()
+    if dl and "downloadFile" in dl:
+        return dl
+    url = (row.get("url") or "").strip()
+    if url and "downloadFile" in url:
+        return url
+    return ""
 
 # --- Decorator Definition (Moved Outside Class) --- 
 def retry_on_failure(max_retries=3, base_delay=5, 
@@ -179,7 +202,8 @@ class ESMAScraper:
         self.page_sources_dir.mkdir(parents=True, exist_ok=True)
         
         # Base configuration
-        self.base_url = "https://registers.esma.europa.eu/publication/searchRegister?core=esma_registers_priii_documents"
+        self.base_url = SECURITIES_URL
+        self.documents_url = DOCUMENTS_URL
         self.headless = headless
         self.fuzzy_match_threshold = 65 # Lowered from 80
         # self.min_similarity = 80 # Potentially unused, replaced by fuzzy_match_threshold?
@@ -219,6 +243,8 @@ class ESMAScraper:
         self.audit_dir = Path("logs/audit")
         self.audit_dir.mkdir(parents=True, exist_ok=True)
 
+        self._last_search_isin: Optional[str] = None
+
     def setup_driver(self):
         """Set up the Chrome driver with retries."""
         max_retries = 3
@@ -231,22 +257,29 @@ class ESMAScraper:
                 options = self.setup_chrome_options()
 
                 # Detect installed Chrome major version to align driver
-                version_main = self._detect_chrome_major_version(default=141)
+                version_main = self._detect_chrome_major_version(default=148)
                 self.logger.info(f"Detected Chrome major version: {version_main}")
                 self.driver = uc.Chrome(options=options, version_main=version_main)
                 
                 self.logger.info("Chrome driver initialized successfully")
+                try:
+                    # Avoid Selenium "script timeout" on slower ESMA pages
+                    self.driver.set_script_timeout(180)
+                    self.driver.set_page_load_timeout(180)
+                except Exception:
+                    pass
                 self.wait = WebDriverWait(self.driver, self.default_wait_timeout)
                 return
             except Exception as e:
                 self.logger.error(f"Attempt {attempt} failed to initialize Chrome driver: {str(e)}", exc_info=True)
                 # Cleanup driver if partially initialized
-                if self.driver:
+                if self.driver is not None:
                     try:
                         self.driver.quit()
-                    except Exception: pass # Ignore errors during cleanup
-                    self.driver = None
-                    self.wait = None
+                    except Exception:
+                        pass
+                self.driver = None
+                self.wait = None
 
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
@@ -306,13 +339,42 @@ class ESMAScraper:
         options.add_experimental_option("prefs", prefs)
         return options
 
-    def _detect_chrome_major_version(self, default: int = 145) -> int:
+    def _detect_chrome_major_version(self, default: int = 148) -> int:
         """Best-effort detection of installed Chrome major version on Windows.
 
-        Falls back to provided default if detection fails.
+        Prefer registry detection to avoid spawning Chrome. Falls back to `default`.
         """
+        # 1) Environment override (useful when Chrome auto-updates)
+        env_major = os.environ.get("CHROME_MAJOR")
+        if env_major:
+            try:
+                return int(env_major)
+            except Exception:
+                pass
+
+        # 2) Registry keys (fast, no process spawn)
         try:
-            # Common install locations
+            import winreg  # type: ignore
+
+            reg_candidates = [
+                (winreg.HKEY_CURRENT_USER, r"Software\Google\Chrome\BLBeacon", "version"),
+                (winreg.HKEY_LOCAL_MACHINE, r"Software\Google\Chrome\BLBeacon", "version"),
+                (winreg.HKEY_LOCAL_MACHINE, r"Software\WOW6432Node\Google\Chrome\BLBeacon", "version"),
+            ]
+            for hive, key_path, value_name in reg_candidates:
+                try:
+                    with winreg.OpenKey(hive, key_path) as k:
+                        ver, _ = winreg.QueryValueEx(k, value_name)
+                    parts = re.findall(r"(\d+)\.", str(ver))
+                    if parts:
+                        return int(parts[0])
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # 3) Last resort: try parsing chrome.exe --version (may be noisy on some installs)
+        try:
             candidates = [
                 Path(r"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"),
                 Path(r"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"),
@@ -322,16 +384,16 @@ class ESMAScraper:
                 if exe.exists():
                     try:
                         import subprocess
-                        out = subprocess.check_output([str(exe), "--version"], text=True, timeout=5)
-                        # e.g., 'Google Chrome 138.0.XXXX.XX'
+
+                        out = subprocess.check_output([str(exe), "--version"], text=True, timeout=3)
                         parts = re.findall(r"(\d+)\.", out)
                         if parts:
-                            major = int(parts[0])
-                            return major
+                            return int(parts[0])
                     except Exception:
                         continue
         except Exception:
             pass
+
         return default
     
     def _select_user_agent(self) -> str:
@@ -555,34 +617,145 @@ class ESMAScraper:
                 self.save_page_source(f"unexpected_error_set_results_{num_results}_{timestamp}.html")
             return True  # Continue with default results per page
 
+    def search_by_isin(self, isin: str) -> bool:
+        """Search Securities register using the dedicated ISIN field."""
+        self._last_search_isin = isin.strip().upper() if isin else None
+        return self.search_company(isin, search_mode="isin")
+
+    def _wait_for_search_results_loaded(self, timeout: int = 40) -> bool:
+        """Wait until the results table has rows or a no-results state is shown."""
+
+        def _ready(driver):
+            try:
+                if driver.find_elements(By.CSS_SELECTOR, RESULTS_DATA_ROW_SELECTOR):
+                    return True
+            except Exception:
+                pass
+            try:
+                body = driver.find_element(By.TAG_NAME, "body").text.lower()
+                if "no results" in body or "no records" in body:
+                    return True
+            except Exception:
+                pass
+            return False
+
+        try:
+            WebDriverWait(self.driver, timeout).until(_ready)
+            return True
+        except TimeoutException:
+            return False
+
+    def fetch_securities_via_solr(self, isin: str, rows: int = 20) -> List[Dict]:
+        """Fallback when Selenium table is empty but Solr has securities rows."""
+        isin = (isin or "").strip().upper()
+        if not isin:
+            return []
+        try:
+            resp = requests.get(
+                SOLR_SECURITIES_URL,
+                params={"q": f"sec_isin:{isin}", "rows": rows, "wt": "json"},
+                timeout=20,
+            )
+            resp.raise_for_status()
+            docs = resp.json().get("response", {}).get("docs", [])
+        except Exception as e:
+            self.logger.warning(f"Solr fallback failed for {isin}: {e}")
+            return []
+
+        out: List[Dict] = []
+        for doc in docs:
+            issuer_raw = doc.get("sec_issuerNameList") or ""
+            if isinstance(issuer_raw, list):
+                issuer_raw = issuer_raw[0] if issuer_raw else ""
+            issuer_name = str(issuer_raw).split(" - ")[0].strip() if issuer_raw else ""
+            date_raw = doc.get("sec_docLastUpdateDate") or doc.get("sec_approvalFilingDate") or ""
+            date_str = str(date_raw)[:10] if date_raw else ""
+            doc_type = doc.get("sec_docTypeDesc") or doc.get("sec_docType") or ""
+            doc_code = doc.get("sec_docType") or ""
+            rfss = doc.get("sec_docRfssId") or ""
+            download_url = ""
+            if isinstance(rfss, str) and "," in rfss:
+                file_id, file_hash = rfss.split(",", 1)
+                download_url = (
+                    "https://registers.esma.europa.eu/publication/downloadFile"
+                    f"?fileId={file_id}&checksum={file_hash}"
+                )
+            doc_db_id = doc.get("sec_dbId") or doc.get("id")
+            details_url = ""
+            if doc_db_id:
+                details_url = (
+                    "https://registers.esma.europa.eu/publication/details"
+                    f"?core={SECURITIES_DETAILS_CORE}&docId={doc_db_id}"
+                )
+            row = {
+                "issuer_name": issuer_name,
+                "doc_type": doc_type,
+                "doc_type_code": doc_code,
+                "date": date_str,
+                "isin": doc.get("sec_isin") or isin,
+                "doc_id": str(doc_db_id) if doc_db_id else "",
+                "download_url": download_url,
+                "details_url": details_url,
+                "url": download_url or details_url,
+                "filename": doc.get("sec_natDocId") or "",
+                "register_source": "solr",
+                "already_seen": False,
+                "doc_tier": classify_doc_tier(doc_code, doc_type),
+            }
+            if self.current_company and issuer_name:
+                row["fuzzy_score"] = fuzz.token_set_ratio(self.current_company, issuer_name)
+            else:
+                row["fuzzy_score"] = 0
+            if row.get("url") and row["url"] not in self.seen_urls:
+                out.append(row)
+        self.logger.info(f"Solr fallback for {isin}: {len(out)} row(s)")
+        return out
+
     @retry_on_failure() # Apply the defined decorator
-    def search_company(self, company_name: str):
-        """Search for a specific company name on the ESMA website."""
-        self.logger.info(f"Searching for company: '{company_name}'")
-        # Check for session health before critical interaction
+    def search_company(self, search_term: str, is_lei: bool = False, search_mode: str = "auto"):
+        """Search ESMA Securities register by LEI, ISIN, or issuer name."""
+        if search_mode != "isin":
+            self._last_search_isin = None
+        if search_mode == "isin":
+            field_desc = "ISIN"
+        elif is_lei:
+            field_desc = "LEI"
+        else:
+            field_desc = "name"
+        self.logger.info(f"Searching for {field_desc}: '{search_term}'")
         if self.check_session_health():
-            # Session was refreshed, ensure we are on the right page
-            self.navigate_to_search() 
-            # May need to re-apply settings like results per page if session was refreshed
-            # self.set_results_per_page() 
+            self.navigate_to_search()
 
-        search_input_locator = (By.ID, SEARCH_INPUT_ID) # Example ID
-        search_button_locator = (By.ID, SEARCH_BUTTON_ID) # Example ID
-        results_table_locator = (By.CSS_SELECTOR, RESULTS_CONTAINER_ID) # Example ID
-
+        if search_mode == "isin":
+            search_input_locator = (By.CSS_SELECTOR, ISIN_INPUT_SELECTOR)
+        elif is_lei:
+            search_input_locator = (By.CSS_SELECTOR, LEI_INPUT_SELECTOR)
+        else:
+            search_input_locator = (By.ID, KEYWORD_INPUT_ID)
+        search_button_locator = (By.ID, SEARCH_BUTTON_ID)
+        
         try:
             # 1. Find and clear the search input field
             self.logger.debug(f"Waiting for search input field '{search_input_locator}'...")
             search_input = self.wait.until(
                 EC.element_to_be_clickable(search_input_locator),
-                message=f"Search input '{search_input_locator}' not clickable."
+                message=f"Search input '{search_input_locator}' not found or not clickable."
             )
+            
+            # Handle cookie banner if it appears and blocks input
+            try:
+                cookie_btn = self.driver.find_elements(By.XPATH, COOKIE_ACCEPT_SELECTOR)
+                if cookie_btn and cookie_btn[0].is_displayed():
+                    self.logger.info("Closing cookie banner...")
+                    cookie_btn[0].click()
+                    time.sleep(1)
+            except Exception:
+                pass
+
             self.logger.debug("Search input found. Clearing and sending keys...")
             search_input.clear()
-            search_input.send_keys(company_name)
-            # Add Enter key press as an alternative/additional trigger
-            # search_input.send_keys(Keys.RETURN)
-            self.logger.debug(f"Entered '{company_name}' into search field.")
+            search_input.send_keys(search_term)
+            self.logger.debug(f"Entered '{search_term}' into {field_desc} search field.")
             
             # Brief random delay before clicking search
             self.random_delay(0.5, 1.5)
@@ -594,9 +767,13 @@ class ESMAScraper:
                 message=f"Search button '{search_button_locator}' not clickable."
             )
             self.logger.debug("Search button found. Clicking...")
-            search_button.click()
+            # Prefer native click to avoid long-running JS execution on ESMA
+            try:
+                search_button.click()
+            except Exception:
+                self.driver.execute_script("arguments[0].click();", search_button)
             self.requests_count += 1 # Count actions that trigger server requests
-            self.logger.info(f"Clicked search button for '{company_name}'.")
+            self.logger.info(f"Clicked search button for '{search_term}'.")
 
             # 3. Wait for search results to load (or indicate no results)
             self.logger.debug("Waiting for search results table content to load...")
@@ -605,67 +782,84 @@ class ESMAScraper:
             #     EC.presence_of_element_located(results_table_locator),
             #     message="Results table did not appear after search."
             # )
-            # Option B: Wait for the first row within the table body (More robust)
-            results_first_row_locator = (By.CSS_SELECTOR, f"#{RESULTS_CONTAINER_ID} tbody tr")
+            # Wait for the results container/table to exist, then proceed even if 0 rows.
+            results_container_locator = (By.ID, RESULTS_CONTAINER_ID)
             self.wait.until(
-                EC.presence_of_element_located(results_first_row_locator),
-                message=f"Results table content (first row) using selector '{results_first_row_locator}' did not appear after search."
+                EC.presence_of_element_located(results_container_locator),
+                message="Results table container did not appear after search."
             )
-            self.logger.debug("Results table content (first row) detected.")
+            self.logger.debug("Results table container detected.")
+            self._wait_for_search_results_loaded(timeout=20)
 
             # Option C: Wait for either results table OR a 'no results' message (More complex)
             # ... (keep commented out)
                 
-            self.logger.info(f"Search results loaded for '{company_name}'.")
+            self.logger.info(f"Search completed for '{search_term}'.")
             return True # Indicate search completed, results (or empty table) are present
 
         except (TimeoutException, NoSuchElementException, ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException) as e:
-            self.logger.error(f"Error during search for '{company_name}': {type(e).__name__} - {str(e)}")
+            self.logger.error(f"Error during search for '{search_term}': {type(e).__name__} - {str(e)}")
             if self.debug_mode:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                self.take_screenshot(f"error_search_{company_name[:20]}_{timestamp}.png")
-                self.save_page_source(f"error_search_{company_name[:20]}_{timestamp}.html")
+                self.take_screenshot(f"error_search_{search_term[:20]}_{timestamp}.png")
+                self.save_page_source(f"error_search_{search_term[:20]}_{timestamp}.html")
             # Consider if returning False or raising the exception is better here
             # Returning False might allow processing to continue with the next company
             return False # Indicate search failed
         except Exception as e:
-            self.logger.error(f"Unexpected error during search for '{company_name}': {e}", exc_info=True)
+            self.logger.error(f"Unexpected error during search for '{search_term}': {e}", exc_info=True)
             if self.debug_mode:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                self.take_screenshot(f"unexpected_error_search_{company_name[:20]}_{timestamp}.png")
-                self.save_page_source(f"unexpected_error_search_{company_name[:20]}_{timestamp}.html")
+                self.take_screenshot(f"unexpected_error_search_{search_term[:20]}_{timestamp}.png")
+                self.save_page_source(f"unexpected_error_search_{search_term[:20]}_{timestamp}.html")
             raise # Re-raise unexpected errors
+
+    def _get_results_data_rows(self, timeout: int = 40) -> List:
+        """Return securities register data rows (nested table under #resultsTable)."""
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, RESULTS_DATA_ROW_SELECTOR))
+            )
+        except TimeoutException:
+            return []
+        return self.driver.find_elements(By.CSS_SELECTOR, RESULTS_DATA_ROW_SELECTOR)
+
+    @staticmethod
+    def _build_securities_column_map(table_element) -> Dict[str, int]:
+        mapping: Dict[str, int] = {}
+        try:
+            headers = table_element.find_elements(By.CSS_SELECTOR, "thead th[id]")
+            for idx, th in enumerate(headers):
+                col_id = (th.get_attribute("id") or "").strip()
+                if col_id:
+                    mapping[col_id] = idx
+        except Exception:
+            pass
+        return mapping
 
     def process_results(self, company_name: str) -> List[Dict]:
         """Process only the current results page. Assumes page size already set to 100."""
         self.logger.info(f"Processing current results page for company: {company_name}")
         documents: List[Dict] = []
 
-        results_table_locator = (By.ID, RESULTS_TABLE_ID)
-        results_container_locator = (By.ID, RESULTS_CONTAINER_ID)
-        result_row_selector = "tbody tr"
-
         try:
-            self.logger.debug("Locating results container and table...")
-            results_container = self.wait.until(
-                EC.presence_of_element_located(results_container_locator),
-                message="Results container not found."
+            self.wait.until(
+                EC.presence_of_element_located((By.ID, RESULTS_CONTAINER_ID)),
+                message="Results container not found.",
             )
-            try:
-                short_wait = WebDriverWait(self.driver, 5)
-                results_table = short_wait.until(
-                    EC.presence_of_element_located(results_table_locator),
-                    message="Results table not found within container."
-                )
-            except TimeoutException:
-                results_table = results_container
-
-            rows = results_table.find_elements(By.CSS_SELECTOR, result_row_selector)
+            rows = self._get_results_data_rows(timeout=40)
             self.logger.info(f"Found {len(rows)} rows on current page.")
+            column_map: Dict[str, int] = {}
+            if rows:
+                try:
+                    table = rows[0].find_element(By.XPATH, "./ancestor::table[1]")
+                    column_map = self._build_securities_column_map(table)
+                except Exception:
+                    column_map = {}
 
             for idx, row in enumerate(rows):
                 try:
-                    row_data = self.get_document_details(row)
+                    row_data = self.get_document_details(row, column_map=column_map)
                     if not row_data or not row_data.get('url'):
                         continue
                         
@@ -685,13 +879,16 @@ class ESMAScraper:
         except Exception as e:
             self.logger.error(f"Failed to process current results page: {e}", exc_info=True)
 
+        if not documents and self._last_search_isin:
+            documents = self.fetch_securities_via_solr(self._last_search_isin)
+
         return documents
 
     def accept_cookies(self):
         """Attempt to find and click the cookie acceptance button."""
         self.logger.debug("Checking for cookie acceptance button...")
         # Use a more flexible XPath that handles common variations
-        cookie_button_locator = (By.XPATH, COOKIE_ACCEPT_BUTTON_SELECTOR)
+        cookie_button_locator = (By.XPATH, COOKIE_ACCEPT_SELECTOR)
         try:
             # Increased timeout to 10s as per Phase 2 improvement plan
             short_wait = WebDriverWait(self.driver, 10) 
@@ -726,50 +923,68 @@ class ESMAScraper:
                 self.save_page_source(f"unexpected_error_cookie_{timestamp}.html")
             return False # Indicate failure
 
-    def get_document_details(self, result_element) -> Optional[Dict]:
-        """Extract document details from a single result row element."""
-        details = {'issuer_name': '', 'doc_type': '', 'date': '', 'url': '', 'filename': ''}
+    def get_document_details(
+        self, result_element, column_map: Optional[Dict[str, int]] = None
+    ) -> Optional[Dict]:
+        """Extract document details from a single securities register row."""
+        details = {
+            'issuer_name': '', 'doc_type': '', 'date': '', 'url': '', 'filename': '',
+            'doc_id': '', 'download_url': '',
+        }
         try:
-            # Use more specific selectors based on the table structure
             cells = result_element.find_elements(By.TAG_NAME, "td")
-            if len(cells) < 11: # Expecting 11 columns based on actual table structure
-                self.logger.warning(f"Row has fewer than 11 cells, skipping. HTML: {result_element.get_attribute('innerHTML')}")
+            if len(cells) < 5:
+                self.logger.warning(
+                    "Row has too few cells (%s), skipping.", len(cells)
+                )
                 return None
 
-            # Extract details based on column position from actual table structure
-            # Column 4: Issuer(s) Name / LEI - extract just the company name part
-            full_issuer = cells[4].text.strip()
-            # Split on " - " to separate company name from LEI code
+            col = column_map or {}
+
+            def get_by_col(col_id: str, fallback_idx: Optional[int] = None) -> str:
+                idx = col.get(col_id)
+                if idx is None and fallback_idx is not None:
+                    idx = fallback_idx
+                if idx is None or idx >= len(cells):
+                    return ""
+                return cells[idx].text.strip()
+
+            full_issuer = get_by_col("sec_issuerNameList", 2)
             if " - " in full_issuer:
                 details['issuer_name'] = full_issuer.split(" - ")[0].strip()
             else:
                 details['issuer_name'] = full_issuer
-            
-            details['doc_type'] = cells[1].text.strip()
-            details['date'] = cells[3].text.strip()
-            # Try to detect ISIN if present (Column 5: ISIN)
-            try:
-                details['isin'] = cells[5].text.strip()
-            except Exception:
-                details['isin'] = ''
 
-            # The PDF download link is in column 9 (Physical Document column)
+            details['isin'] = get_by_col("sec_isin", 1)
+            details['doc_type'] = get_by_col("sec_docTypeDesc", 5)
+            details['date'] = get_by_col("sec_approvalFilingDate", 8) or get_by_col(
+                "sec_docLastUpdateDate", 9
+            )
+            details['doc_type_code'] = _parse_doc_type_code(None, details.get('doc_type'))
+            details['doc_tier'] = classify_doc_tier(details['doc_type_code'], details.get('doc_type'))
+            details['register_source'] = 'securities'
+
             link_href = None
-            try:
-                # Column 9 contains the PDF download link
-                pdf_cell = cells[9]
-                a = pdf_cell.find_element(By.TAG_NAME, "a")
-                href = a.get_attribute('href')
-                if href and 'downloadFile' in href:
+            for a in result_element.find_elements(By.TAG_NAME, "a"):
+                href = a.get_attribute('href') or ""
+                if not href:
+                    continue
+                if href.startswith("details") or "details?" in href:
+                    link_href = (
+                        f"https://registers.esma.europa.eu/publication/{href.lstrip('/')}"
+                        if not href.startswith("http")
+                        else href
+                    )
+                    break
+                if 'downloadFile' in href:
                     link_href = href
-            except Exception:
-                # Fallback: search for any PDF download link in the row
-                try:
-                    a = result_element.find_element(By.CSS_SELECTOR, "a[href*='downloadFile']")
-                    link_href = a.get_attribute('href')
-                except Exception:
-                    link_href = None
+                    break
+
             details['url'] = link_href or ''
+            if link_href and "docId=" in link_href:
+                m = re.search(r"docId=(\d+)", link_href)
+                if m:
+                    details['doc_id'] = m.group(1)
             
             # --- Fuzzy Match Calculation ---
             if self.current_company and details.get('issuer_name'):
@@ -787,6 +1002,310 @@ class ESMAScraper:
         except Exception as e:
             self.logger.error(f"Unexpected error in get_document_details: {e}", exc_info=True)
             return None
+
+    def download_via_details_page(
+        self,
+        doc_id: str,
+        doc_type_hint: Optional[str] = None,
+        date_hint: Optional[str] = None,
+        core: str = SECURITIES_DETAILS_CORE,
+    ) -> Optional[str]:
+        """Open ESMA document details (requires search-session cookie) and download linked PDF."""
+        if not self.driver or not doc_id:
+            return None
+        doc_id = str(doc_id).strip()
+        details_url = (
+            f"https://registers.esma.europa.eu/publication/details"
+            f"?core={core}&docId={doc_id}"
+        )
+        self.logger.info(f"Details-page download for docId={doc_id}")
+        try:
+            if "searchRegister" not in (self.driver.current_url or ""):
+                self.navigate_to_search()
+                time.sleep(2)
+            self.driver.execute_script(
+                "if (typeof setNavCookie === 'function') setNavCookie();"
+            )
+            self.driver.get(details_url)
+            time.sleep(4)
+            download_links = []
+            for a in self.driver.find_elements(By.CSS_SELECTOR, "a[href]"):
+                href = a.get_attribute("href") or ""
+                if "downloadFile" in href:
+                    download_links.append(href)
+            if not download_links:
+                # Some pages embed download in onclick or form — scan page source.
+                for m in re.finditer(
+                    r"downloadFile\?fileId=\d+&checksum=[a-f0-9]+", self.driver.page_source
+                ):
+                    download_links.append(
+                        "https://registers.esma.europa.eu/publication/" + m.group(0)
+                    )
+            for href in download_links[:3]:
+                path = self._download_binary_with_session(
+                    href, doc_id=doc_id, doc_type_hint=doc_type_hint, date_hint=date_hint
+                )
+                if path:
+                    return path
+        except Exception as e:
+            self.logger.warning(f"Details-page download failed for {doc_id}: {e}")
+        return None
+
+    def _download_binary_with_session(
+        self,
+        url: str,
+        doc_id: str = None,
+        doc_type_hint: Optional[str] = None,
+        date_hint: Optional[str] = None,
+    ) -> Optional[str]:
+        """Download bytes using Selenium session cookies (after details navigation)."""
+        if not self.driver:
+            return None
+        try:
+            cookies = {c["name"]: c["value"] for c in self.driver.get_cookies()}
+            headers = {"User-Agent": self.user_agent, "Referer": self.driver.current_url}
+            resp = requests.get(url, headers=headers, cookies=cookies, timeout=90)
+            resp.raise_for_status()
+            if not resp.content[:5].startswith(b"%PDF"):
+                return None
+            temp = self.download_dir / f"details_{doc_id or 'doc'}.pdf.part"
+            temp.write_bytes(resp.content)
+            content_hash = self.get_file_hash(temp)
+            org_company = self.current_company or "UnknownCompany"
+            organized, final_path = self.organize_file(
+                temp,
+                org_company,
+                doc_type_hint=doc_type_hint,
+                date_hint=date_hint,
+                content_hash=content_hash,
+            )
+            if organized and final_path:
+                if content_hash:
+                    self.document_hashes[content_hash] = str(final_path)
+                    self._save_document_hashes()
+                return str(final_path)
+        except Exception as e:
+            self.logger.debug(f"Session download failed for {url}: {e}")
+        return None
+
+    def download_from_results_table(
+        self,
+        isin: Optional[str] = None,
+        doc_type_hint: Optional[str] = None,
+        date_hint: Optional[str] = None,
+    ) -> Optional[str]:
+        """Click the download link on the current results table (UI href may differ from Solr-built URL)."""
+        if not self.driver:
+            return None
+        rows = self._get_results_data_rows(timeout=15)
+        if not rows:
+            self.logger.debug("No results table rows for row download.")
+            return None
+        target_isin = (isin or "").strip().upper()
+        before = {p.resolve() for p in self.download_dir.rglob("*") if p.is_file()}
+        for row in rows:
+            details = self.get_document_details(row)
+            if not details:
+                continue
+            row_isin = (details.get("isin") or "").strip().upper()
+            if target_isin and row_isin and row_isin != target_isin:
+                continue
+            if details.get("doc_id"):
+                path = self.download_via_details_page(
+                    details["doc_id"],
+                    doc_type_hint=doc_type_hint or details.get("doc_type"),
+                    date_hint=date_hint or details.get("date"),
+                )
+                if path:
+                    return path
+            url = details.get("url")
+            if not url:
+                continue
+            # Prefer clicking the anchor (ESMA often requires in-page navigation).
+            try:
+                link = None
+                for a in row.find_elements(By.TAG_NAME, "a"):
+                    href = a.get_attribute("href") or ""
+                    if "downloadFile" in href or "detailsUrl" in href:
+                        link = a
+                        if "downloadFile" in href:
+                            break
+                if link:
+                    self.logger.info("Clicking results-table download link for %s", row_isin or isin)
+                    try:
+                        link.click()
+                    except Exception:
+                        self.driver.execute_script("arguments[0].click();", link)
+                    deadline = time.time() + self.download_wait_time
+                    while time.time() < deadline:
+                        current = {p.resolve() for p in self.download_dir.rglob("*") if p.is_file()}
+                        new_files = [
+                            p for p in current - before
+                            if not p.name.endswith(".crdownload") and not p.name.endswith(".part")
+                        ]
+                        for path in sorted(new_files, key=lambda p: p.stat().st_mtime, reverse=True):
+                            try:
+                                if path.read_bytes()[:5].startswith(b"%PDF"):
+                                    content_hash = self.get_file_hash(path)
+                                    org_company = self.current_company or "UnknownCompany"
+                                    organized, final_path = self.organize_file(
+                                        path,
+                                        org_company,
+                                        doc_type_hint=doc_type_hint or details.get("doc_type"),
+                                        date_hint=date_hint or details.get("date"),
+                                        content_hash=content_hash,
+                                    )
+                                    if organized and final_path:
+                                        if content_hash:
+                                            self.document_hashes[content_hash] = str(final_path)
+                                            self._save_document_hashes()
+                                        return str(final_path)
+                            except OSError:
+                                continue
+                        time.sleep(1)
+            except Exception as e:
+                self.logger.debug(f"Table click download failed: {e}")
+            return self.download_document(
+                url=url,
+                doc_id=details.get("isin") or details.get("issuer_name"),
+                doc_type_hint=doc_type_hint or details.get("doc_type"),
+                date_hint=date_hint or details.get("date"),
+            )
+        return None
+
+    def _download_via_browser(
+        self,
+        url: str,
+        doc_id: str = None,
+        doc_type_hint: Optional[str] = None,
+        date_hint: Optional[str] = None,
+        timeout: int = 90,
+    ) -> Optional[str]:
+        """Fallback: trigger Chrome download for ESMA file URLs that return HTML via requests."""
+        if not self.driver:
+            return None
+        self.logger.info(f"Browser download fallback for: {doc_id or url}")
+        try:
+            if "registers.esma.europa.eu" not in (self.driver.current_url or ""):
+                self.navigate_to_search()
+                time.sleep(2)
+        except Exception:
+            pass
+
+        before = {p.resolve() for p in self.download_dir.rglob("*") if p.is_file()}
+        try:
+            self.driver.get(url)
+        except Exception as e:
+            self.logger.warning(f"Browser navigation to download URL failed: {e}")
+            return None
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            current = {p.resolve() for p in self.download_dir.rglob("*") if p.is_file()}
+            new_files = [
+                p for p in current - before
+                if not p.name.endswith(".crdownload") and not p.name.endswith(".part")
+            ]
+            for path in sorted(new_files, key=lambda p: p.stat().st_mtime, reverse=True):
+                try:
+                    if path.read_bytes()[:5].startswith(b"%PDF"):
+                        content_hash = self.get_file_hash(path)
+                        org_company = self.current_company or "UnknownCompany"
+                        organized, final_path = self.organize_file(
+                            path,
+                            org_company,
+                            doc_type_hint=doc_type_hint,
+                            date_hint=date_hint,
+                            content_hash=content_hash,
+                        )
+                        if organized and final_path:
+                            if content_hash:
+                                self.document_hashes[content_hash] = str(final_path)
+                                self._save_document_hashes()
+                            return str(final_path)
+                except OSError:
+                    continue
+            time.sleep(1)
+        self.logger.warning(f"Browser download timed out for {url}")
+        return None
+
+    def _download_via_fetch(
+        self,
+        url: str,
+        doc_id: str = None,
+        doc_type_hint: Optional[str] = None,
+        date_hint: Optional[str] = None,
+    ) -> Optional[str]:
+        """Download PDF bytes via in-page fetch() using the live browser session."""
+        if not self.driver:
+            return None
+        self.logger.info(f"Session fetch download for: {doc_id or url}")
+        try:
+            if "registers.esma.europa.eu" not in (self.driver.current_url or ""):
+                self.navigate_to_search()
+                time.sleep(1)
+        except Exception:
+            pass
+
+        script = """
+        const url = arguments[0];
+        const cb = arguments[arguments.length - 1];
+        fetch(url, {credentials: 'include', redirect: 'follow'})
+          .then(r => r.arrayBuffer())
+          .then(buf => {
+            const u8 = new Uint8Array(buf);
+            let binary = '';
+            const chunk = 0x8000;
+            for (let i = 0; i < u8.length; i += chunk) {
+              binary += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+            }
+            cb(btoa(binary));
+          })
+          .catch(err => cb('ERROR:' + err));
+        """
+        try:
+            b64 = self.driver.execute_async_script(script, url)
+        except Exception as e:
+            self.logger.warning(f"Session fetch script failed: {e}")
+            return None
+
+        if not b64 or (isinstance(b64, str) and b64.startswith("ERROR:")):
+            self.logger.warning(f"Session fetch failed: {b64}")
+            return None
+
+        try:
+            raw = base64.b64decode(b64)
+        except Exception as e:
+            self.logger.warning(f"Session fetch base64 decode failed: {e}")
+            return None
+
+        if not raw[:5].startswith(b"%PDF"):
+            self.logger.warning(
+                "Session fetch did not return PDF (head=%r, size=%s)",
+                raw[:20],
+                len(raw),
+            )
+            return None
+
+        base_name = doc_id if doc_id else hashlib.md5(url.encode()).hexdigest()
+        temp_download_path = self.download_dir / f"esma_fetch_{base_name}.pdf.part"
+        temp_download_path.write_bytes(raw)
+        content_hash = hashlib.sha256(raw).hexdigest()
+        org_company_name = self.current_company if self.current_company else "UnknownCompany"
+        organized_successfully, final_path = self.organize_file(
+            temp_download_path,
+            org_company_name,
+            doc_type_hint=doc_type_hint,
+            date_hint=date_hint,
+            content_hash=content_hash,
+        )
+        if organized_successfully and final_path:
+            self.document_hashes[content_hash] = str(final_path)
+            self._save_document_hashes()
+            return str(final_path)
+        if temp_download_path.exists():
+            temp_download_path.unlink()
+        return None
 
     def get_file_hash(self, file_path: Path) -> Optional[str]:
         """Calculate SHA-256 hash of a file."""
@@ -815,6 +1334,27 @@ class ESMAScraper:
         self.logger.info(f"Attempting to download document: {doc_id or url}")
         self.requests_count += 1 # Increment request count for session management
 
+        details_doc_id = (doc_id or "").strip()
+        if details_doc_id and not details_doc_id.isdigit():
+            details_doc_id = ""
+        if not details_doc_id and url and "docId=" in url:
+            m = re.search(r"docId=(\d+)", url)
+            if m:
+                details_doc_id = m.group(1)
+
+        if self.driver and url and "downloadFile" in url:
+            try:
+                if "searchRegister" not in (self.driver.current_url or ""):
+                    self.navigate_to_search()
+                    time.sleep(1)
+                path = self._download_binary_with_session(
+                    url, doc_id=details_doc_id or doc_id, doc_type_hint=doc_type_hint, date_hint=date_hint
+                )
+                if path:
+                    return path
+            except Exception as e:
+                self.logger.debug(f"Early session download failed: {e}")
+
         # --- Direct Download Attempt using Requests --- 
         try:
             # Use requests for potentially faster/more reliable downloads than browser clicks
@@ -822,22 +1362,21 @@ class ESMAScraper:
                 'User-Agent': self.user_agent  # Use the same UA as Chrome session
             }
             
-            # Add Referer from current page if driver is available
+            headers['Referer'] = SECURITIES_URL
             if self.driver:
                 try:
-                    headers['Referer'] = self.driver.current_url
-                    self.logger.debug(f"Added Referer: {self.driver.current_url}")
+                    headers['Referer'] = self.driver.current_url or SECURITIES_URL
+                    self.logger.debug(f"Added Referer: {headers['Referer']}")
                 except Exception as e:
                     self.logger.debug(f"Could not get Referer from driver: {e}")
             
-            # Add cookies from Selenium session if available
+            cookie_jar = None
             if self.driver:
                 try:
                     cookies = self.driver.get_cookies()
                     if cookies:
-                        cookie_str = '; '.join([f"{c['name']}={c['value']}" for c in cookies])
-                        headers['Cookie'] = cookie_str
-                        self.logger.debug(f"Added {len(cookies)} cookies from Selenium session")
+                        cookie_jar = {c["name"]: c["value"] for c in cookies}
+                        self.logger.debug(f"Using {len(cookie_jar)} cookies from Selenium session")
                 except Exception as e:
                     self.logger.debug(f"Could not get cookies from driver: {e}")
             
@@ -850,7 +1389,9 @@ class ESMAScraper:
                 }
                 self.logger.debug(f"Using proxies for requests: {proxies}")
             
-            response = requests.get(url, headers=headers, stream=True, timeout=60, proxies=proxies) # Increased timeout
+            response = requests.get(
+                url, headers=headers, cookies=cookie_jar, stream=True, timeout=60, proxies=proxies
+            )
             response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
 
             # --- Filename Determination --- 
@@ -902,6 +1443,24 @@ class ESMAScraper:
             content_hash = hasher.hexdigest()
             self.logger.debug(f"Calculated hash for downloaded content: {content_hash}")
 
+            if not temp_download_path.read_bytes()[:5].startswith(b"%PDF"):
+                self.logger.warning("HTTP download did not return a PDF; trying session fetch.")
+                if temp_download_path.exists():
+                    temp_download_path.unlink()
+                fetched = self._download_via_fetch(url, doc_id, doc_type_hint, date_hint)
+                if fetched:
+                    return fetched
+                browser_path = self._download_via_browser(url, doc_id, doc_type_hint, date_hint)
+                if browser_path:
+                    return browser_path
+                if details_doc_id and self.driver:
+                    return self.download_via_details_page(
+                        details_doc_id,
+                        doc_type_hint=doc_type_hint,
+                        date_hint=date_hint,
+                    )
+                return None
+
             # --- Deduplication Check --- 
             if content_hash in self.document_hashes:
                 existing_path = self.document_hashes[content_hash]
@@ -913,7 +1472,15 @@ class ESMAScraper:
                 # Return the path of the existing file
                 # Check if the existing file still exists before returning path
                 if Path(existing_path).exists():
-                    return str(Path(existing_path))
+                    try:
+                        if Path(existing_path).read_bytes()[:5].startswith(b"%PDF"):
+                            return str(Path(existing_path))
+                    except OSError:
+                        pass
+                    self.logger.warning(
+                        f"Duplicate hash points to non-PDF file {existing_path}; removing stale hash entry."
+                    )
+                    del self.document_hashes[content_hash]
                 else:
                     self.logger.warning(f"Duplicate hash found, but existing file {existing_path} is missing. Proceeding to save new download.")
                     # Remove the broken entry from hashes
@@ -1008,17 +1575,31 @@ class ESMAScraper:
         self.logger.debug(f"Waiting up to {wait_time}s for page ready state...")
         start_time = time.time()
         try:
-            # Wait for document.readyState to be 'complete'
+            # ESMA pages can keep the document in "interactive" due to async assets.
+            # Do not require readyState=="complete"; require not-loading and key UI elements.
             WebDriverWait(self.driver, wait_time).until(
-                lambda driver: driver.execute_script('return document.readyState') == 'complete'
+                lambda driver: driver.execute_script("return document.readyState") in ("interactive", "complete")
             )
-            
-            # Additionally, wait for a key element that indicates search page is loaded
-            # Example: Wait for the search form container or search button to be present
-            # Adjust selector as needed
-            key_element_selector = (By.ID, SEARCH_INPUT_ID) # Use the search input field ID as indicator
-            self.logger.debug(f"Waiting for key element: {key_element_selector}")
-            WebDriverWait(self.driver, wait_time).until(EC.presence_of_element_located(key_element_selector))
+
+            key_elements = [
+                (By.ID, SEARCH_BUTTON_ID),
+                (By.ID, KEYWORD_INPUT_ID),
+                (By.CSS_SELECTOR, LEI_INPUT_SELECTOR),
+                (By.CSS_SELECTOR, ISIN_INPUT_SELECTOR),
+            ]
+            found = False
+            for loc in key_elements:
+                try:
+                    WebDriverWait(self.driver, min(15, wait_time)).until(
+                        EC.presence_of_element_located(loc)
+                    )
+                    found = True
+                    break
+                except Exception:
+                    continue
+
+            if not found:
+                raise TimeoutException("Key search elements not found")
             
             self.logger.debug(f"Page reached ready state in {time.time() - start_time:.2f}s.")
             return True
@@ -1176,8 +1757,13 @@ class ESMAScraper:
 
         # --- Doc type relevance ---
         doc_type = (details.get('doc_type') or '').lower()
-        if 'final' in doc_type:
+        doc_code = (details.get('doc_type_code') or '').upper()
+        if doc_code == 'FTWS' or 'final' in doc_type:
             doc_type_score = 1.0
+        elif doc_code == 'SUPP':
+            doc_type_score = 0.85
+        elif doc_code == 'STDA':
+            doc_type_score = 0.4
         elif 'base prospectus' in doc_type:
             doc_type_score = 0.5
         else:
@@ -1235,9 +1821,10 @@ class ESMAScraper:
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "esma_rows.csv"
         fieldnames = [
-            "issuer_name", "doc_type", "date", "isin", "url", "fuzzy_score",
+            "issuer_name", "doc_type", "doc_tier", "date", "isin", "url", "fuzzy_score",
             "score", "name_sim", "doc_type_score", "recency", "penalty",
-            "is_green", "green_confidence", "kept", "already_seen"
+            "isin_match", "lei_match", "is_green", "green_confidence",
+            "kept", "selection_reason", "register_source", "already_seen",
         ]
         try:
             write_header = not out_path.exists()
@@ -1251,62 +1838,59 @@ class ESMAScraper:
             self.logger.error(f"Failed to write audit rows: {e}")
 
     def search_and_process(self, company_name: str, company_data: Dict[str, Any] = None,
-                           min_score: float = 0.55) -> List[Dict[str, Any]]:
-        """End-to-end: navigate, search, set 100/page, score rows, download above threshold.
-
-        Args:
-            company_name: The company name to search for.
-            company_data: Optional dict from CompanyListHandler with identifiers
-                (lei, isin_equity, isins_bonds, etc.). When provided, the scraper
-                can do ISIN-based searches and use identifier matching.
-            min_score: Minimum multi-signal score to keep a result row.
-
-        Returns a list of downloaded file paths with metadata.
-        """
+                           min_score: float = 0.55, doc_policy: str = "strict") -> List[Dict[str, Any]]:
+        """Navigate, search by bond ISINs (+ optional LEI), select tier1 rows, download."""
         self.current_company = company_name
         profile = self._build_company_profile(company_name, company_data=company_data)
+        rows: List[Dict[str, Any]] = []
+        seen_urls: set = set()
 
-        # Choose a broad token for search (first token or alias)
-        search_token = profile.get("search_tokens", [company_name.split(" ")[0]])[0]
+        def _merge(new_rows: List[Dict]):
+            for r in new_rows:
+                url = r.get('url')
+                if url and url not in seen_urls:
+                    rows.append(r)
+                    seen_urls.add(url)
 
-        self.logger.info(f"Starting search_and_process for '{company_name}' using token '{search_token}'")
-        self.navigate_to_search()
-        ok = self.search_company(search_token)
-        if not ok:
-            self.logger.error(f"Search failed for {company_name}")
-            return []
+        bond_isins = []
+        if company_data:
+            bond_isins.extend(company_data.get('isins_bonds') or [])
+            bond_isins.extend(company_data.get('isins_bonds_subsidiaries') or [])
+        bond_isins = list(dict.fromkeys(i.strip() for i in bond_isins if i and len(i.strip()) >= 12))
+        bond_isins = bond_isins[:MAX_BOND_ISIN_SEARCHES]
 
-        # Ensure 100 rows per page once results present
-        time.sleep(4)
-        self.set_results_per_page(100)
-
-        # Process the current single page (name-based search)
-        rows = self.process_results(company_name)
-
-        # If we have a primary ISIN (equity), do a second search to catch
-        # documents that don't match by name but do match by identifier.
-        isin_eq = (company_data or {}).get('isin_equity', '') if company_data else ''
-        if isin_eq and len(isin_eq) >= 12:
-            self.logger.info(f"Running supplementary ISIN search: {isin_eq}")
+        for isin in bond_isins:
+            self.logger.info(f"ISIN-field search for bond: {isin}")
             self.navigate_to_search()
-            isin_ok = self.search_company(isin_eq)
-            if isin_ok:
+            if self.search_by_isin(isin):
                 time.sleep(4)
                 self.set_results_per_page(100)
-                isin_rows = self.process_results(company_name)
-                # Merge, avoiding duplicate URLs
-                seen_urls_in_rows = {r.get('url') for r in rows if r.get('url')}
-                for ir in isin_rows:
-                    if ir.get('url') and ir['url'] not in seen_urls_in_rows:
-                        rows.append(ir)
-                        seen_urls_in_rows.add(ir['url'])
-                self.logger.info(f"After ISIN merge: {len(rows)} total rows")
+                _merge(self.process_results(company_name))
+
+        lei_list = profile.get("lei_codes", [])
+        if lei_list and len(lei_list[0]) >= 20 and not rows:
+            lei = lei_list[0]
+            self.logger.info(f"LEI fallback search: {lei}")
+            self.navigate_to_search()
+            if self.search_company(lei, is_lei=True):
+                time.sleep(4)
+                self.set_results_per_page(100)
+                _merge(self.process_results(company_name))
+
+        if not rows:
+            search_token = profile.get("search_tokens", [company_name.split(" ")[0]])[0]
+            self.logger.info(f"Name fallback search: {search_token}")
+            self.navigate_to_search()
+            if self.search_company(search_token, is_lei=False):
+                time.sleep(4)
+                self.set_results_per_page(100)
+                _merge(self.process_results(company_name))
 
         scored_rows = []
         for r in rows:
             score, parts = self._compute_multi_signal_score(r, profile)
             g = self._classify_green(r)
-            kept = (score >= min_score)
+            tier = classify_doc_tier(r.get('doc_type_code'), r.get('doc_type'))
             r.update({
                 "score": round(score, 3),
                 "name_sim": parts["name_sim"],
@@ -1317,32 +1901,43 @@ class ESMAScraper:
                 "lei_match": parts.get("lei_match", 0.0),
                 "is_green": g["is_green"],
                 "green_confidence": g["confidence"],
-                "kept": kept,
+                "doc_tier": tier,
+                "kept": False,
             })
             scored_rows.append(r)
 
-        # Audit log
+        selected = select_esma_rows(scored_rows, policy=doc_policy, min_score=min_score)
+        selected_urls = {r.get('url') for r in selected}
+        for r in scored_rows:
+            r['kept'] = r.get('url') in selected_urls
+            if r.get('kept'):
+                r['selection_reason'] = next(
+                    (s.get('selection_reason') for s in selected if s.get('url') == r.get('url')),
+                    'selected',
+                )
+
         self._write_audit_rows(company_name, scored_rows)
 
-        # Download kept rows (skip already seen)
         downloads = []
-        for r in scored_rows:
-            if not r.get('kept'):
+        for r in selected:
+            url = resolve_download_url(r)
+            if not url or url in self.seen_urls:
                 continue
-            url = r.get('url')
-            if not url:
-                continue
-            if url in self.seen_urls:
-                self.logger.info(f"Skipping already-seen URL: {url}")
-                continue
+            doc_id = str(r.get("doc_id") or "").strip()
+            if not doc_id.isdigit():
+                doc_id = None
             path = self.download_document(
                 url=url,
-                doc_id=r.get('isin') or r.get('issuer_name'),
+                doc_id=doc_id,
                 doc_type_hint=r.get('doc_type'),
-                date_hint=r.get('date')
+                date_hint=r.get('date'),
             )
             if path:
                 self.seen_urls.add(url)
+                try:
+                    r['file_size_bytes'] = Path(path).stat().st_size
+                except OSError:
+                    pass
                 downloads.append({
                     "file_path": path,
                     "issuer_name": r.get('issuer_name'),
@@ -1352,10 +1947,17 @@ class ESMAScraper:
                     "score": r.get('score'),
                     "is_green": r.get('is_green'),
                     "isin_match": r.get('isin_match', 0.0),
+                    "doc_tier": r.get('doc_tier'),
+                    "selection_reason": r.get('selection_reason'),
+                    "register_source": r.get('register_source', 'securities'),
                 })
 
-        # Persist seen urls
         self._save_seen_urls()
+        if bond_isins and not selected:
+            self.logger.warning(
+                f"No tier1 document selected for {company_name} "
+                f"({len(bond_isins)} ISIN(s) searched) — status: no_tier1_on_esma"
+            )
         return downloads
 
 # Example usage (optional, for testing)

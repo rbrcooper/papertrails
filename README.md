@@ -1,93 +1,67 @@
 # Papertrails Data Pipeline
 
-Papertrails is a data processing pipeline designed to extract financial data from public documents for use by NGOs, think tanks, and journalists. It currently focuses on extracting bond underwriting data from ESMA (European Securities and Markets Authority) prospectus documents. Future plans include incorporating equity data from US 13F filings.
+Extract bond underwriting data from ESMA prospectus PDFs for companies in the **Urgewald GOGEL 2025** dataset. Hybrid extraction: local LLM (Ollama) for banks, regex for dates/currency/coupon.
 
-The core of this project is a hybrid data extraction system that uses a local LLM (via Ollama) for intelligent, context-aware data extraction, combined with traditional regex-based methods for reliability and speed.
+## Status (May 2026)
 
-## Current Status: In Development 🏗️
+| Area | Status |
+|------|--------|
+| Bounded validation (L0–L4 on 3 benchmark ISINs) | ✅ `ship: true` — see [docs/VALIDATION_AND_QUALITY.md](docs/VALIDATION_AND_QUALITY.md) |
+| Metadata extraction (regex) | ✅ Strong on FTWS final terms |
+| Bank extraction (AI) | ⚠️ Good on benchmark FTWS; layout-dependent |
+| ESMA scraper (benchmark audit) | ✅ 3/3 select + download |
+| Bulk `data/downloads/` quality | ❌ ~5/277 usable without triage gate |
+| Full GOGEL production pass | 🔲 Not ready |
 
-The project has a functional core pipeline but is undergoing development to become a fully automated, production-ready system.
+**Reality check:** extraction on known-good PDFs works; **finding and keeping the right PDF at scale** is the main gap.
 
--   **Extraction Engine:** ✅ (AI + Regex Hybrid)
--   **Web Scraper:** ✅ (Hardened against bot detection)
--   **Pipeline Orchestrator:** ✅ (Dynamically processes a list of companies)
--   **Validation & Error Handling:** 🚧 (Under development)
--   **Website/API:** ấp (Planned)
+Full documentation: **[docs/README.md](docs/README.md)**
 
-## Core Features
+## Prerequisites
 
--   **Hybrid Data Extraction:** Combines AI (Llama 3.1 8B) for high-accuracy bank name extraction with regex for structured metadata like dates and currencies.
--   **Intelligent Chunking:** A custom AI strategy that finds relevant sections in large PDFs before sending them to the LLM, overcoming context window limitations.
--   **Dynamic Pipeline:** The main orchestrator can process a list of companies, running the scraper and extractor for each one.
--   **Robust Web Scraping:** Uses `undetected-chromedriver` and hardened techniques to reliably download documents from the ESMA portal.
--   **Modular Architecture:** The system is broken down into distinct, maintainable components for scraping, extraction, database handling, and more.
-
-## Getting Started
-
-### Prerequisites
-
-1.  **Ollama:** You must have [Ollama](https://ollama.ai/) installed and running.
-2.  **Llama 3.1 8B Model:** Pull the required model:
-    ```bash
-    ollama pull llama3.1:8b
-    ```
-3.  **Python 3.8+:** Ensure you have a compatible Python version.
-
-### Installation
-
-1.  Clone the repository:
-    ```bash
-    git clone <your-repo-url>
-    cd <your-repo-name>
-    ```
-2.  Install the required Python packages:
-    ```bash
-    pip install -r docs/requirements.txt
-    ```
-
-### Running the Pipeline
-
-The pipeline uses the **Urgewald GOGEL 2025** dataset by default to identify companies and their financial identifiers (LEI, ISINs). These identifiers are used to achieve near-perfect (~95%+) confidence in document matching, bypassing the limitations of fuzzy name matching.
-
-To run the full pipeline for all companies in the GOGEL list:
+1. [Ollama](https://ollama.ai/) with `llama3.1:8b`
+2. Python 3.8+
+3. Chrome (for scraping)
 
 ```bash
-python -m processes.main
+pip install -r docs/requirements.txt
+ollama pull llama3.1:8b
 ```
 
-To filter by region (e.g., EU-only or specific countries):
+Place the GOGEL CSV at:
 
-```bash
-# EU-only (using internal country list)
-python -m processes.main --region-filter eu
+`data/raw/Urgewald GOGEL 2025 V1.2 with identifiers.csv`
 
-# Specific countries
-python -m processes.main --region-filter "France, Germany, Italy"
-```
-
-To skip scraping and only process already downloaded PDFs:
-
-```bash
-python -m processes.main --skip-scraping
-```
-
-To limit the number of companies for a quick test:
+## Run
 
 ```bash
 python -m processes.main --limit-companies 5
+python -m processes.main --region-filter eu
+python -m processes.main --skip-scraping
 ```
 
-## Project Structure
+`HEADLESS=true` enables headless Chrome.
 
--   `processes/`: The core application logic.
-    -   `main.py`: The main pipeline orchestrator.
-    -   `esma_scraper.py`: The web scraper for the ESMA portal.
-    -   `pdf_extractor.py`: The hybrid AI/regex data extraction engine.
-    -   `database_handler.py`: Manages the SQLite database.
-    -   `pdf_extraction/`: Contains the individual extractor modules.
-    -   `pipeline_components/`: Modules for validation, aggregation, and reporting.
--   `docs/`: Project documentation.
--   `data/`: Data files, including downloaded PDFs and processed output.
--   `logs/`: Application logs.
+## Validation & QA
 
-For more detailed information about the system's design, see `docs/ARCHITECTURE.md`. 
+```bash
+# Bounded benchmark suite (L0 → L1 → L2 → L3 → L4)
+py -3 scripts/run_validation_suite.py
+
+# Legacy single-shot extraction diagnose
+python scripts/diagnose_extraction.py
+
+# Triage existing downloads (no ESMA, no Ollama)
+py -3 scripts/triage_downloaded_pdfs.py --n 10 --seed 1
+```
+
+Ground truth: `tests/ground_truth.json`. See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) and [docs/VALIDATION_AND_QUALITY.md](docs/VALIDATION_AND_QUALITY.md).
+
+## Layout
+
+- `processes/` — `main.py`, scraper, extractors, database, pipeline components
+- `scripts/` — validation suite, triage, diagnostics
+- `tests/` — ground truth
+- `processes/tests/` — unit tests (`core/`) and debug tools (`debug/`)
+- `data/` — GOGEL CSV, downloads, processed output (local, gitignored)
+- `docs/` — architecture, validation, benchmarks, roadmap, operations

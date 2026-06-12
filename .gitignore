@@ -46,6 +46,9 @@ results/
 *.xlsx
 *.xls
 
+# Test cache
+.pytest_cache/
+
 # Other
 .DS_Store
 Thumbs.db 

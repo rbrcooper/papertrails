@@ -1,10 +1,222 @@
 import re
 from datetime import datetime
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+PROGRAMME_REJECT_CODES = frozenset({"BPWO", "BPFT", "SECN", "REGN", "URGN", "SMRY"})
+TIER1_DOC_CODES = frozenset({"FTWS", "STDA", "SUPP"})
+DOC_CODE_PRIORITY = {"FTWS": 0, "SUPP": 1, "STDA": 2}
+
+UNDERWRITER_ROLE_KEYWORDS = (
+    "bookrunner", "book runner", "lead manager", "joint lead", "active bookrunner",
+    "global coordinator", "coordinator", "manager", "underwriter", "arranger",
+    "dealer",
+)
+NON_UNDERWRITER_ROLE_KEYWORDS = (
+    "fiscal agent", "paying agent", "clearing system", "clearing", "registrar",
+    "calculation agent", "any leading bank",
+)
+BANK_NAME_BLOCKLIST = frozenset({
+    "fiscal agent", "paying agent", "clearing system", "clearing", "registrar",
+    "calculation agent", "any leading bank", "the managers", "the manager",
+})
+NON_BANK_ENTITY_SUBSTRINGS = (
+    "national oil",
+    "beteiligungs",
+    "republic of",
+    "government of",
+)
+
+
+def doc_code_rank(doc_type_code: Optional[str] = None, doc_type_descr: Optional[str] = None) -> int:
+    """Lower is better: FTWS (0) > SUPP (1) > STDA (2) > unknown (99)."""
+    code = _parse_doc_type_code(doc_type_code, doc_type_descr)
+    return DOC_CODE_PRIORITY.get(code, 99)
+
+
+def parse_row_date(row: Dict[str, Any]) -> Optional[datetime]:
+    date_text = (row.get("date") or "").strip()
+    if not date_text:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d.%m.%Y", "%d/%m/%y"):
+        try:
+            return datetime.strptime(date_text[:10], fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_doc_type_code(doc_type_code: Optional[str], doc_type_descr: Optional[str]) -> str:
+    code = (doc_type_code or "").strip().upper()
+    if code and len(code) <= 6 and code.isalnum():
+        return code
+    descr = (doc_type_descr or doc_type_code or "").upper()
+    for known in PROGRAMME_REJECT_CODES | TIER1_DOC_CODES:
+        if known in descr.split():
+            return known
+    m = re.search(r"\b([A-Z]{4})\b", descr)
+    return m.group(1) if m else ""
+
+
+def classify_doc_tier(doc_type_code: Optional[str] = None, doc_type_descr: Optional[str] = None) -> str:
+    code = _parse_doc_type_code(doc_type_code, doc_type_descr)
+    descr_l = (doc_type_descr or doc_type_code or "").lower()
+
+    if code in PROGRAMME_REJECT_CODES:
+        return "reject"
+    if "base prospectus" in descr_l:
+        if "without final" in descr_l or code == "BPWO":
+            return "reject"
+        if code == "BPFT":
+            return "reject"
+    if "securities note" in descr_l and code != "FTWS":
+        return "reject"
+    if "registration document" in descr_l or "universal registration" in descr_l:
+        return "reject"
+    if code in TIER1_DOC_CODES:
+        return "tier1"
+    if any(k in descr_l for k in ("final term", "pricing supplement", "supplemental final")):
+        return "tier1"
+    if "base prospectus" in descr_l:
+        return "tier2"
+    return "reject"
+
+
+def is_underwriter_role(role: str) -> bool:
+    if not role:
+        return False
+    rl = role.lower()
+    if any(k in rl for k in NON_UNDERWRITER_ROLE_KEYWORDS):
+        return False
+    return any(k in rl for k in UNDERWRITER_ROLE_KEYWORDS)
+
+
+def filter_underwriter_banks(banks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out = []
+    for b in banks:
+        if not isinstance(b, dict):
+            continue
+        raw = (b.get("raw_name") or "").strip()
+        raw_l = raw.lower()
+        if not raw or raw_l in BANK_NAME_BLOCKLIST:
+            continue
+        if any(s in raw_l for s in NON_BANK_ENTITY_SUBSTRINGS):
+            continue
+        if len(raw) < 4:
+            continue
+        role = b.get("role") or "Unknown"
+        if role != "Unknown" and not is_underwriter_role(role):
+            continue
+        out.append(b)
+    return out
+
+
+def compute_allocated_amount(issue_size: Optional[float], banks: List[Dict[str, Any]]) -> Tuple[Optional[float], int]:
+    underwriters = filter_underwriter_banks(banks)
+    if not underwriters:
+        underwriters = [b for b in banks if isinstance(b, dict) and b.get("raw_name")]
+    n = len(underwriters)
+    if not issue_size or n == 0:
+        return None, n
+    try:
+        size = float(issue_size)
+    except (TypeError, ValueError):
+        return None, n
+    if size <= 0:
+        return None, n
+    return round(size / n, 2), n
+
+
+def select_esma_rows(
+    rows: List[Dict[str, Any]],
+    policy: str = "strict",
+    min_score: float = 0.55,
+) -> List[Dict[str, Any]]:
+    candidates: List[Dict[str, Any]] = []
+    for r in rows:
+        tier = classify_doc_tier(r.get("doc_type_code"), r.get("doc_type"))
+        r = {**r, "doc_tier": tier}
+        if tier == "reject":
+            continue
+        if tier == "tier2" and policy == "strict":
+            continue
+        score = float(r.get("score") or 0)
+        isin_match = float(r.get("isin_match") or 0) > 0
+        if tier == "tier1" and (isin_match or score >= min_score):
+            candidates.append(r)
+        elif tier == "tier2" and policy == "balanced" and score >= min_score:
+            candidates.append(r)
+
+    by_isin: Dict[str, List[Dict[str, Any]]] = {}
+    no_isin: List[Dict[str, Any]] = []
+    for r in candidates:
+        isin = (r.get("isin") or "").strip()
+        if isin and len(isin) >= 12:
+            by_isin.setdefault(isin, []).append(r)
+        else:
+            no_isin.append(r)
+
+    selected: List[Dict[str, Any]] = []
+
+    def _pick_best(group: List[Dict[str, Any]]) -> Dict[str, Any]:
+        def sort_key(x):
+            tier_rank = 0 if x.get("doc_tier") == "tier1" else 1
+            code_rank = doc_code_rank(x.get("doc_type_code"), x.get("doc_type"))
+            dt = parse_row_date(x)
+            date_ord = dt.timestamp() if dt else 0.0
+            return (tier_rank, code_rank, -date_ord, -float(x.get("score") or 0))
+
+        group.sort(key=sort_key)
+        best = group[0]
+        best["selection_reason"] = "tier1_best_code_date" if len(group) > 1 else "tier1_only_candidate"
+        return best
+
+    for group in by_isin.values():
+        selected.append(_pick_best(group))
+
+    if no_isin:
+        seen_urls = set()
+        def _no_isin_key(x):
+            dt = parse_row_date(x)
+            date_ord = dt.timestamp() if dt else 0.0
+            return (
+                doc_code_rank(x.get("doc_type_code"), x.get("doc_type")),
+                -date_ord,
+                -float(x.get("score") or 0),
+            )
+
+        for r in sorted(no_isin, key=_no_isin_key):
+            url = r.get("url")
+            if url and url in seen_urls:
+                continue
+            if url:
+                seen_urls.add(url)
+            r["selection_reason"] = "tier1_no_isin_on_row"
+            selected.append(r)
+            break
+
+    return selected
+
+
+def compute_completeness_gates(stats: Dict[str, Any]) -> Dict[str, Any]:
+    def rate(num, den):
+        return round(num / den, 4) if den else 0.0
+
+    g1 = rate(stats.get("isins_with_tier1", 0), stats.get("isins_in_scope", 0))
+    g2 = rate(stats.get("tier1_valid_underwriter_set", 0), stats.get("tier1_downloaded", 0))
+    g3 = rate(stats.get("allocated_rows", 0), stats.get("eligible_for_allocation", 0))
+    g4_pass = stats.get("benchmark_exact_matches", 0) >= 2 and not stats.get("benchmark_role_hallucinations", False)
+
+    gates = {
+        "G1_tier1_coverage": {"value": g1, "target": 0.70, "pass": g1 >= 0.70},
+        "G2_bank_set_validity": {"value": g2, "target": 0.80, "pass": g2 >= 0.80},
+        "G3_amount_emit_rate": {"value": g3, "target": 0.95, "pass": g3 >= 0.95},
+        "G4_benchmark_quality": {"value": stats.get("benchmark_exact_matches", 0), "target": 2, "pass": g4_pass},
+    }
+    return {"gates": gates, "ship": all(g["pass"] for g in gates.values()), "stats": stats}
 
 class ExtractionValidator:
     """
@@ -154,7 +366,7 @@ class ExtractionValidator:
         
         return True, "PASS: AI extraction was used and successfully found banks."
 
-    def quick_first_page_checks(self, pdf_path: str, expected_company: str) -> Dict[str, Any]:
+    def quick_first_page_checks(self, pdf_path: str, expected_company: str, **kwargs) -> Dict[str, Any]:
         """
         Quick validation check on first 1-2 pages before full extraction.
         Checks for issuer/guarantor match and ISIN presence.
@@ -162,6 +374,7 @@ class ExtractionValidator:
         Args:
             pdf_path: Path to the PDF file
             expected_company: Expected company name
+            **kwargs: Flexible arguments (like expected_isins)
             
         Returns:
             Dictionary with validation results and reasons
@@ -195,37 +408,35 @@ class ExtractionValidator:
                 any(alias.lower() in text_lower for alias in expected_company.split())
             )
             
-            # Strict Language/Type Check:
-            english_keywords = ['notes', 'bonds', 'prospectus', 'maturity', 'interest']
-            english_keyword_count = sum(1 for kw in english_keywords if kw in text_lower)
-            
-            it_keywords = ['certificati', 'obbligazioni', 'italiana']
-            it_keyword_count = sum(1 for kw in it_keywords if kw in text_lower)
-            
-            likely_english = english_keyword_count >= 2
-            likely_italian = it_keyword_count >= 2
-
-            if not likely_english or likely_italian:
-                reasons = [f"Document language mismatch (Eng: {english_keyword_count}, IT: {it_keyword_count})"]
-                return {'pass': False, 'reason': '; '.join(reasons)}
-
             # Check for ISIN pattern (2 letters + 9 digits + 1 check digit)
             isin_pattern = re.compile(r'\b[A-Z]{2}[0-9A-Z]{9}[0-9]\b')
             isin_match = isin_pattern.search(first_pages_text.upper())
             isin_present = isin_match is not None
             
+            # Language/Type Check:
+            # European bond documents are often English-first but might have Italian/other keywords
+            # We want to ensure it's at least mostly English/Financial.
+            english_keywords = [
+                'notes', 'bonds', 'prospectus', 'maturity', 'interest',
+                'underwriter', 'manager', 'coupon', 'redemption', 'issuer',
+                'final terms', 'pricing supplement'
+            ]
+            english_keyword_count = sum(1 for kw in english_keywords if kw in text_lower)
+            
+            # Lowered threshold to 1 for quick check, 2-3 preferred
+            likely_english = english_keyword_count >= 1
+            
+            it_keywords = ['certificati', 'obbligazioni', 'italiana']
+            it_keyword_count = sum(1 for kw in it_keywords if kw in text_lower)
+            # Only flag as non-English if it's HEAVILY Italian and lacks English keywords
+            # (Relaxed this to avoid false positives for EU cross-listings)
+            language_mismatch = it_keyword_count > english_keyword_count and it_keyword_count >= 2
+
             # Check for guarantor mention (common keywords)
             guarantor_keywords = ['guarantor', 'guarantee', 'guaranteed by', 'guaranteed']
             guarantor_mentioned = any(keyword in text_lower for keyword in guarantor_keywords)
             
-            # 1. Language check: ensure document is in English
-            english_keywords = ['notes', 'bonds', 'prospectus', 'maturity', 'interest',
-                                'underwriter', 'manager', 'coupon', 'redemption', 'issuer']
-            english_keyword_count = sum(1 for kw in english_keywords if kw in text_lower)
-            likely_english = english_keyword_count >= 3
-            
-            # 2. ISIN cross-check (if expected ISINs provided)
-            # expected_isins can be passed in via kwargs in the future or via result object
+            # ISIN cross-check (if expected ISINs provided)
             expected_isins = kwargs.get('expected_isins', [])
             isin_mismatch = False
             if expected_isins and isin_present:
@@ -241,14 +452,23 @@ class ExtractionValidator:
             if not isin_present:
                 reasons.append("No ISIN pattern found")
             if not likely_english:
-                reasons.append(f"Document may not be in English (only {english_keyword_count}/10 financial keywords found)")
+                reasons.append(f"Document may not be financial/English (found {english_keyword_count} keywords)")
+            if language_mismatch:
+                reasons.append(f"Italian language mismatch (IT: {it_keyword_count}, Eng: {english_keyword_count})")
             if isin_mismatch:
                 reasons.append(f"No ISIN overlap found with expected company ISINs")
                 
-            # Determine overall pass
-            # Pass if it's likely English AND (issuer matches OR (ISIN present AND overlap confirmed if available))
-            pass_check = likely_english and (issuer_match or (isin_present and not isin_mismatch))
-            
+            max_pdf_chars = kwargs.get('max_pdf_chars', 80000)
+            pdf_path_obj = Path(pdf_path)
+            section_only = False
+            if pdf_path_obj.exists():
+                if pdf_path_obj.stat().st_size > 1_000_000:
+                    section_only = True
+                elif len(first_pages_text) * 20 > max_pdf_chars:
+                    section_only = True
+
+            pass_check = likely_english and not language_mismatch and (issuer_match or (isin_present and not isin_mismatch))
+
             return {
                 'pass': pass_check,
                 'reason': '; '.join(reasons) if reasons else 'Basic checks passed',
@@ -257,7 +477,8 @@ class ExtractionValidator:
                 'guarantor_mentioned': guarantor_mentioned,
                 'likely_english': likely_english,
                 'isin_mismatch': isin_mismatch,
-                'text_sample': first_pages_text[:500]  # Sample for debugging
+                'section_only': section_only,
+                'text_sample': first_pages_text[:500],
             }
             
         except Exception as e:

@@ -1,64 +1,103 @@
-# System Architecture
+# System architecture
 
-This document provides a detailed overview of the Papertrails data pipeline's architecture, components, and data flow.
+## Pipeline orchestration
 
-## Pipeline Orchestration
+`processes/main.py` coordinates:
 
-The entire process is orchestrated by `processes/main.py`. It is responsible for coordinating the various components of the system in a sequential and robust manner.
+1. **Load companies** — `CompanyListHandler` reads the Urgewald GOGEL 2025 CSV (default path in `--companies-file`), applies `--region-filter` (`all`, `eu`, or comma-separated countries), tracks processed companies.
+2. **Scrape** (optional) — `ESMAScraper` per company unless `--skip-scraping`.
+3. **Extract** — `PDFExtractor` on each PDF under `data/downloads/<Company>/` (production still globs all PDFs; validation uses explicit paths only).
+4. **Validate** — `ExtractionValidator` adds confidence and checks.
+5. **Store** — `DatabaseHandler` → SQLite.
+6. **Report** — `DataAggregator` / `OutputGenerator` → `data/processed/master_detailed_report.xlsx`.
 
-### High-Level Workflow
+CLI flags: `--limit-companies`, `--skip-scraping`, `--max-workers`, `--region-filter`, `--output-dir`.
 
-1.  **Load Companies:** The pipeline starts by loading a list of companies to process using the `CompanyListHandler`. This handler also tracks which companies have already been processed to allow the pipeline to be stopped and resumed.
-2.  **Scrape Documents (Optional):** For each company, the `ESMAScraper` is invoked to search for and download relevant prospectus documents from the ESMA portal. This step can be skipped using the `--skip-scraping` command-line flag.
-3.  **Process PDFs:** All downloaded PDFs for a company are passed to the `PDFExtractor`.
-4.  **Extract Data:** The extractor processes each PDF, using its hybrid AI/regex engine to extract bank names and other metadata.
-5.  **Store Results:** The extracted data from each PDF is stored in a structured format in an SQLite database via the `DatabaseHandler`.
-6.  **Aggregate and Report:** After all companies are processed, the `DataAggregator` and `OutputGenerator` create a final, consolidated Excel report of all extracted data.
+## Company identification (GOGEL + ESMA scoring)
 
-## AI-Enhanced Extraction Engine
+Primary company data comes from **GOGEL 2025 CSV** (LEI, equity ISIN, bond ISINs, subsidiaries). `ESMAScraper._build_company_profile()` merges optional `data/company_profiles.json` aliases on top.
 
-The core innovation of this pipeline is the hybrid extraction model, which aims to maximize both accuracy and reliability.
+Row scoring (`_compute_multi_signal_score`) uses:
 
-### Components
+- **ISIN exact match** — dominant signal (≈0.95 weight when hit).
+- **LEI match** — same tier as ISIN when present in row metadata.
+- Fuzzy issuer name, document type, recency, penalties for noise.
 
--   **`PDFExtractor`:** The main entry point for extraction. It receives a PDF path and coordinates the various specialized extractors.
--   **`AIBankExtractor`:** The primary extractor for bank names. It uses a local LLM (Llama 3.1 8B) via Ollama.
--   **Regex Extractors:** A collection of specialized extractors (`DateExtractor`, `CurrencyExtractor`, etc.) that use regular expressions to find well-structured data.
--   **`BankExtractor` (Regex Fallback):** If the `AIBankExtractor` is unavailable or fails, the system falls back to a regex-based bank extractor for basic coverage.
+Fuzzy name matching alone is insufficient; GOGEL identifiers are the main precision lever for scraper selection.
 
-### AI "Smart Chunking" Strategy
+## Extraction engine
 
-To overcome the context-window limitations of local LLMs and to improve accuracy, the `AIBankExtractor` employs a "smart chunking" strategy before sending data to the model:
+### Metadata (regex)
 
-1.  **Keyword Search:** The entire document text is scanned for a list of keywords related to financial underwriters (e.g., "manager", "arranger", "bookrunner", "syndicate").
-2.  **Contextual Chunking:** Instead of sending the whole document, only the text surrounding these keywords (a "chunk" of ~1500 characters) is selected. This provides the LLM with the most relevant context.
-3.  **Fallback Chunks:** If no keywords are found, the extractor falls back to analyzing the beginning and middle sections of the document.
-4.  **Targeted Prompting:** Each chunk is sent to the LLM with a carefully crafted prompt, instructing it to identify and return a JSON array of bank names.
-5.  **Result Aggregation:** Bank names extracted from all chunks are collected and deduplicated to form the final list.
+`DateExtractor`, `CurrencyExtractor`, `CouponExtractor` — reliable on benchmark final-terms PDFs (see [BENCHMARKS.md](BENCHMARKS.md)).
 
-This targeted approach is more efficient and accurate than naive, full-document analysis.
+### Banks (AI + fallback)
 
-## Core Modules
+- **`AIBankExtractor`** — Ollama `llama3.1:8b` (configurable), primary path.
+- **`BankExtractor`** — regex fallback if AI unavailable.
 
--   **`processes/main.py`**: Pipeline orchestrator.
--   **`processes/esma_scraper.py`**: Handles all web scraping tasks. It is hardened with retry logic, session management, and anti-detection measures.
--   **`processes/pdf_extractor.py`**: Manages the data extraction process, orchestrating the AI and regex extractors.
--   **`processes/database_handler.py`**: Provides an interface for all database operations, abstracting the SQLite implementation.
--   **`processes/company_list_handler.py`**: Manages the list of companies and tracks the pipeline's progress.
--   **`processes/pdf_extraction/`**: Sub-package containing the core text extraction engine (`core.py`) and all specialized extractor classes.
--   **`processes/pipeline_components/`**: Contains modules for post-extraction tasks like validation, data aggregation, and final report generation.
+### Smart chunking (and limitations)
 
-## Data Flow Diagram
+1. Scan text for role keywords (manager, arranger, bookrunner, syndicate, agent, …).
+2. Send ~1500-char windows around hits to the LLM.
+3. Union and dedupe results across chunks.
+
+**Caveats (observed in production debugging):**
+
+- Very large PDFs (e.g. 165k+ chars) often never hit the syndicate table; chunks pick fiscal/clearing boilerplate.
+- Unioning all chunks lets **agent/manager** sections add false banks (e.g. Natixis, Citibank) even when the **syndicate** chunk is correct.
+- LLM sometimes returns **role labels** as bank names.
+
+Planned improvements: syndicate-first weighting, post-filters, section truncation — [ROADMAP.md](ROADMAP.md).
+
+## Core modules
+
+| Module | Role |
+|--------|------|
+| `processes/main.py` | Orchestrator |
+| `processes/esma_scraper.py` | ESMA portal Selenium scraper |
+| `processes/pdf_extractor.py` | Extraction coordinator |
+| `processes/pdf_extraction/` | Extractors + text core |
+| `processes/database_handler.py` | SQLite + bank normalization |
+| `processes/company_list_handler.py` | GOGEL load + progress tracking |
+| `processes/pipeline_components/` | Validation, aggregation, Excel output |
+
+## Quality assurance
+
+### Bounded validation (L0–L4)
+
+| Layer | Script | What it proves |
+|-------|--------|----------------|
+| L0 | `pytest processes/tests/core/test_doc_selection.py` | Doc tier classification |
+| L1 | `scripts/run_validation_l1.py` | Extraction vs `tests/ground_truth.json` |
+| L2 | `processes/tests/debug/audit_benchmark_isins.py` | ESMA select + download for 3 ISINs |
+| L3 | `scripts/run_validation_l3_benchmarks.py` | DB + `allocated_amount` on tier1 PDFs |
+| L4 | `scripts/run_validation_l4_benchmarks.py` | `process_company_pdfs` + completeness gates |
+
+Orchestrator: `scripts/run_validation_suite.py`. Details: [VALIDATION_AND_QUALITY.md](VALIDATION_AND_QUALITY.md).
+
+### Download quality triage
+
+`scripts/triage_downloaded_pdfs.py` scores existing PDFs (no Ollama): dealer-table banks, XS ISIN, first-page checks. Full-pool scan (May 2026): **5/277** `good_tier1_candidate`. Production should add a post-download gate before extraction.
+
+### Other QA
+
+- **Ground truth:** `tests/ground_truth.json`
+- **Legacy diagnose:** `scripts/diagnose_extraction.py`
+- **Smoke test:** `processes/tests/debug/test_csv_ingestion.py`
+
+## Data flow
 
 ```
-[Company List] -> [main.py] -> [ESMAScraper] -> [PDFs on Disk]
-                                     |
-                                     v
-[PDFs on Disk] -> [main.py] -> [PDFExtractor] -> [Extracted Data]
-                                     |
-                                     v
-[Extracted Data] -> [main.py] -> [DatabaseHandler] -> [SQLite DB]
-                                     |
-                                     v
-[SQLite DB] -> [main.py] -> [DataAggregator] -> [OutputGenerator] -> [Excel Report]
-``` 
+GOGEL CSV → CompanyListHandler → main.py → ESMAScraper → data/downloads/*.pdf
+                                                      ↓
+                                            PDFExtractor → validators
+                                                      ↓
+                                            DatabaseHandler → SQLite
+                                                      ↓
+                                            OutputGenerator → Excel
+```
+
+## Out of scope
+
+ESMA regulatory datasets (MiFID, FIRDS bulk feeds, etc.) do not provide prospectus PDFs or bookrunner relationships. This pipeline does not use `esma_data_py` for core extraction.

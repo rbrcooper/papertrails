@@ -11,6 +11,10 @@ import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import re
+from .pipeline_components.validators import (
+    filter_underwriter_banks,
+    compute_allocated_amount,
+)
 
 class DatabaseHandler:
     def __init__(self, db_path: str = "data/bond_data.db"):
@@ -32,6 +36,8 @@ class DatabaseHandler:
             'bookrunner': 'Bookrunner',
             'book runner': 'Bookrunner',
             'book-runner': 'Bookrunner',
+            'active bookrunner': 'Bookrunner',
+            'global coordinator': 'Bookrunner',
             'co-manager': 'Co-Manager',
             'co manager': 'Co-Manager',
             'dealer': 'Dealer',
@@ -165,7 +171,16 @@ class DatabaseHandler:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_documents_company ON documents(company_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_bonds_document ON bonds(document_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_bonds_isin ON bonds(isin)')
-            
+
+            for col_sql in (
+                "ALTER TABLE bond_banks ADD COLUMN allocated_amount REAL",
+                "ALTER TABLE bonds ADD COLUMN completeness_status TEXT",
+            ):
+                try:
+                    cursor.execute(col_sql)
+                except sqlite3.OperationalError:
+                    pass
+
             conn.commit()
             
     def store_extraction_result(self, company_name: str, result: Dict):
@@ -221,9 +236,27 @@ class DatabaseHandler:
                     )
                 )
                 bond_id = cursor.lastrowid
-                
-                # Insert banks and relationships
-                for bank_entry in result.get('extracted_banks', []):
+
+                raw_banks = result.get('extracted_banks', [])
+                underwriters = filter_underwriter_banks(raw_banks)
+                if not underwriters:
+                    underwriters = raw_banks
+                per_bank_amount, n_underwriters = compute_allocated_amount(
+                    metadata.get('issue_size'), raw_banks
+                )
+                completeness_status = result.get('completeness_status', 'allocated_ok')
+                if not underwriters:
+                    completeness_status = 'underwriter_set_incomplete'
+                elif not per_bank_amount:
+                    completeness_status = 'amount_not_emitted'
+
+                cursor.execute(
+                    "UPDATE bonds SET completeness_status = ? WHERE id = ?",
+                    (completeness_status, bond_id),
+                )
+
+                banks_to_store = underwriters if underwriters else raw_banks
+                for bank_entry in banks_to_store:
                     # Handle both simple strings and dictionary entries for banks
                     if isinstance(bank_entry, dict):
                         bank_name = bank_entry.get('raw_name')
@@ -304,8 +337,10 @@ class DatabaseHandler:
                         continue
                     
                     cursor.execute(
-                        "INSERT OR IGNORE INTO bond_banks (bond_id, bank_id, role, confidence) VALUES (?, ?, ?, ?)",
-                        (bond_id, bank_id, role, confidence)
+                        """INSERT OR IGNORE INTO bond_banks
+                        (bond_id, bank_id, role, confidence, allocated_amount)
+                        VALUES (?, ?, ?, ?, ?)""",
+                        (bond_id, bank_id, role, confidence, per_bank_amount),
                     )
                 
                 conn.commit()
@@ -442,25 +477,39 @@ class DatabaseHandler:
                     
                     # Fetch banks for this bond
                     cursor.execute("""
-                        SELECT bk.standard_name, bk.name as raw_name, bb.role, bb.confidence
+                        SELECT bk.standard_name, bk.name as raw_name, bb.role, bb.confidence,
+                               bb.allocated_amount
                         FROM bond_banks bb
                         JOIN banks bk ON bb.bank_id = bk.id
                         WHERE bb.bond_id = ?
                     """, (bond_dict['bond_id'],))
-                    
+
+                    bank_rows = cursor.fetchall()
                     banks_data = []
-                    for bank_row in cursor.fetchall():
+                    for bank_row in bank_rows:
+                        alloc = bank_row['allocated_amount']
                         banks_data.append({
                             'standardized_name': bank_row['standard_name'] if bank_row['standard_name'] else bank_row['raw_name'],
                             'role': bank_row['role'],
-                            'confidence': bank_row['confidence']
+                            'confidence': bank_row['confidence'],
+                            'allocated_amount': alloc,
                         })
+
+                    per_bank_amount, _ = compute_allocated_amount(
+                        bond_dict['issue_size'],
+                        [{'raw_name': b['standardized_name'], 'role': b['role']} for b in banks_data],
+                    )
+                    if per_bank_amount and banks_data:
+                        for b in banks_data:
+                            if b['allocated_amount'] is None:
+                                b['allocated_amount'] = per_bank_amount
 
                     result_item = {
                         'company_name': bond_dict['company_name'],
                         'currency_info': {
                             'currency': bond_dict['currency'],
-                            'amount': bond_dict['issue_size']
+                            'amount': bond_dict['issue_size'],
+                            'allocated_amount_per_bank': per_bank_amount,
                         },
                         'banks': banks_data, # List of dicts with 'standardized_name'
                         'issue_date': bond_dict['issue_date'],
