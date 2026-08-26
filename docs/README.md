@@ -1,35 +1,33 @@
 # Papertrails — Documentation
 
-Pipeline to scrape ESMA prospectus PDFs for GOGEL-listed companies and extract bond metadata (dates, currency, coupon) and underwriting banks.
+**Product:** [PRODUCT.md](PRODUCT.md) (alert feed). Package: `papertrails/`.
 
-## Current status (May 2026)
+Library: scrape ESMA prospectus PDFs and extract bond metadata + underwriting banks. Bulk GOGEL walk via `processes.main` is **legacy**.
+
+## Current status (Aug 2026)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Bounded validation L0–L4 | ✅ Passing | 3 benchmark ISINs (OMV, AKER, Total) — `py -3 scripts/run_validation_suite.py` |
-| GOGEL company load + LEI/ISIN scoring | ✅ Working | Default: `data/raw/Urgewald GOGEL 2025 V1.2 with identifiers.csv` |
-| ESMA scraper (audit path) | ✅ 3/3 | Live scrape + session download for benchmarks |
-| ESMA scraper (bulk downloads) | ⚠️ Poor yield | Triage: **5/277** PDFs good tier1 candidates in existing folder |
-| Metadata extraction (regex) | ✅ Strong | Matches ground truth on benchmark FTWS PDFs |
-| Bank extraction (AI + chunking) | ⚠️ Mixed | Dealer-table regex + AI; layout-dependent — see [BENCHMARKS.md](BENCHMARKS.md) |
-| Validation / DB / Excel output | ✅ Baseline | `ExtractionValidator`, SQLite, `master_detailed_report.xlsx` |
-| API / frontend | 🔲 Skeleton | `website/app.py` |
-
-**End-to-end production readiness:** benchmark path ~75%; bulk download → extract path ~40%. See [VALIDATION_AND_QUALITY.md](VALIDATION_AND_QUALITY.md).
+| Alert feed product | 🚧 | `papertrails/` watchlist + auto-publish |
+| Bounded validation L0–L4 | ✅ Passing | 3 benchmark ISINs — `py -3 scripts/run_validation_suite.py` |
+| GOGEL + LEI/ISIN | ✅ | Default GOGEL 2025 CSV with identifiers |
+| ESMA scraper (audit path) | ✅ 3/3 | Solr `downloadFile` + session cookies |
+| ESMA yield (random GOGEL) | ⚠️ | Aug pilot: intake OK, often `no_tier1` |
+| Bulk `data/downloads/` | ❌ legacy junk | ~5/277 usable; do not glob |
+| Website | ✅ deals page | `website/app.py` ← `website/data/deals.json` |
 
 ## Quick start
 
 ```bash
 pip install -r docs/requirements.txt
 ollama pull llama3.1:8b
-ollama serve   # separate terminal
 
-python -m processes.main --limit-companies 3
-python -m processes.main --region-filter eu
-python -m processes.main --skip-scraping
+py -3 -m papertrails.build_watchlist --top 5
+py -3 -m papertrails.run_alerts --phase0
+py -3 -m papertrails.run_alerts
 ```
 
-Environment: `HEADLESS=true` for headless Chrome (default is headed).
+Environment: `HEADLESS=true` by default in alert runner; use `--headed` if needed.
 
 ## Validation & quality checks
 
@@ -48,6 +46,7 @@ py -3 scripts/triage_downloaded_pdfs.py --all
 
 Legacy extraction diagnose:
 
+
 ```bash
 python scripts/diagnose_extraction.py
 ```
@@ -62,24 +61,27 @@ pytest processes/tests/core/test_doc_selection.py -q
 ## Project layout
 
 ```
-processes/           Core pipeline (main.py, scraper, extractors, DB)
+papertrails/         Alert feed product (watchlist, run_alerts, schema)
+processes/           Library (main.py legacy, scraper, extractors, DB)
+website/             Reverse-chron deals page + data/deals.json
 scripts/             Validation suite, triage, diagnostics
 tests/               ground_truth.json
 processes/tests/     Unit tests (core/) and debug tools (debug/)
-data/                GOGEL CSV, downloads/, processed/ (local, gitignored)
-logs/                workflow.log, audit/, validation outputs (gitignored)
-docs/                This folder
+data/                GOGEL CSV, downloads/, alerts/, processed/ (local)
+logs/                workflow.log, audit/, validation outputs
+docs/                This folder — start with PRODUCT.md
 ```
 
 ## Documentation index
 
 | Doc | Purpose |
 |-----|---------|
+| [PRODUCT.md](PRODUCT.md) | **Product scope, repo reality, STE ranking, kill bar** |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Components, data flow, GOGEL/ISIN matching, AI chunking |
 | [VALIDATION_AND_QUALITY.md](VALIDATION_AND_QUALITY.md) | **L0–L4 layers**, download triage, current issues, next steps |
 | [OPERATIONAL_NOTES.md](OPERATIONAL_NOTES.md) | Scraper tuning, paths, Windows/PowerShell notes |
 | [BENCHMARKS.md](BENCHMARKS.md) | Ground-truth extraction results and known failure modes |
-| [ROADMAP.md](ROADMAP.md) | Remaining work to reach production |
+| [ROADMAP.md](ROADMAP.md) | Alert-feed milestones (defers to PRODUCT.md) |
 | [examples/company_profiles.example.json](examples/company_profiles.example.json) | Optional scraper profile overrides |
 
 ## External data

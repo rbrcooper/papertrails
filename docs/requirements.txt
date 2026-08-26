@@ -13,4 +13,5 @@ colorlog==6.8.0
 Flask
 
 pymupdf4llm
-undetected-chromedriver 
+undetected-chromedriver
+PyYAML>=6.0 

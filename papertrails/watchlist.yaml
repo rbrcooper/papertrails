@@ -1,0 +1,78 @@
+meta:
+  gogel_file: C:/Users/rbrco/Documents/Academic/coding/ff2/data/raw/Urgewald GOGEL
+    2025 V1.2 with identifiers.csv
+  gogel_version: Urgewald GOGEL 2025 V1.2 with identifiers.csv
+  metric_column: ste_resources_under_development_mmboe
+  tiebreak_column: production_mmboe
+  aggregation: sum ste by name_parent
+  eligibility: XS + Solr live
+  verify_solr: true
+  top: 5
+  eligible_parents_total: 5
+issuers:
+- rank: 1
+  name_parent: A2A SpA
+  lei: 81560076E3944316DB24
+  bond_isins:
+  - XS3213247037
+  - XS0261846066
+  - XS1701884204
+  - XS2250376477
+  - XS1195347478
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+- rank: 2
+  name_parent: Aker BP ASA
+  lei: 549300NFTY73920OYK69
+  bond_isins:
+  - XS2830454554
+  - XS2341269970
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+- rank: 3
+  name_parent: Bulgarian Energy Holding EAD
+  lei: 635400E1RWKJXPSBCV07
+  bond_isins:
+  - XS3090933485
+  - XS2367164576
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+- rank: 4
+  name_parent: Electricity Supply Board (ESB)
+  lei: 635400UFHDIQCDZ6JK11
+  bond_isins:
+  - XS2697983869
+  - XS1239586594
+  - XS1428782160
+  - XS1560853670
+  - XS1903442744
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+- rank: 5
+  name_parent: Enagas SA
+  lei: 213800OU3FQKGM4M2U23
+  bond_isins:
+  - XS2751598322
+  - XS1403388694
+  - XS1508831051
+  - XS2251626896
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+- rank: null
+  name_parent: OMV
+  lei: ''
+  bond_isins:
+  - XS2886118079
+  ste_mmboe: 0
+  production_mmboe: 0
+  benchmark: OMV
+  force_included: true
+- rank: null
+  name_parent: TotalEnergies
+  lei: ''
+  bond_isins:
+  - XS2937308737
+  ste_mmboe: 0
+  production_mmboe: 0
+  benchmark: TotalEnergies
+  force_included: true

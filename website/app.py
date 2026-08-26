@@ -1,34 +1,107 @@
-from flask import Flask, jsonify
-import sys
+"""
+PaperTrails public surface: reverse-chronological deals from website/data/deals.json.
+"""
+
+from __future__ import annotations
+
+import json
 import os
+import sys
+from pathlib import Path
 
-# Add the parent directory to the Python path to allow for package imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from flask import Flask, jsonify, render_template_string
 
-from processes.database_handler import DatabaseHandler
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+DEALS_PATH = Path(__file__).resolve().parent / "data" / "deals.json"
 
 app = Flask(__name__)
 
-def get_db():
-    """Initializes and returns a DatabaseHandler instance."""
-    # This could be expanded to use Flask's g object for per-request connections
-    return DatabaseHandler()
+PAGE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>PaperTrails — fossil bond underwriting alerts</title>
+  <style>
+    :root { --ink:#1a1a1a; --muted:#555; --line:#ddd; --bg:#fafafa; }
+    body { font-family: Georgia, "Times New Roman", serif; margin:0; background:var(--bg); color:var(--ink); }
+    main { max-width: 52rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    h1 { font-size: 1.75rem; margin: 0 0 0.25rem; letter-spacing: -0.02em; }
+    .tag { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
+    .meta { font-size: 0.85rem; color: var(--muted); margin-bottom: 2rem; }
+    article { border-top: 1px solid var(--line); padding: 1.25rem 0; }
+    article h2 { font-size: 1.15rem; margin: 0 0 0.35rem; }
+    .banks { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+    .banks li { margin: 0.15rem 0; }
+    a { color: #0b3d91; }
+    .empty { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>PaperTrails</h1>
+  <p class="tag">EU fossil-fuel bond underwriters from public prospectuses (GOGEL STE-ranked watchlist).</p>
+  <p class="meta">Updated: {{ updated_at or "—" }} · {{ deals|length }} deal(s)</p>
+  {% if not deals %}
+    <p class="empty">No published deals yet. Run <code>py -3 -m papertrails.run_alerts</code>.</p>
+  {% endif %}
+  {% for d in deals %}
+  <article>
+    <h2>{{ d.issuer }} · {{ d.isin }}</h2>
+    <div class="meta">
+      {% if d.issue_date %}Issue {{ d.issue_date }} · {% endif %}
+      {% if d.currency %}{{ d.currency }}{% endif %}
+      {% if d.amount %} {{ d.amount }}{% endif %}
+      {% if d.watchlist_rank %} · STE rank {{ d.watchlist_rank }}{% endif %}
+    </div>
+    <ul class="banks">
+      {% for b in d.underwriters %}
+        <li>{{ b.raw_name }}{% if b.role and b.role != "Unknown" %} <span class="meta">({{ b.role }})</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% if d.source_url %}
+      <p><a href="{{ d.source_url }}" rel="noopener">Prospectus / source</a></p>
+    {% elif d.pdf_path %}
+      <p class="meta">Local PDF: {{ d.pdf_path }}</p>
+    {% endif %}
+  </article>
+  {% endfor %}
+</main>
+</body>
+</html>
+"""
 
-@app.route('/')
+
+def _load_payload():
+    if not DEALS_PATH.exists():
+        return {"updated_at": None, "deals": []}
+    with DEALS_PATH.open(encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        return {"updated_at": None, "deals": data}
+    return {
+        "updated_at": data.get("updated_at"),
+        "deals": data.get("deals") or [],
+    }
+
+
+@app.route("/")
 def index():
-    return "Welcome to the Papertrails API!"
+    payload = _load_payload()
+    return render_template_string(
+        PAGE, deals=payload["deals"], updated_at=payload.get("updated_at")
+    )
 
-@app.route('/api/companies', methods=['GET'])
-def get_companies():
-    """Returns a JSON list of all company names from the database."""
-    try:
-        db = get_db()
-        company_names = db.get_all_company_names()
-        return jsonify(company_names)
-    except Exception as e:
-        # Log the error properly in a real application
-        print(f"Error fetching companies: {e}")
-        return jsonify({"error": "Could not retrieve company data"}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000) 
+@app.route("/api/deals")
+def api_deals():
+    return jsonify(_load_payload())
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", "5000"))
+    app.run(debug=True, port=port)
