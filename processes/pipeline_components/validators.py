@@ -80,6 +80,8 @@ def classify_doc_tier(doc_type_code: Optional[str] = None, doc_type_descr: Optio
         return "tier1"
     if any(k in descr_l for k in ("final term", "pricing supplement", "supplemental final")):
         return "tier1"
+    if "standalone prospectus" in descr_l:
+        return "tier1"
     if "base prospectus" in descr_l:
         return "tier2"
     return "reject"
@@ -143,21 +145,22 @@ def select_esma_rows(
             continue
         if tier == "tier2" and policy == "strict":
             continue
-        score = float(r.get("score") or 0)
         isin_match = float(r.get("isin_match") or 0) > 0
-        if tier == "tier1" and (isin_match or score >= min_score):
+        lei_match = float(r.get("lei_match") or 0) > 0
+        # Keep tier1 when the issuer identity matches (LEI) or a known ISIN matches.
+        # Deal ISIN is the document's ESMA sec_isin, not a GOGEL bond-list hit.
+        if not (isin_match or lei_match):
+            continue
+        if tier == "tier1":
             candidates.append(r)
-        elif tier == "tier2" and policy == "balanced" and score >= min_score:
+        elif tier == "tier2" and policy == "balanced":
             candidates.append(r)
 
     by_isin: Dict[str, List[Dict[str, Any]]] = {}
-    no_isin: List[Dict[str, Any]] = []
     for r in candidates:
         isin = (r.get("isin") or "").strip()
         if isin and len(isin) >= 12:
             by_isin.setdefault(isin, []).append(r)
-        else:
-            no_isin.append(r)
 
     selected: List[Dict[str, Any]] = []
 
@@ -176,27 +179,6 @@ def select_esma_rows(
 
     for group in by_isin.values():
         selected.append(_pick_best(group))
-
-    if no_isin:
-        seen_urls = set()
-        def _no_isin_key(x):
-            dt = parse_row_date(x)
-            date_ord = dt.timestamp() if dt else 0.0
-            return (
-                doc_code_rank(x.get("doc_type_code"), x.get("doc_type")),
-                -date_ord,
-                -float(x.get("score") or 0),
-            )
-
-        for r in sorted(no_isin, key=_no_isin_key):
-            url = r.get("url")
-            if url and url in seen_urls:
-                continue
-            if url:
-                seen_urls.add(url)
-            r["selection_reason"] = "tier1_no_isin_on_row"
-            selected.append(r)
-            break
 
     return selected
 
@@ -401,11 +383,11 @@ class ExtractionValidator:
             expected_normalized = self._normalize_company_name(expected_company)
             text_normalized = self._normalize_company_name(first_pages_text)
             
-            # Check if expected company appears in first pages
+            # Full name / normalized name only — do not match on split tokens
+            # ("Energy" in "88 Energy Ltd" would pass almost any energy prospectus).
             issuer_match = (
                 expected_normalized in text_normalized or
-                expected_company.lower() in text_lower or
-                any(alias.lower() in text_lower for alias in expected_company.split())
+                (expected_company.lower() in text_lower if expected_company else False)
             )
             
             # Check for ISIN pattern (2 letters + 9 digits + 1 check digit)
@@ -436,13 +418,13 @@ class ExtractionValidator:
             guarantor_keywords = ['guarantor', 'guarantee', 'guaranteed by', 'guaranteed']
             guarantor_mentioned = any(keyword in text_lower for keyword in guarantor_keywords)
             
-            # ISIN cross-check (if expected ISINs provided)
-            expected_isins = kwargs.get('expected_isins', [])
+            expected_isins = [i for i in (kwargs.get('expected_isins') or []) if i]
             isin_mismatch = False
-            if expected_isins and isin_present:
+            isin_overlap = False
+            if expected_isins:
                 found_isins = set(isin_pattern.findall(first_pages_text.upper()))
-                expected_set = set(i.upper() for i in expected_isins if i)
-                isin_overlap = found_isins & expected_set
+                expected_set = set(i.upper() for i in expected_isins)
+                isin_overlap = bool(found_isins & expected_set)
                 if not isin_overlap:
                     isin_mismatch = True
             
@@ -467,7 +449,12 @@ class ExtractionValidator:
                 elif len(first_pages_text) * 20 > max_pdf_chars:
                     section_only = True
 
-            pass_check = likely_english and not language_mismatch and (issuer_match or (isin_present and not isin_mismatch))
+            if expected_isins:
+                pass_check = likely_english and not language_mismatch and isin_overlap
+            else:
+                pass_check = likely_english and not language_mismatch and (
+                    issuer_match or isin_present
+                )
 
             return {
                 'pass': pass_check,
@@ -484,7 +471,7 @@ class ExtractionValidator:
         except Exception as e:
             logger.warning(f"Quick first page check failed for {pdf_path}: {e}")
             return {
-                'pass': True,  # Default to pass if check fails (don't block on errors)
+                'pass': False,
                 'reason': f'Quick check error: {str(e)}',
                 'issuer_match': None,
                 'isin_present': None,

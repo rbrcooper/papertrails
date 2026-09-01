@@ -37,13 +37,11 @@ class TextProcessor:
         """
         if not text:
             return ""
-            
-        # Normalize whitespace
+
+        # Collapse whitespace. Keep Latin letters (ö, é, etc.) so dealer-table
+        # whitelist names like Coöperatieve / Crédit still match after PyMuPDF.
         text = re.sub(r'\s+', ' ', text)
-        
-        # Remove unwanted characters
-        text = re.sub(r'[^\x00-\x7F]+', '', text)
-        
+
         return text.strip()
     
     def find_section(self, text: str, start_marker: str, end_marker: str = None) -> Optional[str]:

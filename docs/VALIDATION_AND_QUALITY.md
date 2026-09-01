@@ -113,17 +113,30 @@ Benchmark L1 adds a fifth bar for QA: **exact bank set vs ground truth** on refe
 | 2026-05-26 | L1 bank extractor fixes (dealer anchor, substring dedupe) | 3/3 tier1 exact on FTWS PDFs |
 | 2026-05-26 | Bounded suite L0–L4 wired | `ship: true` in `logs/validation_suite_summary.json` |
 | 2026-05-26 | PDF triage script + full-pool scan | 5/277 good; report + allowlist in `logs/` |
+| 2026-08-14 | ISIN-only intake in `main.py` / scraper | No name fallback; extract this-run paths only; quick-check fail-closed |
 
 ---
 
-## Next steps (planned)
+## Next steps (closed / current)
 
-1. **Post-download gate in scraper** — after save, run the same cheap checks as triage; mark row `rejected_quality` and do not enqueue for extraction.  
-2. **Stricter `--doc-policy strict`** — default for production; log `selection_reason` and reject tier2/programme unless explicitly overridden.  
-3. **Explicit paths manifest** — e.g. `logs/eligible_tier1_paths.json` per company run; L1/L3-style runners and GOGEL pilot read only that file.  
-4. **Issuer matching audit** — review why 88 Energy / 89 Energy / 1920 Energy folders accumulate; tighten GOGEL→ESMA company resolution.  
-5. **Content-hash dedupe** — one file per SHA256 per company; skip re-download and re-extract.  
-6. **Optional:** bounded validation runner over `pdf_quality_allowlist.json` only (no folder glob).
+**Triage / post-download quality scoring is closed.** Do not add another allowlist scorer. Existing `data/downloads/` is contaminated.
+
+**Intake contract (2026-08-14):**
+
+- No GOGEL bond ISINs → no ESMA search, ledger `no_tier1`.
+- Search **only** those ISINs. Name/LEI fallback is off unless `--allow-fallback-search`.
+- Keep a row only if `doc_tier=tier1` **and** `isin_match>0`. One PDF per ISIN.
+- Extract **only** this run’s `downloads[].file_path`. No folder glob unless `--glob-pdfs`.
+- `--skip-scraping` does not walk old folders.
+- `quick_first_page_checks`: require GOGEL ISIN overlap when ISINs exist; no token-split issuer match; errors fail closed.
+
+Proof command (5 EU companies with bond ISINs, 2026-08-14):
+
+```powershell
+py -3 -m processes.main --doc-policy strict --require-bond-isins --region-filter eu --limit-companies 5
+```
+
+Result: **intake contract held** (no name/LEI fallback; 0 folder globs; all 5 ledger `no_tier1`; 0 new PDFs). ESMA returned ISIN-matched **Standalone prospectus** rows that `classify_doc_tier` used to mark `reject` when the STDA code was missing from the row — those now classify as `tier1`. CEZ had no ESMA rows at all. A2A table parse still garbles some columns. **Do not treat 0 downloads as “need another quality scorer.”** Re-run the same 5 after the standalone-prospectus classifier fix if you want download proof.
 
 ---
 

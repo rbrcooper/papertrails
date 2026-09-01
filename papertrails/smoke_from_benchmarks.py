@@ -91,9 +91,7 @@ def main() -> int:
     with SEEN.open("w", encoding="utf-8") as f:
         json.dump({"entries": entries}, f, indent=2)
 
-    stats = extract_and_publish(
-        records, deals_path=DEALS, quarantine_dir=QUAR, use_ai=False
-    )
+    stats = extract_and_publish(records, deals_path=DEALS, quarantine_dir=QUAR)
     print(json.dumps(stats, indent=2))
     return 0 if stats.get("published", 0) or stats.get("skipped", 0) else 1
 

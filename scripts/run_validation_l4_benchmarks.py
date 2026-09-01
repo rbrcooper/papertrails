@@ -35,7 +35,7 @@ BENCHMARK_FOLDERS = {
 }
 
 
-def stage_tier1_pdf(label: str, src: Path, staging_root: Path) -> Path:
+def stage_tier1_pdf(label: str, src: Path, staging_root: Path):
     folder = BENCHMARK_FOLDERS[label]
     dest_dir = staging_root / folder
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -43,7 +43,7 @@ def stage_tier1_pdf(label: str, src: Path, staging_root: Path) -> Path:
         old.unlink()
     dest = dest_dir / src.name
     shutil.copy2(src, dest)
-    return dest_dir
+    return dest_dir, dest
 
 
 def main():
@@ -89,7 +89,7 @@ def main():
             results.append({"benchmark": label, "error": "FILE_MISSING", "pdf_path": rel, "allocated_ok": False})
             continue
 
-        pdf_dir = stage_tier1_pdf(label, src, staging_root)
+        pdf_dir, staged = stage_tier1_pdf(label, src, staging_root)
         run_metrics["total_companies"] += 1
         run_metrics["isins_with_tier1"] += 1
         run_metrics["tier1_downloaded"] += 1
@@ -100,6 +100,8 @@ def main():
             validator,
             expected_isins=[],
             max_pdf_chars=80_000,
+            pdf_paths=[staged],
+            glob_pdfs=False,
         )
         run_metrics["total_pdfs_processed"] += len(packages)
 

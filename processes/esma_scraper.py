@@ -67,7 +67,7 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 import re
 import shutil
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from .pipeline_components.validators import classify_doc_tier, select_esma_rows, _parse_doc_type_code
 
 # Constants for selectors (Prospectus III Securities register)
@@ -79,7 +79,8 @@ KEYWORD_INPUT_ID = "keywordField"
 ISSUER_NAME_INPUT_SELECTOR = f"#{KEYWORD_INPUT_ID}"
 SEARCH_INPUT_ID = KEYWORD_INPUT_ID
 SEARCH_BUTTON_ID = "searchSolrButton"
-MAX_BOND_ISIN_SEARCHES = 10
+MAX_BOND_ISIN_SEARCHES = 10  # L2 ISIN audit only; PaperTrails poll is LEI-first
+MAX_LEI_SEARCHES = 10
 RESULTS_CONTAINER_ID = "resultsTable"
 RESULTS_TABLE_ID = "resultsTable"  # wrapper; data table is nested (#T01)
 RESULTS_DATA_ROW_SELECTOR = "#resultsTable table tbody tr"
@@ -87,17 +88,243 @@ SECURITIES_DETAILS_CORE = "esma_registers_priii_securities"
 COOKIE_ACCEPT_SELECTOR = "//a[text()='OK'] | //button[contains(text(), 'Accept')]" 
 RESULTS_PER_PAGE_DROPDOWN_ID = "tablePageSize"
 SOLR_SECURITIES_URL = "https://registers.esma.europa.eu/solr/esma_registers_priii_securities/select"
+ESMA_REGISTERS_HOST = "registers.esma.europa.eu"
+ESMA_REGISTERS_ORIGIN = "https://registers.esma.europa.eu"
+ESMA_DOWNLOAD_PATH = "/publication/downloadFile"
+DEFAULT_CHROME_USER_DATA_DIR = Path("data/chrome_profile")
+ESMA_COOKIE_JAR_NAME = "esma_cookies.json"
+
+
+def admitted_esma_download_url(url: Any) -> str:
+    """Admit only https://registers.esma.europa.eu/publication/downloadFile[?...].
+
+    Relative paths are joined to that origin first. Hostname must match exactly
+    (not suffix/contains). Returns the canonical URL, or "" if rejected.
+    """
+    if not isinstance(url, str):
+        return ""
+    raw = url.strip()
+    if not raw:
+        return ""
+    parsed = urlparse(raw)
+    if not parsed.netloc:
+        raw = urljoin(ESMA_REGISTERS_ORIGIN, raw)
+        parsed = urlparse(raw)
+    if parsed.scheme != "https":
+        return ""
+    if parsed.hostname != ESMA_REGISTERS_HOST:
+        return ""
+    if parsed.path != ESMA_DOWNLOAD_PATH:
+        return ""
+    return raw
+
+
+def chrome_user_data_dir_path(override: Any = None) -> Path:
+    """Gitignored Chrome profile dir (cookies persist across runs)."""
+    if override:
+        return Path(override).expanduser()
+    env = (os.environ.get("ESMA_CHROME_USER_DATA_DIR") or "").strip()
+    if env:
+        return Path(env).expanduser()
+    return Path(DEFAULT_CHROME_USER_DATA_DIR)
+
+
+def esma_cookie_jar_path(override: Any = None, *, user_data_dir: Any = None) -> Path:
+    """JSON cookie jar under the Chrome profile dir (not committed)."""
+    if override:
+        return Path(override).expanduser()
+    env = (os.environ.get("ESMA_COOKIE_JAR") or "").strip()
+    if env:
+        return Path(env).expanduser()
+    return Path(user_data_dir or chrome_user_data_dir_path()) / ESMA_COOKIE_JAR_NAME
+
+
+def _esma_cookie_domain_ok(domain: Any) -> bool:
+    d = str(domain or "").lstrip(".").lower()
+    if not d:
+        return True
+    return d == ESMA_REGISTERS_HOST or d == "esma.europa.eu" or d.endswith(".esma.europa.eu")
+
+
+def _iter_cookie_records(cookies: Any) -> List[Dict[str, Any]]:
+    if cookies is None:
+        return []
+    if isinstance(cookies, dict):
+        inner = cookies.get("cookies")
+        if isinstance(inner, list):
+            return [c for c in inner if isinstance(c, dict)]
+        if "name" in cookies and "value" in cookies:
+            return [cookies]
+        return [
+            {"name": str(k), "value": str(v), "domain": ESMA_REGISTERS_HOST}
+            for k, v in cookies.items()
+            if k
+        ]
+    if isinstance(cookies, list):
+        return [c for c in cookies if isinstance(c, dict)]
+    return []
+
+
+def selenium_cookies_to_requests(cookies: Any) -> Dict[str, str]:
+    """Name→value map for requests, ESMA-host only; skip expired."""
+    now = time.time()
+    out: Dict[str, str] = {}
+    for c in _iter_cookie_records(cookies):
+        name = c.get("name")
+        if not name:
+            continue
+        if not _esma_cookie_domain_ok(c.get("domain")):
+            continue
+        expiry = c.get("expiry", c.get("expires"))
+        if expiry is not None:
+            try:
+                if float(expiry) < now:
+                    continue
+            except (TypeError, ValueError):
+                pass
+        out[str(name)] = str(c.get("value") or "")
+    return out
+
+
+def dump_cookie_jar(path: Any, cookies: Any) -> Path:
+    """Write ESMA cookies to disk. Does not log values."""
+    dest = Path(path)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    records: List[Dict[str, Any]] = []
+    for c in _iter_cookie_records(cookies):
+        name = c.get("name")
+        if not name:
+            continue
+        domain = c.get("domain") or ESMA_REGISTERS_HOST
+        if not _esma_cookie_domain_ok(domain):
+            continue
+        rec: Dict[str, Any] = {
+            "name": str(name),
+            "value": str(c.get("value") or ""),
+            "domain": str(domain),
+        }
+        for k in ("path", "secure", "httpOnly", "expiry", "sameSite"):
+            if k in c and c[k] is not None:
+                rec[k] = c[k]
+        records.append(rec)
+    payload = {
+        "saved_at": datetime.now().isoformat(timespec="seconds"),
+        "host": ESMA_REGISTERS_HOST,
+        "cookies": records,
+    }
+    tmp = dest.with_name(dest.name + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp.replace(dest)
+    return dest
+
+
+def load_cookie_jar(path: Any) -> Dict[str, str]:
+    src = Path(path)
+    if not src.is_file():
+        return {}
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return {}
+    return selenium_cookies_to_requests(data)
+
+
+def cookie_jar_is_usable(path: Any) -> bool:
+    return bool(load_cookie_jar(path))
+
+
+def apply_cookie_jar_to_driver(driver: Any, cookies: Any) -> int:
+    """add_cookie each ESMA record. Caller must already be on the ESMA origin."""
+    if not driver:
+        return 0
+    added = 0
+    for c in _iter_cookie_records(cookies):
+        if not c.get("name"):
+            continue
+        if not _esma_cookie_domain_ok(c.get("domain")):
+            continue
+        payload: Dict[str, Any] = {"name": c["name"], "value": c.get("value") or ""}
+        for k in ("domain", "path", "secure", "httpOnly", "expiry", "sameSite"):
+            if k in c and c[k] is not None:
+                payload[k] = c[k]
+        try:
+            driver.add_cookie(payload)
+            added += 1
+        except Exception:
+            continue
+    return added
+
+
+def probe_downloadfile_pdf(
+    url: str,
+    cookies: Optional[Dict[str, str]] = None,
+    timeout: int = 30,
+) -> Tuple[bool, bytes]:
+    """One windowless GET of an admitted downloadFile URL. Returns (is_pdf, head)."""
+    admitted = admitted_esma_download_url(url)
+    if not admitted:
+        return False, b""
+    try:
+        resp = requests.get(
+            admitted,
+            headers={
+                "User-Agent": "Mozilla/5.0 PaperTrails-session-probe",
+                "Referer": SECURITIES_URL,
+            },
+            cookies=cookies or None,
+            timeout=timeout,
+        )
+        head = bytes(resp.content[:8])
+        return head.startswith(b"%PDF"), head
+    except requests.RequestException:
+        return False, b""
 
 
 def resolve_download_url(row: Dict) -> str:
     """Return downloadFile URL only (never the details-page href)."""
     dl = (row.get("download_url") or "").strip()
-    if dl and "downloadFile" in dl:
-        return dl
+    admitted = admitted_esma_download_url(dl)
+    if admitted:
+        return admitted
     url = (row.get("url") or "").strip()
-    if url and "downloadFile" in url:
-        return url
-    return ""
+    return admitted_esma_download_url(url)
+
+
+def download_url_from_rfss(rfss: Any) -> str:
+    """Build downloadFile URL from Solr sec_docRfssId ('fileId,checksum')."""
+    if not isinstance(rfss, str) or "," not in rfss:
+        return ""
+    file_id, file_hash = rfss.split(",", 1)
+    file_id, file_hash = file_id.strip(), file_hash.strip()
+    if not file_id.isdigit() or not file_hash:
+        return ""
+    return (
+        "https://registers.esma.europa.eu/publication/downloadFile"
+        f"?fileId={file_id}&checksum={file_hash}"
+    )
+
+
+def attach_solr_download_urls(rows: List[Dict], solr_rows: List[Dict]) -> int:
+    """Copy Solr downloadFile URLs onto UI rows matched by docId.
+
+    The securities table only exposes a details href. Solr sec_docRfssId is the
+    fileId/checksum that actually returns %PDF.
+    """
+    by_doc: Dict[str, str] = {}
+    for s in solr_rows:
+        did = str(s.get("doc_id") or s.get("sec_dbId") or s.get("id") or "").strip()
+        dl = resolve_download_url(s) or download_url_from_rfss(s.get("sec_docRfssId"))
+        if did and dl:
+            by_doc[did] = dl
+    attached = 0
+    for r in rows:
+        if resolve_download_url(r):
+            continue
+        did = str(r.get("doc_id") or "").strip()
+        if did in by_doc:
+            r["download_url"] = by_doc[did]
+            attached += 1
+    return attached
 
 # --- Decorator Definition (Moved Outside Class) --- 
 def retry_on_failure(max_retries=3, base_delay=5, 
@@ -167,7 +394,14 @@ def retry_on_failure(max_retries=3, base_delay=5,
 # --- End Decorator Definition ---
 
 class ESMAScraper:
-    def __init__(self, download_dir=None, debug_mode=True, headless=True):
+    def __init__(
+        self,
+        download_dir=None,
+        debug_mode=True,
+        headless=True,
+        chrome_user_data_dir=None,
+        cookie_jar_path=None,
+    ):
         """Initialize the ESMA scraper"""
         self.logger = logging.getLogger(__name__)
         
@@ -205,6 +439,14 @@ class ESMAScraper:
         self.base_url = SECURITIES_URL
         self.documents_url = DOCUMENTS_URL
         self.headless = headless
+        self.chrome_user_data_dir = chrome_user_data_dir_path(chrome_user_data_dir)
+        self.cookie_jar_path = esma_cookie_jar_path(
+            cookie_jar_path, user_data_dir=self.chrome_user_data_dir
+        )
+        try:
+            self.chrome_user_data_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            self.logger.warning("Could not create Chrome profile dir %s: %s", self.chrome_user_data_dir, e)
         self.fuzzy_match_threshold = 65 # Lowered from 80
         # self.min_similarity = 80 # Potentially unused, replaced by fuzzy_match_threshold?
         self.company_list_handler = CompanyListHandler()
@@ -244,6 +486,7 @@ class ESMAScraper:
         self.audit_dir.mkdir(parents=True, exist_ok=True)
 
         self._last_search_isin: Optional[str] = None
+        self._last_search_lei: Optional[str] = None
 
     def setup_driver(self):
         """Set up the Chrome driver with retries."""
@@ -259,6 +502,7 @@ class ESMAScraper:
                 # Detect installed Chrome major version to align driver
                 version_main = self._detect_chrome_major_version(default=148)
                 self.logger.info(f"Detected Chrome major version: {version_main}")
+                # user-data-dir is on options so uc keeps the profile (no temp wipe on quit).
                 self.driver = uc.Chrome(options=options, version_main=version_main)
                 
                 self.logger.info("Chrome driver initialized successfully")
@@ -309,6 +553,16 @@ class ESMAScraper:
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_argument('--start-maximized') # May not work in headless
         options.add_argument('--window-size=1920,1080') # Set a default window size
+
+        profile = Path(
+            getattr(self, "chrome_user_data_dir", None) or chrome_user_data_dir_path()
+        )
+        try:
+            profile.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+        options.add_argument(f"--user-data-dir={profile.resolve()}")
+        self.logger.info("Chrome user-data-dir: %s", profile.resolve())
 
         # User agent rotation - use selected UA
         if self.user_agent:
@@ -418,8 +672,57 @@ class ESMAScraper:
             # Default UA (same as current default)
             return user_agents[0]
 
+    def persist_session_cookies(self) -> Optional[Path]:
+        """Dump live Selenium cookies to the JSON jar (ESMA host only)."""
+        path = getattr(self, "cookie_jar_path", None)
+        driver = getattr(self, "driver", None)
+        if not path or not driver:
+            return None
+        try:
+            raw = driver.get_cookies() or []
+        except Exception as e:
+            self.logger.debug("Could not read cookies to persist: %s", e)
+            return None
+        if not raw:
+            return None
+        try:
+            dumped = dump_cookie_jar(path, raw)
+            n = len(load_cookie_jar(dumped))
+            self.logger.info("Persisted ESMA cookie jar (%s cookies) to %s", n, dumped)
+            return dumped
+        except OSError as e:
+            self.logger.debug("Could not dump cookie jar: %s", e)
+            return None
+
+    def _request_cookie_dict(self) -> Dict[str, str]:
+        """Live driver cookies if present (and dump them); else disk jar."""
+        live: Dict[str, str] = {}
+        raw = None
+        driver = getattr(self, "driver", None)
+        if driver:
+            try:
+                raw = driver.get_cookies() or []
+                live = selenium_cookies_to_requests(raw)
+            except Exception as e:
+                self.logger.debug("Could not get cookies from driver: %s", e)
+        path = getattr(self, "cookie_jar_path", None)
+        if raw and path:
+            try:
+                dump_cookie_jar(path, raw)
+            except OSError as e:
+                self.logger.debug("Could not dump cookie jar: %s", e)
+        if live:
+            return live
+        if path:
+            return load_cookie_jar(path)
+        return {}
+
     def close(self):
         """Close the browser and clean up resources."""
+        try:
+            self.persist_session_cookies()
+        except Exception:
+            pass
         if hasattr(self, 'driver') and self.driver:
             try:
                 self.logger.info("Closing Chrome driver...")
@@ -645,41 +948,64 @@ class ESMAScraper:
         except TimeoutException:
             return False
 
-    def fetch_securities_via_solr(self, isin: str, rows: int = 20) -> List[Dict]:
-        """Fallback when Selenium table is empty but Solr has securities rows."""
+    def fetch_securities_via_solr(
+        self, isin: str = "", rows: int = 20, *, lei: str = ""
+    ) -> List[Dict]:
+        """Fetch securities rows from ESMA Solr by issuer_lei or sec_isin.
+
+        L2 audit still calls this with an ISIN. PaperTrails discovery uses lei=.
+        """
+        lei = (lei or "").strip()
         isin = (isin or "").strip().upper()
-        if not isin:
+        if lei:
+            # issuer_lei: hits issuer-party records (no sec_isin / downloadFile).
+            # Prospectus rows store the LEI on sec_issuerNameList as "Name - LEI".
+            query = f"sec_issuerNameList:*{lei}*"
+            label = f"sec_issuerNameList:*{lei}*"
+        elif isin:
+            query = f"sec_isin:{isin}"
+            label = f"sec_isin:{isin}"
+        else:
             return []
         try:
             resp = requests.get(
                 SOLR_SECURITIES_URL,
-                params={"q": f"sec_isin:{isin}", "rows": rows, "wt": "json"},
+                params={"q": query, "rows": rows, "wt": "json"},
                 timeout=20,
             )
             resp.raise_for_status()
-            docs = resp.json().get("response", {}).get("docs", [])
+            payload = resp.json().get("response", {}) or {}
+            num_found = int(payload.get("numFound") or 0)
+            docs = payload.get("docs", [])
         except Exception as e:
-            self.logger.warning(f"Solr fallback failed for {isin}: {e}")
+            self.logger.warning(f"Solr fallback failed for {label}: {e}")
             return []
 
         out: List[Dict] = []
         for doc in docs:
             issuer_raw = doc.get("sec_issuerNameList") or ""
             if isinstance(issuer_raw, list):
-                issuer_raw = issuer_raw[0] if issuer_raw else ""
-            issuer_name = str(issuer_raw).split(" - ")[0].strip() if issuer_raw else ""
+                issuer_join = " | ".join(str(x) for x in issuer_raw if x)
+                issuer_raw0 = str(issuer_raw[0]) if issuer_raw else ""
+            else:
+                issuer_join = str(issuer_raw)
+                issuer_raw0 = str(issuer_raw)
+            issuer_name = issuer_raw0.split(" - ")[0].strip() if issuer_raw0 else ""
+            issuer_lei = ""
+            for key in ("issuer_lei", "sec_issuerLei", "sec_lei"):
+                v = doc.get(key)
+                if isinstance(v, list):
+                    v = v[0] if v else ""
+                if v:
+                    issuer_lei = str(v).strip()
+                    break
+            if not issuer_lei and lei:
+                issuer_lei = lei
             date_raw = doc.get("sec_docLastUpdateDate") or doc.get("sec_approvalFilingDate") or ""
             date_str = str(date_raw)[:10] if date_raw else ""
             doc_type = doc.get("sec_docTypeDesc") or doc.get("sec_docType") or ""
             doc_code = doc.get("sec_docType") or ""
-            rfss = doc.get("sec_docRfssId") or ""
-            download_url = ""
-            if isinstance(rfss, str) and "," in rfss:
-                file_id, file_hash = rfss.split(",", 1)
-                download_url = (
-                    "https://registers.esma.europa.eu/publication/downloadFile"
-                    f"?fileId={file_id}&checksum={file_hash}"
-                )
+            download_url = download_url_from_rfss(doc.get("sec_docRfssId") or "")
             doc_db_id = doc.get("sec_dbId") or doc.get("id")
             details_url = ""
             if doc_db_id:
@@ -689,6 +1015,9 @@ class ESMAScraper:
                 )
             row = {
                 "issuer_name": issuer_name,
+                "issuer_name_raw": issuer_join,
+                "issuer_lei": issuer_lei,
+                "queried_lei": lei or "",
                 "doc_type": doc_type,
                 "doc_type_code": doc_code,
                 "date": date_str,
@@ -701,6 +1030,7 @@ class ESMAScraper:
                 "register_source": "solr",
                 "already_seen": False,
                 "doc_tier": classify_doc_tier(doc_code, doc_type),
+                "solr_num_found": num_found,
             }
             if self.current_company and issuer_name:
                 row["fuzzy_score"] = fuzz.token_set_ratio(self.current_company, issuer_name)
@@ -708,7 +1038,9 @@ class ESMAScraper:
                 row["fuzzy_score"] = 0
             if row.get("url") and row["url"] not in self.seen_urls:
                 out.append(row)
-        self.logger.info(f"Solr fallback for {isin}: {len(out)} row(s)")
+        self.logger.info(
+            "Solr %s numFound=%s returned=%s", label, num_found, len(out)
+        )
         return out
 
     @retry_on_failure() # Apply the defined decorator
@@ -716,6 +1048,10 @@ class ESMAScraper:
         """Search ESMA Securities register by LEI, ISIN, or issuer name."""
         if search_mode != "isin":
             self._last_search_isin = None
+        if is_lei:
+            self._last_search_lei = (search_term or "").strip() or None
+        else:
+            self._last_search_lei = None
         if search_mode == "isin":
             field_desc = "ISIN"
         elif is_lei:
@@ -881,6 +1217,8 @@ class ESMAScraper:
 
         if not documents and self._last_search_isin:
             documents = self.fetch_securities_via_solr(self._last_search_isin)
+        elif not documents and self._last_search_lei:
+            documents = self.fetch_securities_via_solr(lei=self._last_search_lei)
 
         return documents
 
@@ -964,27 +1302,30 @@ class ESMAScraper:
             details['doc_tier'] = classify_doc_tier(details['doc_type_code'], details.get('doc_type'))
             details['register_source'] = 'securities'
 
-            link_href = None
+            details_href = ""
+            download_href = ""
             for a in result_element.find_elements(By.TAG_NAME, "a"):
                 href = a.get_attribute('href') or ""
                 if not href:
                     continue
+                if "downloadFile" in href:
+                    download_href = href
+                    continue
                 if href.startswith("details") or "details?" in href:
-                    link_href = (
-                        f"https://registers.esma.europa.eu/publication/{href.lstrip('/')}"
-                        if not href.startswith("http")
-                        else href
-                    )
-                    break
-                if 'downloadFile' in href:
-                    link_href = href
-                    break
+                    if not details_href:
+                        details_href = (
+                            f"https://registers.esma.europa.eu/publication/{href.lstrip('/')}"
+                            if not href.startswith("http")
+                            else href
+                        )
 
-            details['url'] = link_href or ''
-            if link_href and "docId=" in link_href:
-                m = re.search(r"docId=(\d+)", link_href)
+            details["download_url"] = download_href
+            details["details_url"] = details_href
+            details["url"] = download_href or details_href
+            if details_href and "docId=" in details_href:
+                m = re.search(r"docId=(\d+)", details_href)
                 if m:
-                    details['doc_id'] = m.group(1)
+                    details["doc_id"] = m.group(1)
             
             # --- Fuzzy Match Calculation ---
             if self.current_company and details.get('issuer_name'):
@@ -1051,6 +1392,80 @@ class ESMAScraper:
             self.logger.warning(f"Details-page download failed for {doc_id}: {e}")
         return None
 
+    def download_selected_row(self, row: Dict[str, Any]) -> Optional[str]:
+        """HTTP downloadFile first; Selenium session cookies second. Never GET details HTML first."""
+        details_href = (row.get("details_url") or row.get("url") or "").strip()
+        doc_id = str(row.get("doc_id") or "").strip()
+        if not doc_id.isdigit():
+            m = re.search(r"docId=(\d+)", details_href)
+            doc_id = m.group(1) if m else ""
+        search_isin = (row.get("isin") or "").strip() or None
+
+        if not resolve_download_url(row) and search_isin:
+            attached = attach_solr_download_urls(
+                [row], self.fetch_securities_via_solr(search_isin)
+            )
+            if attached:
+                self.logger.info(
+                    "Attached Solr downloadFile for docId=%s ISIN=%s",
+                    doc_id or "?",
+                    search_isin,
+                )
+
+        download_url = resolve_download_url(row)
+        path = None
+        if download_url:
+            path = self.download_document(
+                url=download_url,
+                doc_id=doc_id or None,
+                doc_type_hint=row.get("doc_type"),
+                date_hint=row.get("date"),
+            )
+            if path:
+                self.logger.info(
+                    "HTTP downloadFile succeeded for docId=%s ISIN=%s",
+                    doc_id or "?",
+                    search_isin or "?",
+                )
+            elif search_isin and self.driver:
+                try:
+                    self.navigate_to_search()
+                    if self.search_by_isin(search_isin):
+                        time.sleep(2)
+                        try:
+                            self.driver.execute_script(
+                                "if (typeof setNavCookie === 'function') setNavCookie();"
+                            )
+                        except Exception:
+                            pass
+                        path = self._download_binary_with_session(
+                            download_url,
+                            doc_id=doc_id or search_isin,
+                            doc_type_hint=row.get("doc_type"),
+                            date_hint=row.get("date"),
+                        )
+                        if path:
+                            self.logger.info(
+                                "Selenium-session download for docId=%s ISIN=%s",
+                                doc_id or "?",
+                                search_isin,
+                            )
+                except Exception as e:
+                    self.logger.debug("ISIN-session download failed: %s", e)
+        if not path and doc_id:
+            path = self.download_via_details_page(
+                doc_id,
+                doc_type_hint=row.get("doc_type"),
+                date_hint=row.get("date"),
+            )
+        if not path:
+            self.logger.warning(
+                "No PDF for docId=%s (downloadFile=%s)",
+                doc_id or "?",
+                bool(download_url),
+            )
+        return path
+
     def _download_binary_with_session(
         self,
         url: str,
@@ -1059,14 +1474,21 @@ class ESMAScraper:
         date_hint: Optional[str] = None,
     ) -> Optional[str]:
         """Download bytes using Selenium session cookies (after details navigation)."""
-        if not self.driver:
+        url = admitted_esma_download_url(url)
+        if not url or not self.driver:
             return None
         try:
-            cookies = {c["name"]: c["value"] for c in self.driver.get_cookies()}
+            cookies = self._request_cookie_dict() or None
             headers = {"User-Agent": self.user_agent, "Referer": self.driver.current_url}
             resp = requests.get(url, headers=headers, cookies=cookies, timeout=90)
             resp.raise_for_status()
             if not resp.content[:5].startswith(b"%PDF"):
+                self.logger.warning(
+                    "Session download did not return PDF (head=%r, size=%s) for %s",
+                    resp.content[:20],
+                    len(resp.content),
+                    url,
+                )
                 return None
             temp = self.download_dir / f"details_{doc_id or 'doc'}.pdf.part"
             temp.write_bytes(resp.content)
@@ -1118,8 +1540,8 @@ class ESMAScraper:
                 )
                 if path:
                     return path
-            url = details.get("url")
-            if not url:
+            url = resolve_download_url(details) or (details.get("url") or "")
+            if "downloadFile" not in url:
                 continue
             # Prefer clicking the anchor (ESMA often requires in-page navigation).
             try:
@@ -1334,6 +1756,12 @@ class ESMAScraper:
         self.logger.info(f"Attempting to download document: {doc_id or url}")
         self.requests_count += 1 # Increment request count for session management
 
+        requested_url = url
+        url = admitted_esma_download_url(url)
+        if not url:
+            self.logger.warning("Refusing non-downloadFile URL: %s", requested_url)
+            return None
+
         details_doc_id = (doc_id or "").strip()
         if details_doc_id and not details_doc_id.isdigit():
             details_doc_id = ""
@@ -1342,7 +1770,7 @@ class ESMAScraper:
             if m:
                 details_doc_id = m.group(1)
 
-        if self.driver and url and "downloadFile" in url:
+        if self.driver:
             try:
                 if "searchRegister" not in (self.driver.current_url or ""):
                     self.navigate_to_search()
@@ -1370,15 +1798,9 @@ class ESMAScraper:
                 except Exception as e:
                     self.logger.debug(f"Could not get Referer from driver: {e}")
             
-            cookie_jar = None
-            if self.driver:
-                try:
-                    cookies = self.driver.get_cookies()
-                    if cookies:
-                        cookie_jar = {c["name"]: c["value"] for c in cookies}
-                        self.logger.debug(f"Using {len(cookie_jar)} cookies from Selenium session")
-                except Exception as e:
-                    self.logger.debug(f"Could not get cookies from driver: {e}")
+            cookie_jar = self._request_cookie_dict() or None
+            if cookie_jar:
+                self.logger.debug("Using %s cookies for downloadFile GET", len(cookie_jar))
             
             # Configure proxy for requests if set
             proxies = None
@@ -1673,20 +2095,36 @@ class ESMAScraper:
         
         # Merge financial identifiers from GOGEL CSV data if available
         if company_data and isinstance(company_data, dict):
-            lei = company_data.get('lei', '')
-            if lei:
-                default_profile['lei_codes'] = [lei]
-            
-            # Collect all known ISINs into a single flat list for matching
+            lei_codes: List[str] = []
+            raw_leis = company_data.get("leis")
+            if isinstance(raw_leis, list):
+                lei_codes.extend(str(x).strip() for x in raw_leis if x and str(x).strip())
+            raw_lei = company_data.get("lei", "")
+            if isinstance(raw_lei, list):
+                lei_codes.extend(str(x).strip() for x in raw_lei if x and str(x).strip())
+            elif isinstance(raw_lei, str) and raw_lei.strip():
+                lei_codes.append(raw_lei.strip())
+            seen_lei = set()
+            deduped = []
+            for lei in lei_codes:
+                if lei not in seen_lei:
+                    seen_lei.add(lei)
+                    deduped.append(lei)
+            default_profile["lei_codes"] = deduped
+
+            # Scoring only: equity + any known bonds. Do not use these as the ESMA query key.
             all_isins = []
-            isin_eq = company_data.get('isin_equity', '')
+            isin_eq = company_data.get("isin_equity", "")
             if isin_eq:
                 all_isins.append(isin_eq)
-            all_isins.extend(company_data.get('isins_bonds', []))
-            all_isins.extend(company_data.get('isins_bonds_subsidiaries', []))
-            default_profile['isins'] = list(dict.fromkeys(all_isins))  # dedupe, preserve order
-            
-            self.logger.info(f"Profile for '{company_name}': {len(default_profile['isins'])} ISINs, LEI={'yes' if lei else 'no'}")
+            all_isins.extend(company_data.get("isins_bonds", []) or [])
+            all_isins.extend(company_data.get("isins_bonds_subsidiaries", []) or [])
+            default_profile["isins"] = list(dict.fromkeys(all_isins))
+
+            self.logger.info(
+                f"Profile for '{company_name}': {len(default_profile['isins'])} ISINs, "
+                f"LEIs={len(deduped)}"
+            )
         
         # Load and merge disk profile if present
         profiles_path = Path("data/company_profiles.json")
@@ -1740,12 +2178,22 @@ class ESMAScraper:
                 isin_match = 1.0
                 self.logger.debug(f"ISIN match: {row_isin}")
 
-        # --- LEI match (check if LEI appears in the issuer field) ---
+        # --- LEI match (issuer identity: name list, Solr issuer_lei, or queried LEI) ---
         lei_match = 0.0
         lei_codes = profile.get('lei_codes', [])
         issuer_raw = details.get('issuer_name', '') or ''
+        issuer_blob = " ".join(
+            str(x)
+            for x in (
+                issuer_raw,
+                details.get("issuer_name_raw") or "",
+                details.get("issuer_lei") or "",
+                details.get("queried_lei") or "",
+            )
+            if x
+        )
         for lei in lei_codes:
-            if lei and lei in issuer_raw:
+            if lei and lei in issuer_blob:
                 lei_match = 1.0
                 self.logger.debug(f"LEI match in issuer field: {lei}")
                 break
@@ -1838,8 +2286,14 @@ class ESMAScraper:
             self.logger.error(f"Failed to write audit rows: {e}")
 
     def search_and_process(self, company_name: str, company_data: Dict[str, Any] = None,
-                           min_score: float = 0.55, doc_policy: str = "strict") -> List[Dict[str, Any]]:
-        """Navigate, search by bond ISINs (+ optional LEI), select tier1 rows, download."""
+                           min_score: float = 0.55, doc_policy: str = "strict",
+                           allow_fallback_search: bool = False) -> List[Dict[str, Any]]:
+        """Search ESMA by company LEI(s), select tier1 rows, download.
+
+        Discovery key is issuer_lei (parent + finance/operating sub LEIs).
+        GOGEL bond ISINs are not queried. Name search stays off unless
+        allow_fallback_search=True. Deal ISIN is the document's ESMA sec_isin.
+        """
         self.current_company = company_name
         profile = self._build_company_profile(company_name, company_data=company_data)
         rows: List[Dict[str, Any]] = []
@@ -1852,32 +2306,52 @@ class ESMAScraper:
                     rows.append(r)
                     seen_urls.add(url)
 
-        bond_isins = []
-        if company_data:
-            bond_isins.extend(company_data.get('isins_bonds') or [])
-            bond_isins.extend(company_data.get('isins_bonds_subsidiaries') or [])
-        bond_isins = list(dict.fromkeys(i.strip() for i in bond_isins if i and len(i.strip()) >= 12))
-        bond_isins = bond_isins[:MAX_BOND_ISIN_SEARCHES]
+        leis: List[str] = []
+        for lei in profile.get("lei_codes") or []:
+            s = str(lei).strip()
+            if s and len(s) >= 20 and s not in leis:
+                leis.append(s)
+        leis = leis[:MAX_LEI_SEARCHES]
 
-        for isin in bond_isins:
-            self.logger.info(f"ISIN-field search for bond: {isin}")
-            self.navigate_to_search()
-            if self.search_by_isin(isin):
-                time.sleep(4)
-                self.set_results_per_page(100)
-                _merge(self.process_results(company_name))
+        if not leis:
+            if allow_fallback_search:
+                search_token = profile.get("search_tokens", [company_name.split(" ")[0]])[0]
+                self.logger.info(f"No LEI for {company_name}; name fallback search: {search_token}")
+                self.navigate_to_search()
+                if self.search_company(search_token, is_lei=False):
+                    time.sleep(4)
+                    self.set_results_per_page(100)
+                    _merge(self.process_results(company_name))
+            else:
+                self.logger.warning(
+                    f"No LEI for {company_name} — skip ESMA search (status: no_tier1)"
+                )
+                self._write_audit_rows(company_name, [])
+                return []
 
-        lei_list = profile.get("lei_codes", [])
-        if lei_list and len(lei_list[0]) >= 20 and not rows:
-            lei = lei_list[0]
-            self.logger.info(f"LEI fallback search: {lei}")
-            self.navigate_to_search()
-            if self.search_company(lei, is_lei=True):
-                time.sleep(4)
-                self.set_results_per_page(100)
-                _merge(self.process_results(company_name))
+        solr_acc: List[Dict[str, Any]] = []
+        for lei in leis:
+            fetched = self.fetch_securities_via_solr(lei=lei, rows=50)
+            for r in fetched:
+                r["queried_lei"] = lei
+            solr_acc.extend(fetched)
+        _merge(solr_acc)
 
-        if not rows:
+        if not rows and leis:
+            self.logger.info(
+                f"Solr issuer_lei empty for {company_name}; trying UI LEI search"
+            )
+            for lei in leis:
+                self.logger.info(f"LEI-field search: {lei}")
+                self.navigate_to_search()
+                if self.search_company(lei, is_lei=True):
+                    time.sleep(4)
+                    self.set_results_per_page(100)
+                    _merge(self.process_results(company_name))
+                    if rows:
+                        break
+
+        if not rows and allow_fallback_search:
             search_token = profile.get("search_tokens", [company_name.split(" ")[0]])[0]
             self.logger.info(f"Name fallback search: {search_token}")
             self.navigate_to_search()
@@ -1885,6 +2359,20 @@ class ESMAScraper:
                 time.sleep(4)
                 self.set_results_per_page(100)
                 _merge(self.process_results(company_name))
+        elif not rows:
+            self.logger.info(
+                f"No ESMA rows from LEI search for {company_name}; "
+                "name fallback disabled"
+            )
+
+        n_attached = attach_solr_download_urls(rows, solr_acc)
+        n_dl = sum(1 for r in rows if resolve_download_url(r))
+        self.logger.info(
+            "Solr downloadFile attached to %s row(s); %s/%s rows have downloadFile",
+            n_attached,
+            n_dl,
+            len(rows),
+        )
 
         scored_rows = []
         for r in rows:
@@ -1907,6 +2395,14 @@ class ESMAScraper:
             scored_rows.append(r)
 
         selected = select_esma_rows(scored_rows, policy=doc_policy, min_score=min_score)
+        selected = [
+            s for s in selected
+            if s.get("doc_tier") == "tier1"
+            and (
+                float(s.get("lei_match") or 0) > 0
+                or float(s.get("isin_match") or 0) > 0
+            )
+        ]
         selected_urls = {r.get('url') for r in selected}
         for r in scored_rows:
             r['kept'] = r.get('url') in selected_urls
@@ -1920,20 +2416,13 @@ class ESMAScraper:
 
         downloads = []
         for r in selected:
-            url = resolve_download_url(r)
-            if not url or url in self.seen_urls:
+            seen_key = resolve_download_url(r) or (r.get("url") or "").strip() or str(r.get("doc_id") or "")
+            if seen_key and seen_key in self.seen_urls:
                 continue
-            doc_id = str(r.get("doc_id") or "").strip()
-            if not doc_id.isdigit():
-                doc_id = None
-            path = self.download_document(
-                url=url,
-                doc_id=doc_id,
-                doc_type_hint=r.get('doc_type'),
-                date_hint=r.get('date'),
-            )
+            path = self.download_selected_row(r)
             if path:
-                self.seen_urls.add(url)
+                if seen_key:
+                    self.seen_urls.add(seen_key)
                 try:
                     r['file_size_bytes'] = Path(path).stat().st_size
                 except OSError:
@@ -1947,16 +2436,20 @@ class ESMAScraper:
                     "score": r.get('score'),
                     "is_green": r.get('is_green'),
                     "isin_match": r.get('isin_match', 0.0),
+                    "lei_match": r.get('lei_match', 0.0),
                     "doc_tier": r.get('doc_tier'),
                     "selection_reason": r.get('selection_reason'),
                     "register_source": r.get('register_source', 'securities'),
+                    "doc_id": r.get('doc_id'),
+                    "download_url": resolve_download_url(r) or r.get('download_url'),
+                    "url": resolve_download_url(r) or r.get('url'),
                 })
 
         self._save_seen_urls()
-        if bond_isins and not selected:
+        if leis and not selected:
             self.logger.warning(
                 f"No tier1 document selected for {company_name} "
-                f"({len(bond_isins)} ISIN(s) searched) — status: no_tier1_on_esma"
+                f"({len(leis)} LEI(s) searched) — status: no_tier1_on_esma"
             )
         return downloads
 

@@ -73,4 +73,39 @@ class TestRunLedger:
             assert status["TestCo"]["outcome"] == "no_pdfs"
             lines = (Path(tmp) / "ledger.jsonl").read_text(encoding="utf-8").strip().splitlines()
             assert len(lines) == 1
-            assert json.loads(lines[0])["company"] == "TestCo"
+from processes.main import process_company_pdfs
+
+
+class TestProcessCompanyPdfsPaths:
+    def test_empty_explicit_paths_does_not_glob(self, tmp_path):
+        junk = tmp_path / "junk.pdf"
+        junk.write_bytes(b"%PDF-1.4 fake")
+        results = process_company_pdfs(
+            "TestCo",
+            tmp_path,
+            pdf_extractor_instance=None,
+            validator_instance=None,
+            pdf_paths=[],
+            glob_pdfs=False,
+        )
+        assert results == []
+
+    def test_explicit_pdf_paths_are_used(self, tmp_path):
+        class FakeValidator:
+            def quick_first_page_checks(self, *args, **kwargs):
+                return {"pass": False, "reason": "stop-before-extract"}
+
+        pdf = tmp_path / "real.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        junk = tmp_path / "junk.pdf"
+        junk.write_bytes(b"%PDF-1.4")
+        results = process_company_pdfs(
+            "TestCo",
+            tmp_path,
+            pdf_extractor_instance=None,
+            validator_instance=FakeValidator(),
+            pdf_paths=[pdf],
+            glob_pdfs=False,
+        )
+        assert len(results) == 1
+        assert results[0]["pdf_path"] == str(pdf)

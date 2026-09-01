@@ -18,9 +18,16 @@ from datetime import datetime
 from ...utils.decorators import retry, NETWORK_ERRORS
 
 _DEALER_TABLE_ANCHOR = re.compile(
-    r"dealer/management group\s*\(specify\)|platzeur/bankenkonsortium\s*\(angeben\)"
+    r"dealer\s*/\s*management group\s*\(specify\)|platzeur\s*/\s*bankenkonsortium\s*\(angeben\)"
     r"|(?:global coordinators and )?active bookrunners",
     re.IGNORECASE,
+)
+# Fallback only: ICMA "If syndicated … names of Managers/Dealers". Not compiled into
+# the preferred anchor — Total/ESB hit "If syndicated, names of Managers" ~40 chars
+# before "Active Bookrunners"; a combined regex would move the window start.
+_DEALER_SYNDICATED_FALLBACK = re.compile(
+    r"if syndicated\s*[:.,]?\s*(?:.{0,80}?)names(?: of(?: the)? (?:managers|dealers))?",
+    re.IGNORECASE | re.DOTALL,
 )
 _BANK_LEGAL_SUFFIX = (
     r"Bank Ireland PLC|Bank AG|Bank GmbH|Bank Europe GmbH|Bank International AG|"
@@ -42,8 +49,45 @@ _FTWS_DEALER_LEGAL_NAMES = (
     "Nordea Bank Abp",
     "Skandinaviska Enskilda Banken AB (publ)",
     "Wells Fargo Securities Europe S.A.",
+    "Coöperatieve Rabobank U.A.",
+    "Crédit Agricole Corporate and Investment Bank",
+    "Deutsche Bank Aktiengesellschaft",
+    "NatWest Markets N.V.",
+    "Crédit Industriel et Commercial S.A.",
+    "Banco Santander, S.A.",
+    "Commerzbank Aktiengesellschaft",
+    "ING Bank N.V.",
+    "J.P. Morgan SE",
+    "MUFG Securities (Europe) N.V.",
 )
 _SOC_GEN_RE = re.compile(r"Soci[eé]t[eé]\s+G[eé]n[eé]rale|Socit\s+Gnrale", re.IGNORECASE)
+_COVER_AS_BOOKRUNNERS_PREFIX = re.compile(
+    r"as\s+(?:global\s+coordinators\s+and\s+)?$",
+    re.IGNORECASE,
+)
+
+
+def _is_cover_as_bookrunners_match(text: str, match: re.Match) -> bool:
+    """Cover 'as Active Bookrunners' / 'as Global Coordinators and Active Bookrunners'."""
+    if not re.search(r"active\s+bookrunners", match.group(0), re.IGNORECASE):
+        return False
+    return bool(_COVER_AS_BOOKRUNNERS_PREFIX.search(text[: match.start()]))
+
+
+def _whitelist_name_in_block(legal_name: str, block_cf: str) -> bool:
+    """True if legal_name is a token in block_cf, not a prefix (J.P. Morgan SE vs Securities)."""
+    needle = legal_name.casefold()
+    start = 0
+    while True:
+        i = block_cf.find(needle, start)
+        if i < 0:
+            return False
+        before_ok = i == 0 or not block_cf[i - 1].isalnum()
+        after_i = i + len(needle)
+        after_ok = after_i >= len(block_cf) or not block_cf[after_i].isalnum()
+        if before_ok and after_ok:
+            return True
+        start = i + 1
 
 class AIBankExtractor:
     """
@@ -177,10 +221,24 @@ class AIBankExtractor:
     
     def extract_dealer_management_banks(self, text: str) -> List[Dict[str, Any]]:
         """Regex extraction for FTWS dealer/management tables (OMV-style final terms)."""
-        match = _DEALER_TABLE_ANCHOR.search(text)
-        if not match:
-            return []
+        preferred = None
+        for candidate in _DEALER_TABLE_ANCHOR.finditer(text):
+            if _is_cover_as_bookrunners_match(text, candidate):
+                continue
+            preferred = candidate
+            break
 
+        if preferred is not None:
+            banks = self._collect_dealer_banks(text, preferred)
+            if banks:
+                return banks
+
+        fallback = _DEALER_SYNDICATED_FALLBACK.search(text)
+        if fallback is None:
+            return []
+        return self._collect_dealer_banks(text, fallback)
+
+    def _collect_dealer_banks(self, text: str, match: re.Match) -> List[Dict[str, Any]]:
         start = match.end()
         text_l = text.lower()
         end = min(len(text), start + 6000)
@@ -191,6 +249,7 @@ class AIBankExtractor:
             "management/underwriting commission",
             "stabilisation manager",
             "if non-syndicated",
+            "date of syndication agreement",
             "u.s. selling restrictions",
         ):
             pos = text_l.find(marker, start)
@@ -198,6 +257,7 @@ class AIBankExtractor:
                 end = min(end, pos)
 
         block = text[start:end]
+        block_cf = block.casefold()
         seen: set[str] = set()
         banks: List[Dict[str, Any]] = []
 
@@ -209,7 +269,7 @@ class AIBankExtractor:
             banks.append({"raw_name": name, "role": "Dealer", "confidence": 0.92})
 
         for legal_name in _FTWS_DEALER_LEGAL_NAMES:
-            if legal_name in block:
+            if _whitelist_name_in_block(legal_name, block_cf):
                 _add(legal_name)
 
         if _SOC_GEN_RE.search(block):

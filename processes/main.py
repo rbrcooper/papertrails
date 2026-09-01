@@ -119,6 +119,9 @@ def _build_company_queue(company_handler, args, run_ledger: RunLedger) -> List[D
     else:
         companies = company_handler.get_unprocessed_companies()
 
+    if getattr(args, "require_bond_isins", False):
+        companies = [c for c in companies if _bond_isins(c)]
+
     if args.limit_companies:
         companies = companies[: args.limit_companies]
     return companies
@@ -151,6 +154,25 @@ def _placeholder_validate_extraction(extraction_result: Dict) -> Dict:
         'confidence_scores': {'overall_placeholder': 1.0 if is_ok else 0.5}
     }
 
+def _bond_isins(company: Dict) -> List[str]:
+    raw = list(dict.fromkeys(
+        (company.get("isins_bonds") or []) + (company.get("isins_bonds_subsidiaries") or [])
+    ))
+    return [i.strip() for i in raw if i and len(str(i).strip()) >= 12]
+
+
+def _company_leis(company: Dict) -> List[str]:
+    out: List[str] = []
+    for x in company.get("leis") or []:
+        s = str(x).strip()
+        if s and s not in out:
+            out.append(s)
+    lei = str(company.get("lei") or "").strip()
+    if lei and lei not in out:
+        out.append(lei)
+    return out
+
+
 def process_company_pdfs(
     company_name: str,
     pdf_dir: Path,
@@ -158,17 +180,35 @@ def process_company_pdfs(
     validator_instance: ExtractionValidator,
     expected_isins: List[str] = None,
     max_pdf_chars: int = 80000,
+    pdf_paths: List[Path] = None,
+    glob_pdfs: bool = False,
 ) -> List[Dict]:
-    """Process all PDFs for a company using a provided PDFExtractor instance and validator."""
-    # extractor = PDFExtractor() # Use passed instance
-    processed_pdf_results = [] # Changed variable name for clarity
-    
-    if not pdf_dir.exists() or not pdf_dir.is_dir():
-        logger.warning(f"PDF directory not found for {company_name} at {pdf_dir}. Skipping PDF processing.")
+    """Process PDFs for a company.
+
+    If pdf_paths is set, only those files are processed (never a folder glob).
+    Folder glob runs only when glob_pdfs=True (debug escape hatch).
+    """
+    processed_pdf_results = []
+
+    if pdf_paths is not None:
+        files = [Path(p) for p in pdf_paths if p]
+    elif glob_pdfs:
+        if not pdf_dir.exists() or not pdf_dir.is_dir():
+            logger.warning(f"PDF directory not found for {company_name} at {pdf_dir}. Skipping PDF processing.")
+            return processed_pdf_results
+        files = list(pdf_dir.glob("*.pdf"))
+    else:
+        logger.info(
+            f"No explicit PDF paths for {company_name}; skipping extract "
+            "(folder glob disabled). Pass pdf_paths or --glob-pdfs."
+        )
         return processed_pdf_results
 
-    for pdf_file_path_obj in pdf_dir.glob('*.pdf'):
+    for pdf_file_path_obj in files:
         pdf_file_path_str = str(pdf_file_path_obj)
+        if not pdf_file_path_obj.exists():
+            logger.warning(f"PDF path missing: {pdf_file_path_str}")
+            continue
         try:
             logger.info(f"Processing {pdf_file_path_str} for {company_name}")
             
@@ -251,7 +291,8 @@ def main():
                         help="Path to the GOGEL data file (.csv or .xlsx)")
     parser.add_argument("--output-dir", default="data/processed", help="Directory to save output files")
     parser.add_argument("--limit-companies", type=int, default=None, help="Limit the number of companies to process for testing")
-    parser.add_argument("--skip-scraping", action='store_true', help="Skip the scraping step and use local PDFs")
+    parser.add_argument("--skip-scraping", action='store_true',
+                        help="Skip scrape. Does not extract old download folders unless --glob-pdfs")
     parser.add_argument("--max-workers", type=int, default=4, help="Maximum number of workers for parallel PDF processing (default: 4)")
     parser.add_argument("--region-filter", default="all",
                         help="Region filter: 'all', 'eu', or comma-separated country names (default: all)")
@@ -264,7 +305,17 @@ def main():
                         help="Queue companies with last outcome != complete (not in processed set)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print queue plan only; no scrape, extract, or DB writes")
+    parser.add_argument("--allow-fallback-search", action="store_true",
+                        help="Allow LEI/name ESMA search when ISIN search returns no rows (off by default)")
+    parser.add_argument("--glob-pdfs", action="store_true",
+                        help="Extract every PDF in the company download folder (debug only; default is this-run paths only)")
+    parser.add_argument("--pdf-paths", nargs="+", default=None,
+                        help="Explicit PDF files to extract for --company (never globs a download folder)")
+    parser.add_argument("--require-bond-isins", action="store_true",
+                        help="Queue only GOGEL companies that have bond ISINs")
     args = parser.parse_args()
+    if args.pdf_paths and not args.company:
+        parser.error("--pdf-paths requires --company")
     
     output_data_dir = Path(args.output_dir)
     output_data_dir.mkdir(parents=True, exist_ok=True)
@@ -317,59 +368,79 @@ def main():
                 skip_scraping=bool(args.skip_scraping),
             )
 
-            bond_isins = list(dict.fromkeys(
-                (company.get('isins_bonds') or []) + (company.get('isins_bonds_subsidiaries') or [])
-            ))
-            bond_isins_in_scope = [i for i in bond_isins if i and len(i) >= 12]
+            bond_isins_in_scope = _bond_isins(company)
             run_metrics["isins_in_scope"] += len(bond_isins_in_scope)
             record.bond_isin_count = len(bond_isins_in_scope)
 
+            downloads: List[Dict] = []
             if not args.skip_scraping:
-                logger.info(f"Scraping documents for {current_company_name}")
-                try:
-                    downloads = scraper.search_and_process(
-                        current_company_name,
-                        company_data=company,
-                        doc_policy=args.doc_policy,
+                if not _company_leis(company) and not bond_isins_in_scope:
+                    logger.warning(
+                        f"No LEI for {current_company_name} — skip ESMA search"
                     )
-                    tier1_isins = {d.get('isin') for d in downloads if d.get('isin')}
-                    run_metrics["isins_with_tier1"] += len(tier1_isins)
-                    run_metrics["tier1_downloaded"] += len(downloads)
-                    record.tier1_downloaded = len(downloads)
-                    logger.info(f"Downloaded {len(downloads)} documents for {current_company_name}")
-                except Exception as scrape_e:
-                    log_error_with_category(scrape_e, f"scraping documents for {current_company_name}", logger)
-                    run_metrics["companies_failed"] += 1
-                    record.outcome = "scrape_error"
-                    record.skip_reason = str(scrape_e)
-                    record.duration_seconds = round(time.time() - company_start, 2)
+                    record.tier1_downloaded = 0
+                else:
+                    logger.info(f"Scraping documents for {current_company_name}")
                     try:
-                        run_ledger.append(record)
-                        run_company_records.append({
-                            "name": record.company,
-                            "outcome": record.outcome,
-                            "tier1_downloaded": record.tier1_downloaded,
-                            "pdfs_processed": record.pdfs_processed,
-                            "pdfs_stored": record.pdfs_stored,
-                            "duration_seconds": record.duration_seconds,
-                        })
-                    except Exception as le:
-                        logger.warning(f"Failed writing run ledger for {current_company_name}: {le}")
-                    logger.info("Continuing to the next company.")
-                    continue
+                        downloads = scraper.search_and_process(
+                            current_company_name,
+                            company_data=company,
+                            doc_policy=args.doc_policy,
+                            allow_fallback_search=bool(args.allow_fallback_search),
+                        )
+                        tier1_isins = {d.get('isin') for d in downloads if d.get('isin')}
+                        run_metrics["isins_with_tier1"] += len(tier1_isins)
+                        run_metrics["tier1_downloaded"] += len(downloads)
+                        record.tier1_downloaded = len(downloads)
+                        logger.info(f"Downloaded {len(downloads)} documents for {current_company_name}")
+                    except Exception as scrape_e:
+                        log_error_with_category(scrape_e, f"scraping documents for {current_company_name}", logger)
+                        run_metrics["companies_failed"] += 1
+                        record.outcome = "scrape_error"
+                        record.skip_reason = str(scrape_e)
+                        record.duration_seconds = round(time.time() - company_start, 2)
+                        try:
+                            run_ledger.append(record)
+                            run_company_records.append({
+                                "name": record.company,
+                                "outcome": record.outcome,
+                                "tier1_downloaded": record.tier1_downloaded,
+                                "pdfs_processed": record.pdfs_processed,
+                                "pdfs_stored": record.pdfs_stored,
+                                "duration_seconds": record.duration_seconds,
+                            })
+                        except Exception as le:
+                            logger.warning(f"Failed writing run ledger for {current_company_name}: {le}")
+                        logger.info("Continuing to the next company.")
+                        continue
             
             # Standardize the company name for directory path
             sanitized_company_name = re.sub(r'[\\\\/:*?\"<>|]', '_', current_company_name)
             company_pdf_download_dir = _sanitized_download_dir(current_company_name)
-            
-            # Process all PDFs for the current company
+
+            extract_paths = [
+                Path(d["file_path"]) for d in downloads if d.get("file_path")
+            ]
+            if args.pdf_paths:
+                extract_paths = [Path(p) for p in args.pdf_paths]
+            if args.glob_pdfs:
+                logger.warning(
+                    f"--glob-pdfs: extracting all PDFs under {company_pdf_download_dir}"
+                )
+            elif args.skip_scraping and not extract_paths:
+                logger.info(
+                    f"--skip-scraping without this-run paths: not walking {company_pdf_download_dir}"
+                )
+
             company_pdf_processing_results = process_company_pdfs(
                 current_company_name,
                 company_pdf_download_dir,
                 pdf_extractor,
                 validator,
-                expected_isins=bond_isins,
+                expected_isins=bond_isins_in_scope if args.glob_pdfs else [],
                 max_pdf_chars=args.max_pdf_chars,
+                pdf_paths=None if args.glob_pdfs else extract_paths,
+                glob_pdfs=bool(args.glob_pdfs),
             )
             record.pdfs_processed = len(company_pdf_processing_results or [])
             

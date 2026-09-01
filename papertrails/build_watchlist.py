@@ -3,11 +3,16 @@ Build an expansion-ranked GOGEL watchlist for the alert feed.
 
 Rank metric: parent-level ste_resources_under_development_mmboe (summed).
 Tie-break: production_mmboe, then name.
-Eligibility: at least one bond ISIN in isins_bonds or isins_bonds_subsidiaries.
+Eligibility: at least one LEI under the parent (parent + finance/operating subs).
+--verify-solr: keep only parents with at least one downloadable FTWS under those
+LEIs (sec_docType FTWS, ISIN length ≥ 12, downloadFile from sec_docRfssId) —
+not prospectus-row numFound>0.
+Discovery key is company LEIs, not GOGEL bond ISINs.
 
 Usage:
   py -3 -m papertrails.build_watchlist --top 5
   py -3 -m papertrails.build_watchlist --top 50 --out papertrails/watchlist.yaml
+  py -3 -m papertrails.build_watchlist --top 50 --verify-solr --out papertrails/watchlist_top50.yaml
 """
 
 from __future__ import annotations
@@ -26,9 +31,6 @@ DEFAULT_OUT = Path(__file__).resolve().parent / "watchlist.yaml"
 
 METRIC_COLUMN = "ste_resources_under_development_mmboe"
 PRODUCTION_COLUMN = "production_mmboe"
-# ESMA prospectus register is dominated by international (XS) issues.
-# Domestic CO/IN/JP/… ISINs are not useful for this alert product.
-ESMA_ISIN_PREFIXES = ("XS",)
 
 BENCHMARK_FORCE = [
     {"name_parent": "OMV", "bond_isins": ["XS2886118079"], "benchmark": "OMV"},
@@ -48,6 +50,32 @@ def _parse_multi_value(raw: Any) -> List[str]:
     return [v.strip() for v in raw.split(";") if v.strip() and v.strip() != "."]
 
 
+def _parse_eu_number(raw: Any) -> float:
+    """Parse GOGEL STE/production values, including European decimals (438,11)."""
+    if raw is None:
+        return 0.0
+    try:
+        if pd.isna(raw):
+            return 0.0
+    except (TypeError, ValueError):
+        pass
+    if isinstance(raw, bool):
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    s = str(raw).strip().replace(" ", "")
+    if not s or s in {".", "NA", "nan", "None"}:
+        return 0.0
+    if re.match(r"^-?\d{1,3}(\.\d{3})+,\d+$", s):
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s and "." not in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
 def _clean_isin(isin: str) -> Optional[str]:
     s = (isin or "").strip().upper()
     if len(s) >= 12 and re.match(r"^[A-Z]{2}[A-Z0-9]+$", s):
@@ -55,13 +83,27 @@ def _clean_isin(isin: str) -> Optional[str]:
     return None
 
 
+def _clean_lei(raw: Any) -> Optional[str]:
+    s = str(raw or "").strip().upper()
+    if len(s) == 20 and re.match(r"^[A-Z0-9]{20}$", s):
+        return s
+    return None
+
+
+def _hierarchy_lei_rank(hierarchy: Any) -> int:
+    h = str(hierarchy or "").lower()
+    if "finance" in h:
+        return 1
+    if "parent" in h:
+        return 0
+    return 2
+
+
 def _load_parent_aggregates(gogel_path: Path) -> List[Dict[str, Any]]:
     df = pd.read_csv(gogel_path, sep=";", encoding="utf-8")
     if METRIC_COLUMN not in df.columns:
         raise SystemExit(f"Missing metric column {METRIC_COLUMN} in {gogel_path}")
 
-    df["_ste"] = pd.to_numeric(df[METRIC_COLUMN], errors="coerce").fillna(0.0)
-    df["_prod"] = pd.to_numeric(df.get(PRODUCTION_COLUMN), errors="coerce").fillna(0.0)
     df["_parent"] = df["name_parent"].fillna(df["name_company"]).astype(str).str.strip()
 
     agg: Dict[str, Dict[str, Any]] = {}
@@ -76,14 +118,24 @@ def _load_parent_aggregates(gogel_path: Path) -> List[Dict[str, Any]]:
                 "ste_mmboe": 0.0,
                 "production_mmboe": 0.0,
                 "lei": "",
+                "leis": [],
+                "_lei_meta": [],
+                "isin_equity": "",
                 "bond_isins": [],
             },
         )
-        bucket["ste_mmboe"] += float(row["_ste"])
-        bucket["production_mmboe"] += float(row["_prod"])
-        lei = str(row.get("lei", "")).strip() if pd.notna(row.get("lei")) else ""
-        if lei and len(lei) >= 20 and not bucket["lei"]:
-            bucket["lei"] = lei
+        bucket["ste_mmboe"] += _parse_eu_number(row.get(METRIC_COLUMN))
+        bucket["production_mmboe"] += _parse_eu_number(row.get(PRODUCTION_COLUMN))
+        hier = row.get("company_hierarchy")
+        lei = _clean_lei(row.get("lei") if pd.notna(row.get("lei")) else "")
+        if lei:
+            bucket["_lei_meta"].append((_hierarchy_lei_rank(hier), lei))
+        eq = _clean_isin(str(row.get("isin_equity") or ""))
+        if eq:
+            if _hierarchy_lei_rank(hier) == 0:
+                bucket["isin_equity"] = eq
+            elif not bucket["isin_equity"]:
+                bucket["isin_equity"] = eq
         bonds = _parse_multi_value(row.get("isins_bonds")) + _parse_multi_value(
             row.get("isins_bonds_subsidiaries")
         )
@@ -92,18 +144,18 @@ def _load_parent_aggregates(gogel_path: Path) -> List[Dict[str, Any]]:
             if clean and clean not in bucket["bond_isins"]:
                 bucket["bond_isins"].append(clean)
 
-    def _esma_isins(isins: List[str]) -> List[str]:
-        return [i for i in isins if i.startswith(ESMA_ISIN_PREFIXES)]
-
     eligible = []
     for v in agg.values():
-        xs = _esma_isins(v["bond_isins"])
-        if not xs:
+        ordered: List[str] = []
+        for _, lei in sorted(v["_lei_meta"], key=lambda t: t[0]):
+            if lei not in ordered:
+                ordered.append(lei)
+        if not ordered:
             continue
         row = dict(v)
-        # Prefer XS for polling; keep other ISINs after for reference
-        row["bond_isins"] = xs + [i for i in v["bond_isins"] if i not in xs]
-        row["esma_bond_isins"] = xs
+        row.pop("_lei_meta", None)
+        row["leis"] = ordered
+        row["lei"] = ordered[0]
         eligible.append(row)
     eligible.sort(
         key=lambda x: (-x["ste_mmboe"], -x["production_mmboe"], x["name_parent"].lower())
@@ -115,45 +167,103 @@ def _match_benchmark_parent(
     eligible: List[Dict[str, Any]], force: Dict[str, Any]
 ) -> Optional[Dict[str, Any]]:
     needle = force["name_parent"].lower()
-    force_isins = set(force["bond_isins"])
+    force_isins = set(force.get("bond_isins") or [])
     for row in eligible:
         if needle in row["name_parent"].lower() or row["name_parent"].lower() in needle:
             return row
-    for row in eligible:
-        if force_isins & set(row["bond_isins"]):
-            return row
+    if force_isins:
+        for row in eligible:
+            if force_isins & set(row.get("bond_isins") or []):
+                return row
     return None
 
 
-def _solr_num_found(isin: str, timeout: int = 15) -> int:
+SOLR_SECURITIES_URL = (
+    "https://registers.esma.europa.eu/solr/esma_registers_priii_securities/select"
+)
+VERIFY_SOLR_QUERY = (
+    "sec_issuerNameList:*{lei}* AND sec_docType:FTWS; "
+    "ISIN len>=12; downloadFile from sec_docRfssId"
+)
+
+
+def _solr_field(value: Any) -> str:
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    return str(value or "").strip()
+
+
+def _download_url_from_rfss(rfss: Any) -> str:
+    """Build downloadFile URL from Solr sec_docRfssId ('fileId,checksum').
+
+    Keep in sync with processes.esma_scraper.download_url_from_rfss.
+    Do not import esma_scraper here (Selenium).
+    """
+    raw = _solr_field(rfss)
+    if "," not in raw:
+        return ""
+    file_id, file_hash = raw.split(",", 1)
+    file_id, file_hash = file_id.strip(), file_hash.strip()
+    if not file_id.isdigit() or not file_hash:
+        return ""
+    return (
+        "https://registers.esma.europa.eu/publication/downloadFile"
+        f"?fileId={file_id}&checksum={file_hash}"
+    )
+
+
+def _is_downloadable_ftws_doc(doc: Dict[str, Any]) -> bool:
+    """True only for sec_docType FTWS with ISIN length ≥ 12 and downloadFile."""
+    if _solr_field(doc.get("sec_docType")).upper() != "FTWS":
+        return False
+    if len(_solr_field(doc.get("sec_isin"))) < 12:
+        return False
+    return "downloadFile" in _download_url_from_rfss(doc.get("sec_docRfssId"))
+
+
+def solr_lei_has_downloadable_ftws(lei: str, timeout: int = 12) -> bool:
+    """HTTP Solr select only. Never GET the PDF / downloadFile URL."""
+    lei = (lei or "").strip()
+    if not lei:
+        return False
     try:
         import requests
 
         resp = requests.get(
-            "https://registers.esma.europa.eu/solr/esma_registers_priii_securities/select",
-            params={"q": f"sec_isin:{isin}", "rows": 0, "wt": "json"},
+            SOLR_SECURITIES_URL,
+            params={
+                "q": f"sec_issuerNameList:*{lei}* AND sec_docType:FTWS",
+                "rows": 20,
+                "wt": "json",
+                "fl": "sec_docType,sec_isin,sec_docRfssId",
+            },
+            headers={"User-Agent": "papertrails-watchlist/1.0"},
             timeout=timeout,
         )
         resp.raise_for_status()
-        return int(resp.json().get("response", {}).get("numFound") or 0)
+        docs = (resp.json().get("response") or {}).get("docs") or []
     except Exception:
-        return -1
+        return False
+    return any(_is_downloadable_ftws_doc(d) for d in docs if isinstance(d, dict))
 
 
-def _prefer_solr_live_isins(isins: List[str], verify: bool) -> List[str]:
-    """Return Solr-live ISINs only when verify=True; cap probes per parent."""
-    if not verify or not isins:
-        return isins
-    live: List[str] = []
-    ordered = sorted(set(isins), reverse=True)
-    max_probes = min(8, len(ordered))
-    for i in ordered[:max_probes]:
-        n = _solr_num_found(i)
-        if n > 0:
-            live.append(i)
-            if len(live) >= 2:
-                break
-    return live
+def _issuer_payload(row: Dict[str, Any], rank: Optional[int]) -> Dict[str, Any]:
+    leis = list(row.get("leis") or [])
+    if row.get("lei") and row["lei"] not in leis:
+        leis.insert(0, row["lei"])
+    out: Dict[str, Any] = {
+        "rank": rank,
+        "name_parent": row["name_parent"],
+        "lei": leis[0] if leis else (row.get("lei") or ""),
+        "leis": leis,
+        "isin_equity": row.get("isin_equity") or "",
+        "ste_mmboe": round(float(row["ste_mmboe"]), 4),
+        "production_mmboe": round(float(row["production_mmboe"]), 4),
+    }
+    bonds = list(row.get("bond_isins") or [])
+    if bonds:
+        out["bond_isins"] = bonds[:10]
+    return out
 
 
 def build_watchlist(
@@ -161,24 +271,44 @@ def build_watchlist(
     top: int,
     include_benchmarks: bool = True,
     verify_solr: bool = False,
+    leis_per_parent: int = 8,
 ) -> Dict[str, Any]:
     eligible = _load_parent_aggregates(gogel_path)
+    lei_eligible_total = len(eligible)
+    solr_probes = 0
+    solr_parents_probed = 0
+    live_meta_note = ""
+
     if verify_solr:
         filtered = []
         for row in eligible:
-            xs = [
-                i for i in (row.get("esma_bond_isins") or row["bond_isins"])
-                if i.startswith(ESMA_ISIN_PREFIXES)
-            ]
-            live = _prefer_solr_live_isins(xs, verify=True)
-            if not live:
+            solr_parents_probed += 1
+            hit = False
+            for lei in (row.get("leis") or [])[: max(1, leis_per_parent)]:
+                solr_probes += 1
+                if solr_lei_has_downloadable_ftws(lei):
+                    hit = True
+                    break
+            if not hit:
+                if solr_parents_probed % 10 == 0:
+                    print(
+                        f"... probed {solr_parents_probed} parents, "
+                        f"live={len(filtered)} last_miss={row['name_parent']}",
+                        flush=True,
+                    )
                 continue
-            row = dict(row)
-            row["bond_isins"] = live
-            row["esma_bond_isins"] = live
-            filtered.append(row)
+            print(
+                f"HIT {len(filtered)+1}/{top} {row['name_parent']} "
+                f"ste={row['ste_mmboe']} leis={len(row.get('leis') or [])}",
+                flush=True,
+            )
+            filtered.append(dict(row))
             if len(filtered) >= top:
                 break
+        live_meta_note = (
+            f"stopped after {len(filtered)} downloadable-FTWS parents "
+            f"(probed {solr_parents_probed} of {lei_eligible_total} LEI-eligible)"
+        )
         eligible = filtered
 
     core = eligible[: max(0, top)]
@@ -186,51 +316,33 @@ def build_watchlist(
 
     issuers: List[Dict[str, Any]] = []
     for i, row in enumerate(core, start=1):
-        bonds = row.get("esma_bond_isins") or row["bond_isins"]
-        issuers.append(
-            {
-                "rank": i,
-                "name_parent": row["name_parent"],
-                "lei": row.get("lei") or "",
-                "bond_isins": bonds[:10],
-                "ste_mmboe": round(float(row["ste_mmboe"]), 4),
-                "production_mmboe": round(float(row["production_mmboe"]), 4),
-            }
-        )
+        issuers.append(_issuer_payload(row, rank=i))
 
     if include_benchmarks:
-        existing_isins = {i for row in issuers for i in row["bond_isins"]}
+        pool = _load_parent_aggregates(gogel_path) if verify_solr else eligible
         for force in BENCHMARK_FORCE:
-            matched = _match_benchmark_parent(
-                _load_parent_aggregates(gogel_path) if verify_solr else eligible,
-                force,
-            )
+            matched = _match_benchmark_parent(pool, force)
             parent_name = matched["name_parent"] if matched else force["name_parent"]
             already = next((r for r in issuers if r["name_parent"] == parent_name), None)
             if already:
                 already["benchmark"] = force["benchmark"]
-                for bi in reversed(force["bond_isins"]):
-                    if bi in already["bond_isins"]:
-                        already["bond_isins"].remove(bi)
-                    already["bond_isins"].insert(0, bi)
                 continue
-            if any(bi in existing_isins for bi in force["bond_isins"]):
-                continue
-            issuers.append(
-                {
-                    "rank": None,
+            payload = _issuer_payload(
+                matched
+                or {
                     "name_parent": parent_name,
-                    "lei": (matched or {}).get("lei", ""),
-                    "bond_isins": list(force["bond_isins"]),
-                    "ste_mmboe": round(float((matched or {}).get("ste_mmboe", 0.0)), 4),
-                    "production_mmboe": round(
-                        float((matched or {}).get("production_mmboe", 0.0)), 4
-                    ),
-                    "benchmark": force["benchmark"],
-                    "force_included": matched is None or parent_name not in core_names,
-                }
+                    "ste_mmboe": 0.0,
+                    "production_mmboe": 0.0,
+                    "leis": [],
+                    "lei": "",
+                    "isin_equity": "",
+                    "bond_isins": list(force.get("bond_isins") or []),
+                },
+                rank=None,
             )
-            existing_isins.update(force["bond_isins"])
+            payload["benchmark"] = force["benchmark"]
+            payload["force_included"] = matched is None or parent_name not in core_names
+            issuers.append(payload)
 
     return {
         "meta": {
@@ -239,11 +351,24 @@ def build_watchlist(
             "metric_column": METRIC_COLUMN,
             "tiebreak_column": PRODUCTION_COLUMN,
             "aggregation": "sum ste_resources_under_development_mmboe by name_parent",
-            "eligibility": "≥1 XS bond ISIN (isins_bonds or subsidiaries); ESMA-relevant",
-            "esma_isin_prefixes": list(ESMA_ISIN_PREFIXES),
+            "eligibility": (
+                "≥1 LEI under name_parent (parent + finance/operating subs)"
+                + (
+                    "; --verify-solr requires ≥1 downloadable FTWS"
+                    if verify_solr
+                    else ""
+                )
+            ),
+            "discovery_key": "company LEI on prospectus rows (sec_issuerNameList)",
             "verify_solr": verify_solr,
+            "verify_solr_query": VERIFY_SOLR_QUERY if verify_solr else "",
             "top": top,
-            "eligible_parents_total": len(eligible),
+            "eligible_parents_total": lei_eligible_total,
+            "solr_live_parents": len(core) if verify_solr else None,
+            "solr_probes": solr_probes if verify_solr else 0,
+            "solr_parents_probed": solr_parents_probed if verify_solr else 0,
+            "leis_per_parent": leis_per_parent if verify_solr else None,
+            "solr_note": live_meta_note,
         },
         "issuers": issuers,
     }
@@ -258,7 +383,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--verify-solr",
         action="store_true",
-        help="Keep only parents/ISINs with numFound>0 on ESMA Solr (slower)",
+        help=(
+            "Keep only parents with ≥1 downloadable FTWS under their LEIs "
+            "(sec_docType FTWS, ISIN length ≥ 12, downloadFile; slower). "
+            "Not prospectus-row numFound>0."
+        ),
+    )
+    parser.add_argument(
+        "--leis-per-parent",
+        type=int,
+        default=8,
+        help="Max LEIs to probe per parent when --verify-solr (parent then finance/operating subs)",
     )
     args = parser.parse_args(argv)
 
@@ -270,6 +405,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         top=args.top,
         include_benchmarks=not args.no_benchmarks,
         verify_solr=bool(args.verify_solr),
+        leis_per_parent=int(args.leis_per_parent),
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8") as f:
@@ -277,13 +413,15 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     print(
         f"Wrote {len(payload['issuers'])} issuers to {args.out} "
-        f"(top={args.top}, eligible={payload['meta']['eligible_parents_total']})"
+        f"(top={args.top}, lei_eligible={payload['meta']['eligible_parents_total']}, "
+        f"solr_live={payload['meta'].get('solr_live_parents')})"
     )
     for row in payload["issuers"]:
         tag = f" [{row['benchmark']}]" if row.get("benchmark") else ""
+        n_lei = len(row.get("leis") or [])
         print(
             f"  rank={row.get('rank')} {row['name_parent']}{tag} "
-            f"ste={row['ste_mmboe']} isins={len(row['bond_isins'])}"
+            f"ste={row['ste_mmboe']} leis={n_lei}"
         )
     return 0
 

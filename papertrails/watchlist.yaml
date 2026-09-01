@@ -4,75 +4,740 @@ meta:
   gogel_version: Urgewald GOGEL 2025 V1.2 with identifiers.csv
   metric_column: ste_resources_under_development_mmboe
   tiebreak_column: production_mmboe
-  aggregation: sum ste by name_parent
-  eligibility: XS + Solr live
-  verify_solr: true
-  top: 5
-  eligible_parents_total: 5
+  aggregation: sum ste_resources_under_development_mmboe by name_parent
+  eligibility: ≥1 LEI under name_parent (parent + finance/operating subs)
+  discovery_key: company LEI on prospectus rows (sec_issuerNameList)
+  verify_solr: false
+  verify_solr_query: ''
+  top: 50
+  eligible_parents_total: 756
+  solr_live_parents: null
+  solr_probes: 0
+  solr_parents_probed: 0
+  leis_per_parent: null
+  solr_note: ''
 issuers:
 - rank: 1
-  name_parent: A2A SpA
-  lei: 81560076E3944316DB24
+  name_parent: QatarEnergy
+  lei: 254900QTESJKJ3P87J26
+  leis:
+  - 254900QTESJKJ3P87J26
+  - 254900QKNLH5NOZUED06
+  - 9845004838E0E8DB9F59
+  isin_equity: ''
+  ste_mmboe: 26585.77
+  production_mmboe: 1042.24
   bond_isins:
-  - XS3213247037
-  - XS0261846066
-  - XS1701884204
-  - XS2250376477
-  - XS1195347478
-  ste_mmboe: 0.0
-  production_mmboe: 0.0
+  - XS2357493860
+  - XS2357494322
+  - XS2359548935
+  - XS2357494751
 - rank: 2
+  name_parent: Saudi Arabian Oil Company (Saudi Aramco)
+  lei: 5586006WD91QHB7J4X50
+  leis:
+  - 5586006WD91QHB7J4X50
+  - UQZ4EDMHL4ZESPZY3752
+  isin_equity: SA14TG012N13
+  ste_mmboe: 18035.87
+  production_mmboe: 4483.0
+  bond_isins:
+  - XS1982113463
+  - XS1982116136
+  - XS2262853000
+  - XS2262853422
+  - XS2262853349
+  - XS2262853265
+  - XS2861551898
+  - XS2861550817
+  - XS2861555964
+  - XS3084344863
+- rank: 3
+  name_parent: Abu Dhabi National Oil Company (ADNOC)
+  lei: 5493009O1JMLWDLTIC26
+  leis:
+  - 5493009O1JMLWDLTIC26
+  - 254900O5NS03BDOOM362
+  isin_equity: AEE01195A234
+  ste_mmboe: 13806.89
+  production_mmboe: 1168.44
+  bond_isins:
+  - XS2898198358
+  - XS2898198515
+  - XS2898198432
+  - XS3044356072
+- rank: 4
+  name_parent: PJSC Gazprom
+  lei: 213800FD9J2IHTA7YX78
+  leis:
+  - 213800FD9J2IHTA7YX78
+  - 253400KXA9P2AN72P004
+  - 529900HWROSNW89Z7C14
+  isin_equity: RU0007661625
+  ste_mmboe: 13661.83
+  production_mmboe: 3257.96
+  bond_isins:
+  - RU000A0JUAN6
+  - RU000A0JUAP1
+  - RU000A0JUY05
+  - RU000A0ZZER4
+  - RU000A0ZZET0
+  - RU000A0ZZES2
+  - RU000A1017J5
+  - RU000A105KP0
+  - RU000A107605
+  - RU000A107HH9
+- rank: 5
+  name_parent: Exxon Mobil Corporation
+  lei: J3WHBG0MTS7O8ZVMDC91
+  leis:
+  - J3WHBG0MTS7O8ZVMDC91
+  - 549300JZNB745JT5WY51
+  isin_equity: ''
+  ste_mmboe: 9673.06
+  production_mmboe: 1877.08
+  bond_isins:
+  - XS2196324011
+  - XS2196322403
+  - XS2196322312
+- rank: 6
+  name_parent: China National Offshore Oil Corporation
+  lei: 300300AY5BEBCYDR2F31
+  leis:
+  - 300300AY5BEBCYDR2F31
+  - 549300I04PB7X2824122
+  - 549300QK7VNAZ4SHZS12
+  - 549300KSB04UT8CS3T40
+  - 300300C5000911000055
+  - 5493006KAH3PSSMCES09
+  - 549300Q3CTIH31RFPO82
+  - 549300XIVJCBIGMRUD48
+  isin_equity: HK0883013259
+  ste_mmboe: 8428.5
+  production_mmboe: 1628.0
+  bond_isins:
+  - CND10000GKJ6
+- rank: 7
+  name_parent: TotalEnergies SE
+  lei: 529900S21EQ1BO4ESM68
+  leis:
+  - 529900S21EQ1BO4ESM68
+  - 529900F8HT5ITZV36963
+  - 529900FWTU88V844B672
+  - 529900QI55ZLJVCMPA71
+  - 5299005IX98ZZ9LSGK46
+  - 549300U37G2I8G4RUG09
+  - 529900VOP1UTMCYCBO32
+  isin_equity: FR0000120271
+  ste_mmboe: 7828.86
+  production_mmboe: 922.47
+  bond_isins:
+  - XS1501166869
+  - XS2432131188
+  - XS2432130610
+  - XS2224632971
+  - XS2290960876
+  - XS2290960520
+  - XS1413582195
+  - XS2194305236
+  - XS2937308497
+  - XS2937308737
+  benchmark: TotalEnergies
+- rank: 8
+  name_parent: Petroleo Brasileiro SA – Petrobras
+  lei: 5493000J801JZRCMFE49
+  leis:
+  - 5493000J801JZRCMFE49
+  - 549300FNENFFSMO3GT38
+  - 254900BGNZWP175VI367
+  isin_equity: BRPETRACNPR6
+  ste_mmboe: 7409.79
+  production_mmboe: 878.11
+  bond_isins:
+  - BRPETRDBS001
+  - BRPETRDBS0A6
+  - BRPETRDBS092
+  - BRPETRDBS0B4
+  - BRPETRDBS0C2
+  - BRPETRACNPR6
+  - BRPETRNCM001
+  - BRPETRNCM019
+  - XS0835891838
+  - XS0982711474
+- rank: 9
+  name_parent: China National Petroleum Corporation (CNPC)
+  lei: 3003004HNTGCYVG6A618
+  leis:
+  - 3003004HNTGCYVG6A618
+  - 300300K2DPEEAN1LV682
+  - 529900RPY4YG47TRSV05
+  - 5299007GRIKP15GM4927
+  isin_equity: CNE1000007Q1
+  ste_mmboe: 6108.67
+  production_mmboe: 4447.95
+  bond_isins:
+  - CND100085VW8
+  - CND100085VV0
+  - CND100004XT1
+  - CND10000CGW6
+  - CND10000FSM5
+  - CND10000FSK9
+- rank: 10
+  name_parent: Eni SpA
+  lei: BUCRF72VH5RBN7X3VL35
+  leis:
+  - BUCRF72VH5RBN7X3VL35
+  - 5493001XW6MSHRMFLU28
+  - 549300LIVN3FFOJN2K47
+  - 549300N0HG7GNPZRVM33
+  isin_equity: IT0003132476
+  ste_mmboe: 5302.86
+  production_mmboe: 804.3
+  bond_isins:
+  - XS1023703090
+  - BE0934300931
+  - BE6228793350
+  - BE6305946731
+  - BE6238117475
+  - BE6259268520
+  - IT0004643851
+  - IT0004643844
+  - XS1180451657
+  - XS1412711217
+- rank: 11
+  name_parent: ConocoPhillips
+  lei: WPTL2Z3FIYTHSP5V2253
+  leis:
+  - WPTL2Z3FIYTHSP5V2253
+  - XX71EBFZWSRCIL200314
+  isin_equity: ''
+  ste_mmboe: 5264.01
+  production_mmboe: 858.15
+- rank: 12
+  name_parent: Shell plc
+  lei: 21380068P1DRHMJ8KU70
+  leis:
+  - 21380068P1DRHMJ8KU70
+  - 213800BKRTTJIF5R3Q22
+  - 2138009AGE4DW1J76R35
+  - 213800O37Z32F2AZUE70
+  - 5493008LFEFSN1CR8I42
+  - 213800T669C7Y5N2YI32
+  - 213800ITMMKU4Z7I4F78
+  isin_equity: GB00BP6MXD84
+  ste_mmboe: 4895.38
+  production_mmboe: 1135.12
+  bond_isins:
+  - XS1135277140
+  - CH0292877898
+  - XS2078734626
+  - XS2078735433
+  - XS2078735276
+  - XS2154419118
+  - XS2154418730
+  - XS2170386853
+  - XS2228387465
+  - XS2228291279
+- rank: 13
+  name_parent: EOG Resources Inc
+  lei: XWTZDRYZPBUHIQBKDB46
+  leis:
+  - XWTZDRYZPBUHIQBKDB46
+  isin_equity: ''
+  ste_mmboe: 3342.22
+  production_mmboe: 491.48
+- rank: 14
+  name_parent: Occidental Petroleum Corporation
+  lei: IM7X0T3ECJW4C1T7ON55
+  leis:
+  - IM7X0T3ECJW4C1T7ON55
+  - B78FQ7XBQFLP4AYJ6F79
+  isin_equity: ''
+  ste_mmboe: 3010.75
+  production_mmboe: 617.22
+- rank: 15
+  name_parent: BP plc
+  lei: 213800LH1BZH3DI6G760
+  leis:
+  - 213800LH1BZH3DI6G760
+  - 549300LN3X0K77Z2SO79
+  - 549300CRVT18MXX0AG93
+  - 5493009NTB34VXE1T760
+  - 7245003VD7E4T30HJD24
+  - 54930066OLMECXUIIT95
+  - 98450040F2B7D50E0450
+  isin_equity: GB0007980591
+  ste_mmboe: 2996.14
+  production_mmboe: 1044.71
+  bond_isins:
+  - XS2629395612
+  - XS2081016763
+  - XS2135801160
+  - XS2135799679
+  - XS2193661324
+  - XS1114473579
+  - XS2193663619
+  - XS2193662728
+  - XS1637863546
+  - XS1851278777
+- rank: 16
+  name_parent: YPF SA
+  lei: 5493003N7447U18U5U53
+  leis:
+  - 5493003N7447U18U5U53
+  isin_equity: ARP9897X1319
+  ste_mmboe: 2850.44
+  production_mmboe: 181.46
+  bond_isins:
+  - ARYPFS5601X8
+  - ARYPFS5601S8
+  - ARYPFS5601V2
+  - AR0688075032
+  - ARYPFS5601W0
+  - AR0132676112
+  - AR0417757066
+  - AR0079616063
+  - AR0657794191
+  - AR0929824099
+- rank: 17
+  name_parent: Equinor ASA
+  lei: OW6OFBNCKXC4US5C7523
+  leis:
+  - OW6OFBNCKXC4US5C7523
+  - 9845004510AEAFA4AE59
+  isin_equity: NO0010096985
+  ste_mmboe: 2785.64
+  production_mmboe: 750.86
+  bond_isins:
+  - XS0093265451
+  - XS2178833690
+  - XS2178833427
+  - XS0416848793
+  - XS0969574598
+  - NO0010689615
+  - XS1004979727
+  - XS1190624038
+  - XS1190624202
+  - XS1515222468
+- rank: 18
+  name_parent: PJSC Rosneft Oil Company
+  lei: 253400JT3MQWNDKMJE44
+  leis:
+  - 253400JT3MQWNDKMJE44
+  - 2534002L55BBQ1E3R735
+  isin_equity: RU000A0J2Q06
+  ste_mmboe: 2730.24
+  production_mmboe: 1759.06
+  bond_isins:
+  - RU000A0JX132
+  - RU000A0JX355
+  - RU000A0JX413
+  - RU000A0JXQK2
+  - RU000A0JXXE1
+  - RU000A0JXXD3
+  - RU000A0ZYCP5
+  - RU000A0ZYJJ3
+  - RU000A0ZYJH7
+  - RU000A0ZYLG5
+- rank: 19
+  name_parent: Diamondback Energy Inc
+  lei: 549300R22LSX6OHWEN64
+  leis:
+  - 549300R22LSX6OHWEN64
+  isin_equity: ''
+  ste_mmboe: 2713.41
+  production_mmboe: 279.92
+- rank: 20
+  name_parent: INPEX Corporation
+  lei: 353800VHYYADPR6MXQ47
+  leis:
+  - 353800VHYYADPR6MXQ47
+  - 213800KAWJVSLLWQDX86
+  isin_equity: JP3294460005
+  ste_mmboe: 2670.31
+  production_mmboe: 235.39
+  bond_isins:
+  - JP329446BM30
+  - JP329446AM31
+- rank: 21
+  name_parent: China Petrochemical Corporation (Sinopec Group)
+  lei: 2138009UNXTD8EYS5M35
+  leis:
+  - 2138009UNXTD8EYS5M35
+  - 3003007FZF2SQ2THV163
+  - 529900MZVFFC7D57VV51
+  - 3003001C0RO724J15P08
+  - 529900F9XKMFEV9DNO17
+  - 529900A2OB24EZ5B3J19
+  isin_equity: CNE0000018G1
+  ste_mmboe: 2344.5
+  production_mmboe: 1121.15
+  bond_isins:
+  - CND10000FSQ6
+  - CND100089D92
+  - CND100089D84
+  - CND10009F3V2
+  - CND10009F3T6
+  - CND10009F5L8
+  - CND10009FZ85
+  - CND10008S766
+  - CND10004JTW6
+  - CND100087NM2
+- rank: 22
+  name_parent: EQT Corporation
+  lei: 4NT01YGM4X7ZX86ISY52
+  leis:
+  - 4NT01YGM4X7ZX86ISY52
+  isin_equity: ''
+  ste_mmboe: 2237.55
+  production_mmboe: 424.62
+- rank: 23
+  name_parent: Coterra Energy Inc
+  lei: FCNMH6O7VWU7LHXMK351
+  leis:
+  - FCNMH6O7VWU7LHXMK351
+  isin_equity: ''
+  ste_mmboe: 2077.57
+  production_mmboe: 304.71
+- rank: 24
+  name_parent: Petroliam Nasional Bhd (PETRONAS)
+  lei: 5493003RZQYJM7QGNE15
+  leis:
+  - 5493003RZQYJM7QGNE15
+  - 549300G7YFX3540OYR85
+  isin_equity: MYL5183OO008
+  ste_mmboe: 2063.99
+  production_mmboe: 575.99
+  bond_isins:
+  - MYBVJ2002355
+  - MYBVK2002361
+  - MYBVL2002377
+  - MYBVM2002383
+  - MYBVN2002399
+  - MYBVO2002405
+  - MYBVP2002410
+  - MYBVQ2002426
+  - MYBVR2002432
+  - MYBVS2002448
+- rank: 25
+  name_parent: Devon Energy Corporation
+  lei: 54930042348RKR3ZPN35
+  leis:
+  - 54930042348RKR3ZPN35
+  isin_equity: ''
+  ste_mmboe: 2036.72
+  production_mmboe: 337.85
+- rank: 26
+  name_parent: Mewbourne Holdings Inc
+  lei: 549300UUETHZXKNZ8194
+  leis:
+  - 549300UUETHZXKNZ8194
+  isin_equity: ''
+  ste_mmboe: 1859.34
+  production_mmboe: 265.46
+- rank: 27
+  name_parent: Woodside Energy Group Ltd
+  lei: 2549005ZC5RXAOO7FH41
+  leis:
+  - 2549005ZC5RXAOO7FH41
+  - 254900AIZKU6TGRRNZ98
+  - 254900ZYXZHH5MQG6H78
+  isin_equity: AU0000224040
+  ste_mmboe: 1845.81
+  production_mmboe: 211.22
+  bond_isins:
+  - XS2085924160
+- rank: 28
+  name_parent: Expand Energy Corporation
+  lei: X2MT1W32SPAZ9WSKLE78
+  leis:
+  - X2MT1W32SPAZ9WSKLE78
+  isin_equity: ''
+  ste_mmboe: 1775.21
+  production_mmboe: 274.1
+- rank: 29
+  name_parent: PAO NOVATEK
+  lei: 2138008R6GCRVBDFA581
+  leis:
+  - 2138008R6GCRVBDFA581
+  isin_equity: RU000A0DKVS5
+  ste_mmboe: 1749.18
+  production_mmboe: 598.07
+  bond_isins:
+  - RU000A106938
+  - RU000A108G70
+  - RU000A10AUX8
+  - RU000A10BV55
+  - RU000A10C9Y2
+- rank: 30
+  name_parent: Canadian Natural Resources Ltd (CNRL)
+  lei: 549300T15RIMIKZC5Q38
+  leis:
+  - 549300T15RIMIKZC5Q38
+  isin_equity: ''
+  ste_mmboe: 1595.16
+  production_mmboe: 498.89
+- rank: 31
+  name_parent: Repsol SA
+  lei: BSYCX13Y0NOTV14V9N85
+  leis:
+  - BSYCX13Y0NOTV14V9N85
+  - 222100TAWUOMRM7NNG09
+  - 549300ENB6LGQ6U50V24
+  - 5493002YCY6HTK0OUR29
+  isin_equity: ES0173516115
+  ste_mmboe: 1548.06
+  production_mmboe: 245.49
+  bond_isins:
+  - XS2894862080
+  - XS3102778191
+  - XS3149402458
+  - XS3181538847
+  - XS3183166605
+  - XS3186907666
+  - XS3188535929
+  - XS3190845415
+  - XS3191627473
+  - XS3201088708
+- rank: 32
+  name_parent: PTT Public Company Ltd
+  lei: 549300QOGMPTKB6W7G56
+  leis:
+  - 549300QOGMPTKB6W7G56
+  - 254900FBQLIN5XACCX50
+  - 2549001O8YYGP5N7Q076
+  isin_equity: TH0646010Z00
+  ste_mmboe: 1491.12
+  production_mmboe: 506.58
+  bond_isins:
+  - TH064603A709
+  - TH0646X3P703
+  - TH0646X3F704
+  - TH064603B806
+  - TH0646038800
+  - TH0646036804
+  - TH064603E404
+  - TH0646037A08
+  - TH0646039501
+  - TH0646A3C906
+- rank: 33
+  name_parent: PJSC LUKOIL
+  lei: 549300LCJ1UJXHYBWI24
+  leis:
+  - 549300LCJ1UJXHYBWI24
+  - 724500EEXZCFJE6LQV92
+  - 724500LG1GUKJ5TOIW61
+  - 724500IVNQ6LF8OFIO42
+  isin_equity: RU0009024277
+  ste_mmboe: 1420.99
+  production_mmboe: 906.03
+  bond_isins:
+  - RU0009046668
+  - XS1514045886
+- rank: 34
+  name_parent: Oil and Natural Gas Corporation Ltd (ONGC)
+  lei: 335800FPDZ9MRSNO7N41
+  leis:
+  - 335800FPDZ9MRSNO7N41
+  - 335800DWLXIP7HFFY564
+  - 3358004IZDK9NWGQY892
+  isin_equity: INE213A01029
+  ste_mmboe: 1404.17
+  production_mmboe: 347.02
+  bond_isins:
+  - XS2087717364
+  - INE213A08024
+  - INE103A08019
+  - INE103A08035
+  - INE103A08050
+  - XS1637846616
+  - INE094A08069
+  - INE094A08093
+  - INE094A08101
+  - INE094A08119
+- rank: 35
+  name_parent: Türkiye Petrolleri AO (TPAO)
+  lei: 789000DVZXVGP0IQ6M29
+  leis:
+  - 789000DVZXVGP0IQ6M29
+  isin_equity: ''
+  ste_mmboe: 1390.92
+  production_mmboe: 108.61
+- rank: 36
+  name_parent: Ovintiv Inc
+  lei: 2549003MEX7YMKLGI239
+  leis:
+  - 2549003MEX7YMKLGI239
+  isin_equity: ''
+  ste_mmboe: 1384.53
+  production_mmboe: 241.92
+- rank: 37
+  name_parent: PT Pertamina (Persero)
+  lei: 254900NDAKGNZ2IBBL45
+  leis:
+  - 254900NDAKGNZ2IBBL45
+  - 25490049636XFM5KBR83
+  - 549300OX1VFDX7ZPN240
+  isin_equity: ID1000111602
+  ste_mmboe: 1306.61
+  production_mmboe: 318.07
+- rank: 38
+  name_parent: Delek Group Ltd
+  lei: 213800CYKA4XE2HZZB09
+  leis:
+  - 213800CYKA4XE2HZZB09
+  - 254900D9T8VKYVQNZ220
+  - 894500UTDMYAFMZ5VY86
+  - 21380057TNFLXPXBIP34
+  - 254900EDPHTRQ6GMIQ78
+  isin_equity: IL0010841281
+  ste_mmboe: 1233.82
+  production_mmboe: 118.02
+  bond_isins:
+  - IL0012057720
+  - IL0011995045
+  - IL0012173899
+  - IL0011433617
+  - IL0011778490
+  - IL0011811226
+  - IL0011928897
+  - IL0011677825
+  - IL0011677908
+- rank: 39
+  name_parent: Tourmaline Oil Corp
+  lei: 549300EWGW5PUCV5A109
+  leis:
+  - 549300EWGW5PUCV5A109
+  isin_equity: ''
+  ste_mmboe: 1231.31
+  production_mmboe: 209.98
+- rank: 40
+  name_parent: Continental Resources Inc
+  lei: XXRTID9RYWOZ0UPIVR53
+  leis:
+  - XXRTID9RYWOZ0UPIVR53
+  isin_equity: ''
+  ste_mmboe: 1112.2
+  production_mmboe: 224.81
+- rank: 41
+  name_parent: Santos Ltd
+  lei: 5299000RK70B5O2M7077
+  leis:
+  - 5299000RK70B5O2M7077
+  - 213800BKUBSWG53XNS94
+  isin_equity: AU000000STO6
+  ste_mmboe: 1069.75
+  production_mmboe: 78.75
+  bond_isins:
+  - XS1681539539
+  - XS1912654594
+- rank: 42
+  name_parent: APA Corporation
+  lei: 549300VCIWLRHYVSHC79
+  leis:
+  - 549300VCIWLRHYVSHC79
+  isin_equity: ''
+  ste_mmboe: 1050.26
+  production_mmboe: 179.78
+- rank: 43
+  name_parent: Mitsui & Co Ltd
+  lei: 2NRSB4GOU9DD6CNW5R48
+  leis:
+  - 2NRSB4GOU9DD6CNW5R48
+  - 254900LGE1UYMFJM9059
+  - 549300YSQMG7F2GFVZ64
+  isin_equity: JP3893600001
+  ste_mmboe: 1042.29
+  production_mmboe: 109.37
+  bond_isins:
+  - XS3206389259
+- rank: 44
+  name_parent: Permian Resources Corporation
+  lei: 529900NXUJPOKU7OJ511
+  leis:
+  - 529900NXUJPOKU7OJ511
+  isin_equity: ''
+  ste_mmboe: 1023.98
+  production_mmboe: 157.16
+- rank: 45
+  name_parent: Eesti Energia AS
+  lei: 5493005044RTLQ5RZU70
+  leis:
+  - 5493005044RTLQ5RZU70
+  isin_equity: ''
+  ste_mmboe: 1022.88
+  production_mmboe: 3.84
+  bond_isins:
+  - EE0000001303
+- rank: 46
+  name_parent: Antero Resources Corporation
+  lei: APVBKPOULHUX7YZLKU17
+  leis:
+  - APVBKPOULHUX7YZLKU17
+  isin_equity: ''
+  ste_mmboe: 976.8
+  production_mmboe: 238.29
+- rank: 47
+  name_parent: Civitas Resources Inc
+  lei: IIVIHPH28S64K95M2381
+  leis:
+  - IIVIHPH28S64K95M2381
+  isin_equity: ''
+  ste_mmboe: 941.51
+  production_mmboe: 159.8
+- rank: 48
+  name_parent: Range Resources Corporation
+  lei: H3Y3WLYCX0BTO1TRW162
+  leis:
+  - H3Y3WLYCX0BTO1TRW162
+  isin_equity: ''
+  ste_mmboe: 887.79
+  production_mmboe: 151.66
+- rank: 49
+  name_parent: NGP Energy Capital Management LLC
+  lei: 2549006509ZQT3AJRH55
+  leis:
+  - 2549006509ZQT3AJRH55
+  - 54930030LVDT1KPNYF71
+  - 5493004IC5DSEPW6SI07
+  - 549300Y3SDS1HPFQ6H17
+  - 549300ROZPCZ7NIKIA14
+  - 549300O84DI4PERCWW57
+  - 9845001E08E969E1BF91
+  isin_equity: ''
+  ste_mmboe: 876.2
+  production_mmboe: 141.68
+- rank: 50
   name_parent: Aker BP ASA
   lei: 549300NFTY73920OYK69
+  leis:
+  - 549300NFTY73920OYK69
+  isin_equity: NO0010345853
+  ste_mmboe: 823.51
+  production_mmboe: 159.51
   bond_isins:
-  - XS2830454554
   - XS2341269970
-  ste_mmboe: 0.0
-  production_mmboe: 0.0
-- rank: 3
-  name_parent: Bulgarian Energy Holding EAD
-  lei: 635400E1RWKJXPSBCV07
-  bond_isins:
-  - XS3090933485
-  - XS2367164576
-  ste_mmboe: 0.0
-  production_mmboe: 0.0
-- rank: 4
-  name_parent: Electricity Supply Board (ESB)
-  lei: 635400UFHDIQCDZ6JK11
-  bond_isins:
-  - XS2697983869
-  - XS1239586594
-  - XS1428782160
-  - XS1560853670
-  - XS1903442744
-  ste_mmboe: 0.0
-  production_mmboe: 0.0
-- rank: 5
-  name_parent: Enagas SA
-  lei: 213800OU3FQKGM4M2U23
-  bond_isins:
-  - XS2751598322
-  - XS1403388694
-  - XS1508831051
-  - XS2251626896
-  ste_mmboe: 0.0
-  production_mmboe: 0.0
+  - XS2830454554
+  benchmark: AKER
 - rank: null
-  name_parent: OMV
-  lei: ''
+  name_parent: OMV AG
+  lei: 549300V62YJ9HTLRI486
+  leis:
+  - 549300V62YJ9HTLRI486
+  - 549300UKYDM6L8HEPU79
+  isin_equity: AT0000743059
+  ste_mmboe: 588.82
+  production_mmboe: 146.97
   bond_isins:
+  - XS0834371469
+  - XS1734689620
+  - XS1917590959
+  - XS2022093517
+  - XS2154348424
+  - XS2154347707
+  - XS2189613982
+  - XS2224439971
+  - XS2224439385
   - XS2886118079
-  ste_mmboe: 0
-  production_mmboe: 0
   benchmark: OMV
-  force_included: true
-- rank: null
-  name_parent: TotalEnergies
-  lei: ''
-  bond_isins:
-  - XS2937308737
-  ste_mmboe: 0
-  production_mmboe: 0
-  benchmark: TotalEnergies
   force_included: true

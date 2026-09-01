@@ -36,8 +36,10 @@ logs/
 log/
 *.log
 
-# Local data
-data/
+# Local working data (GOGEL CSV, PDFs, alerts, Chrome profile / ESMA cookie jar).
+# Root-anchored so website/data/deals.json is trackable.
+/data/
+/data/chrome_profile/
 debug_screenshots/
 downloads/
 results/

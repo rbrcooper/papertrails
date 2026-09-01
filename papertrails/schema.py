@@ -2,19 +2,24 @@
 Deal schema and auto-publish content gates for PaperTrails alerts.
 
 No human approve step: pass gates → published; fail → quarantine.
+Phase 2: banks must come from dealer_table_regex only (deterministic).
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from processes.pipeline_components.validators import filter_underwriter_banks
+from processes.pipeline_components.validators import (
+    compute_allocated_amount,
+    filter_underwriter_banks,
+)
+
+EXTRACTION_METHOD_DEALER_TABLE = "dealer_table_regex"
 
 
 def _utc_now() -> str:
@@ -35,7 +40,7 @@ class Deal:
     issue_date: Optional[str]
     currency: Optional[str]
     amount: Optional[Any]
-    underwriters: List[Dict[str, str]]
+    underwriters: List[Dict[str, Any]]
     source_url: Optional[str]
     pdf_path: str
     extracted_at: str
@@ -45,11 +50,19 @@ class Deal:
     doc_id: Optional[str] = None
     ste_mmboe: Optional[float] = None
     watchlist_rank: Optional[int] = None
+    extraction_method: Optional[str] = None
+    n_underwriters: Optional[int] = None
+    doc_type_code: Optional[str] = None
+    amount_kind: Optional[str] = None
+    programme_size: Optional[Any] = None
+    allocated_amount: Optional[Any] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Public payload: never include local filesystem paths."""
         d = asdict(self)
         if d.get("reject_reason") is None:
             d.pop("reject_reason", None)
+        d.pop("pdf_path", None)
         return d
 
 
@@ -73,6 +86,26 @@ def isin_in_text(text: str, isin: str) -> bool:
     return isin.upper() in text.upper()
 
 
+def _meta_size(val: Any) -> Any:
+    if val is None or val == "":
+        return None
+    return val
+
+
+def classify_deal_amount(meta: Dict[str, Any]) -> Tuple[Optional[Any], str, Optional[Any]]:
+    """amount is the issued tranche only; programme ceiling is never returned as amount."""
+    issue = _meta_size(meta.get("issue_size"))
+    programme = _meta_size(meta.get("programme_size"))
+    if issue is not None:
+        return issue, "tranche", programme
+    if programme is not None:
+        return None, "programme", programme
+    fallback = _meta_size(meta.get("amount"))
+    if fallback is not None:
+        return fallback, "unknown", None
+    return None, "unknown", None
+
+
 def content_gates(
     *,
     pdf_path: Path,
@@ -84,6 +117,7 @@ def content_gates(
     text_sample: str = "",
     ste_mmboe: Optional[float] = None,
     watchlist_rank: Optional[int] = None,
+    require_dealer_table: bool = True,
 ) -> Tuple[Optional[Deal], Optional[str]]:
     """Return (Deal, None) on pass or (None, reject_reason) on fail."""
     if not pdf_path.exists():
@@ -91,9 +125,9 @@ def content_gates(
     if not pdf_looks_valid(pdf_path):
         return None, "not_pdf"
 
-    if text_sample and not isin_in_text(text_sample, isin):
-        # Soft: metadata may still have ISIN; check extraction metadata later
-        pass
+    method = (extraction.get("extraction_method") or "").strip()
+    if require_dealer_table and method != EXTRACTION_METHOD_DEALER_TABLE:
+        return None, "no_dealer_table"
 
     meta = extraction.get("metadata") or {}
     banks_raw = extraction.get("extracted_banks") or []
@@ -101,21 +135,30 @@ def content_gates(
     if not underwriters:
         underwriters = [b for b in banks_raw if isinstance(b, dict) and b.get("raw_name")]
     if not underwriters:
-        return None, "no_underwriters"
+        return None, "no_dealer_table" if require_dealer_table else "no_underwriters"
 
-    # Prefer explicit ISIN match in text when available
     extracted_isin = (meta.get("isin") or isin or "").strip().upper()
     if text_sample and isin and not isin_in_text(text_sample, isin):
         if extracted_isin != isin.upper():
             return None, "isin_not_in_text"
 
     uw = [
-        {"raw_name": str(b.get("raw_name") or "").strip(), "role": str(b.get("role") or "Unknown")}
+        {
+            "raw_name": str(b.get("raw_name") or "").strip(),
+            "role": str(b.get("role") or "Unknown"),
+        }
         for b in underwriters
         if str(b.get("raw_name") or "").strip()
     ]
     if not uw:
-        return None, "no_underwriters"
+        return None, "no_dealer_table" if require_dealer_table else "no_underwriters"
+
+    amount, amount_kind, programme_size = classify_deal_amount(meta)
+    allocated = None
+    if amount_kind == "tranche" and amount is not None:
+        allocated, _n = compute_allocated_amount(amount, uw)
+    for row in uw:
+        row["allocated_amount"] = allocated
 
     now = _utc_now()
     deal = Deal(
@@ -124,7 +167,7 @@ def content_gates(
         isin=isin.upper(),
         issue_date=meta.get("issue_date"),
         currency=meta.get("currency"),
-        amount=meta.get("issue_size") or meta.get("amount"),
+        amount=amount,
         underwriters=uw,
         source_url=source_url,
         pdf_path=str(pdf_path).replace("\\", "/"),
@@ -134,6 +177,12 @@ def content_gates(
         doc_id=str(doc_id) if doc_id else None,
         ste_mmboe=ste_mmboe,
         watchlist_rank=watchlist_rank,
+        extraction_method=method or EXTRACTION_METHOD_DEALER_TABLE,
+        n_underwriters=len(uw),
+        doc_type_code=extraction.get("doc_type_code") or meta.get("doc_type_code"),
+        amount_kind=amount_kind,
+        programme_size=programme_size,
+        allocated_amount=allocated,
     )
     return deal, None
 
@@ -148,11 +197,17 @@ def load_deals(path: Path) -> List[Dict[str, Any]]:
     return data.get("deals") or []
 
 
+def _public_deal_record(deal: Dict[str, Any]) -> Dict[str, Any]:
+    row = dict(deal)
+    row.pop("pdf_path", None)
+    return row
+
+
 def save_deals(path: Path, deals: List[Dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Newest first
+    public = [_public_deal_record(d) for d in deals]
     deals_sorted = sorted(
-        deals,
+        public,
         key=lambda d: d.get("published_at") or d.get("issue_date") or "",
         reverse=True,
     )
@@ -161,13 +216,20 @@ def save_deals(path: Path, deals: List[Dict[str, Any]]) -> None:
 
 
 def append_deal(path: Path, deal: Deal) -> bool:
-    """Append if id (or same ISIN) not already present. Returns True if newly added."""
+    """Append or upsert by ISIN. Keeps first published_at on replace. Returns True if written."""
     deals = load_deals(path)
-    if any(d.get("id") == deal.id for d in deals):
-        return False
-    if any((d.get("isin") or "").upper() == deal.isin.upper() for d in deals):
-        return False
-    deals.append(deal.to_dict())
+    new_d = _public_deal_record(deal.to_dict())
+    isin_u = deal.isin.upper()
+    for i, existing in enumerate(deals):
+        same_id = existing.get("id") == deal.id
+        same_isin = (existing.get("isin") or "").upper() == isin_u
+        if same_id or same_isin:
+            kept_published = existing.get("published_at") or new_d.get("published_at")
+            new_d["published_at"] = kept_published
+            deals[i] = new_d
+            save_deals(path, deals)
+            return True
+    deals.append(new_d)
     save_deals(path, deals)
     return True
 

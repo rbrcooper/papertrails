@@ -1,8 +1,42 @@
 import re
-import locale
 from typing import Dict, Any, Optional, Tuple, List
-from ..utils.pattern_registry import PatternRegistry
+from ..utils.pattern_registry import (
+    ISO_CODE_BOUNDED,
+    ISO_CURRENCY_CODES,
+    PatternRegistry,
+)
 from .base_extractor import BaseExtractor
+
+_LEI_RE = re.compile(r'(?<![A-Za-z0-9])[A-Za-z0-9]{20}(?![A-Za-z0-9])')
+_PROGRAMME_TOKEN_RE = re.compile(r'programme|limit|ceiling', re.IGNORECASE)
+_CUR_AMT_RE = re.compile(
+    r'(EUR|USD|GBP|CHF|JPY|€|\$|£|Euro)\s*([\d][\d,.]*)\s*(?:million|billion|m\b|bn)?',
+    re.IGNORECASE,
+)
+_TRANCHE_LABEL_RE = re.compile(
+    r'(?:\(\s*(?:ii|b|2)\s*\)\s*)?\btranche\b(?!\s+(?:number|no\.?)\b)\s*[:.]',
+    re.IGNORECASE,
+)
+_ANA_BLOCK_RE = re.compile(
+    r'aggregate\s+(?:nominal|principal)\s+amount.{0,400}',
+    re.IGNORECASE | re.DOTALL,
+)
+_ANA_SERIES_RE = re.compile(
+    r'(?:\(\s*(?:i|a|1)\s*\)\s*)?series\s*[:.]?\s*(?:of\s+)?'
+    r'(EUR|USD|GBP|CHF|JPY|€|\$|£|Euro)\s*([\d][\d,.]*)\s*(?:million|billion|m\b|bn)?',
+    re.IGNORECASE,
+)
+_BARE_AMT_RE = re.compile(r'([\d]{1,3}(?:,\d{3}){2,}|\d{7,})')
+_PROGRAMME_TAIL_RE = re.compile(
+    r'([\d]{1,3}(?:,\d{3}){2,}|\d{7,})\s*(?:Euro|EUR|€)\s+'
+    r'(?:Medium\s*Term\s*Note\s+|Debt\s*Issuance\s+|EMTN\s+)?Programme',
+    re.IGNORECASE,
+)
+_SPECIFIED_CCY_RE = re.compile(
+    r'Specified\s+Currency(?:\s+or\s+Currencies)?\s*[:.]?\s*'
+    r'(?:\(?(EUR|USD|GBP|CHF|JPY|€|\$|£)\)?|Euro)',
+    re.IGNORECASE,
+)
 
 class CurrencyExtractor(BaseExtractor):
     """Extracts issue size and currency information."""
@@ -26,6 +60,7 @@ class CurrencyExtractor(BaseExtractor):
             'issue_size': None,
             'currency': None,
             'issue_size_range': None,
+            'programme_size': None,
             'confidence': 'medium'  # Default confidence
         }
         
@@ -41,9 +76,24 @@ class CurrencyExtractor(BaseExtractor):
         if self.debug_mode:
             print(f"CurrencyExtractor: Processing {len(normalized_text)} characters of normalized text")
             
-        # Extract currency and issue size
+        labelled_currency, labelled_size = self._extract_labelled_tranche(text)
+        if not labelled_size:
+            labelled_currency, labelled_size = self._extract_labelled_tranche(normalized_text)
+        programme_size = self._extract_programme_size(text) or self._extract_programme_size(
+            normalized_text
+        )
         currency, issue_size, issue_size_range = self._extract_issue_size_currency(normalized_text)
-        
+
+        if labelled_size:
+            issue_size = labelled_size
+            if labelled_currency:
+                currency = labelled_currency
+
+        if programme_size:
+            currency_info['programme_size'] = programme_size
+            if self.debug_mode:
+                print(f"CurrencyExtractor: Found programme size: {programme_size}")
+
         if currency:
             currency_info['currency'] = currency
             if self.debug_mode:
@@ -81,6 +131,8 @@ class CurrencyExtractor(BaseExtractor):
                 if self.debug_mode:
                     print(f"CurrencyExtractor: Found issue size range with simpler approach: {simple_range}")
         
+        self._drop_programme_as_issue_size(currency_info)
+
         # Set confidence based on available data
         if currency_info['currency'] and currency_info['issue_size']:
             currency_info['confidence'] = 'high'
@@ -90,20 +142,199 @@ class CurrencyExtractor(BaseExtractor):
             currency_info['confidence'] = 'low'
         
         currency_info = self._sanitize_issue_size(currency_info, text)
+        self._drop_programme_as_issue_size(currency_info)
+
+        if currency_info.get("currency"):
+            canon = self._canonical_iso(currency_info["currency"]) or self._map_symbol_to_code(
+                currency_info["currency"]
+            )
+            currency_info["currency"] = canon
 
         if self.debug_mode:
             print(f"CurrencyExtractor: Final results - currency: {currency_info['currency']}, issue_size: {currency_info['issue_size']}, confidence: {currency_info['confidence']}")
             
         return currency_info
 
+    def _canonical_iso(self, token: Optional[str]) -> Optional[str]:
+        """Return uppercase ISO code if token is in the allowlist, else None."""
+        if not token:
+            return None
+        code = token.strip().upper()
+        if code in ISO_CURRENCY_CODES:
+            return code
+        return None
+
+    def _lei_spans(self, text: str) -> List[Tuple[int, int]]:
+        return [m.span() for m in _LEI_RE.finditer(text)]
+
+    def _inside_lei(self, start: int, end: int, lei_spans: List[Tuple[int, int]]) -> bool:
+        for ls, le in lei_spans:
+            if start >= ls and end <= le:
+                return True
+        return False
+
+    def _is_programme_context(self, text: str, start: int, end: int, match_text: str = "") -> bool:
+        """True when programme/limit/ceiling sits in the match or immediately around it."""
+        if match_text and _PROGRAMME_TOKEN_RE.search(match_text):
+            return True
+        before = text[max(0, start - 50):start]
+        after = text[end:min(len(text), end + 80)]
+        return bool(_PROGRAMME_TOKEN_RE.search(before) or _PROGRAMME_TOKEN_RE.search(after))
+
+    def _size_from_cur_amt(self, amount_raw: str, context: str) -> Optional[str]:
+        size = self._normalize_number(amount_raw)
+        if not size:
+            return None
+        try:
+            if float(size) >= 1_000_000:
+                return str(int(round(float(size))))
+        except (TypeError, ValueError):
+            pass
+        return self._apply_multiplier(size, context)
+
+    def _currency_from_token(self, token: Optional[str]) -> Optional[str]:
+        if not token:
+            return None
+        return self._canonical_iso(token) or self._map_symbol_to_code(token)
+
+    def _infer_issue_currency(self, text: str) -> Optional[str]:
+        m = _SPECIFIED_CCY_RE.search(text or "")
+        if m:
+            token = m.group(1) or "Euro"
+            return self._currency_from_token(token)
+        if re.search(r'\bEuro\b|\bEUR\b|€', text[:4000] if text else "", re.IGNORECASE):
+            return "EUR"
+        return None
+
+    def _parse_bare_or_cur_amount(self, window: str) -> Tuple[Optional[str], Optional[str]]:
+        am = _CUR_AMT_RE.match(window) or _CUR_AMT_RE.search(window[:60])
+        if am:
+            currency = self._currency_from_token(am.group(1))
+            size = self._size_from_cur_amt(am.group(2), am.group(0))
+            return currency, size
+        bm = _BARE_AMT_RE.match(window) or _BARE_AMT_RE.search(window[:48])
+        if bm:
+            size = self._size_from_cur_amt(bm.group(1), bm.group(1))
+            return None, size
+        return None, None
+
+    def _extract_labelled_tranche(self, text: str) -> Tuple[Optional[str], Optional[str]]:
+        """Prefer Aggregate Nominal Amount (ii) Tranche, then Series, over cover ceilings."""
+        if not text:
+            return None, None
+        inferred = self._infer_issue_currency(text)
+        for tm in _TRANCHE_LABEL_RE.finditer(text):
+            window = text[tm.end():min(len(text), tm.end() + 120)].lstrip()
+            currency, size = self._parse_bare_or_cur_amount(window)
+            if size:
+                try:
+                    if float(size) < 1_000_000:
+                        continue
+                except (TypeError, ValueError):
+                    continue
+                return currency or inferred, size
+        ana = _ANA_BLOCK_RE.search(text)
+        if ana:
+            block = ana.group(0)
+            sm = _ANA_SERIES_RE.search(block)
+            if sm:
+                currency = self._currency_from_token(sm.group(1))
+                size = self._size_from_cur_amt(sm.group(2), sm.group(0))
+                if size:
+                    return currency or inferred, size
+            series_bare = re.search(
+                r'(?:\(\s*(?:i|a|1)\s*\)\s*)?series\s*[:.]?\s*([\d]{1,3}(?:,\d{3}){2,}|\d{7,})',
+                block,
+                re.IGNORECASE,
+            )
+            if series_bare:
+                size = self._size_from_cur_amt(series_bare.group(1), series_bare.group(1))
+                if size:
+                    return inferred, size
+            best = None
+            best_val = 0.0
+            for bm in _BARE_AMT_RE.finditer(block):
+                abs_start = ana.start() + bm.start()
+                abs_end = ana.start() + bm.end()
+                if self._is_programme_context(text, abs_start, abs_end, bm.group(0)):
+                    continue
+                size = self._size_from_cur_amt(bm.group(1), bm.group(1))
+                if not size:
+                    continue
+                try:
+                    val = float(size)
+                except (TypeError, ValueError):
+                    continue
+                if 50_000_000 <= val <= 3_000_000_000 and val > best_val:
+                    best_val = val
+                    best = size
+            if best:
+                return inferred, best
+        return None, None
+
+    def _extract_programme_size(self, text: str) -> Optional[str]:
+        if not text:
+            return None
+        best: Optional[str] = None
+        best_val = 0.0
+
+        def _consider(size: Optional[str]) -> None:
+            nonlocal best, best_val
+            if not size:
+                return
+            try:
+                val = float(size)
+            except (TypeError, ValueError):
+                return
+            if val > best_val:
+                best_val = val
+                best = str(int(round(val))) if val >= 1 else size
+
+        for m in _CUR_AMT_RE.finditer(text):
+            if not self._is_programme_context(text, m.start(), m.end(), m.group(0)):
+                continue
+            _consider(self._size_from_cur_amt(m.group(2), m.group(0)))
+        for m in _PROGRAMME_TAIL_RE.finditer(text):
+            _consider(self._size_from_cur_amt(m.group(1), m.group(0)))
+        return best
+
+    def _drop_programme_as_issue_size(self, currency_info: Dict[str, Any]) -> None:
+        issue = currency_info.get("issue_size")
+        programme = currency_info.get("programme_size")
+        if issue is None or programme is None:
+            return
+        try:
+            if float(issue) == float(programme):
+                currency_info["issue_size"] = None
+        except (TypeError, ValueError):
+            if str(issue) == str(programme):
+                currency_info["issue_size"] = None
+
     def _sanitize_issue_size(self, currency_info: Dict[str, Any], text: str) -> Dict[str, Any]:
         """Drop bogus small matches; prefer bond-level EUR amounts over programme limits."""
+        raw_currency = currency_info.get("currency")
+        canonical = self._canonical_iso(raw_currency) or self._map_symbol_to_code(raw_currency)
+        currency_info["currency"] = canonical
+
         size = currency_info.get("issue_size")
+        dropped_small = False
         try:
             if size is not None and float(size) < 1_000_000:
                 currency_info["issue_size"] = None
+                dropped_small = True
         except (TypeError, ValueError):
             currency_info["issue_size"] = None
+            dropped_small = True
+
+        if dropped_small:
+            rng = currency_info.get("issue_size_range")
+            if rng:
+                try:
+                    mx = float(rng.get("max") or 0)
+                    if mx < 1_000_000:
+                        currency_info["issue_size_range"] = None
+                except (TypeError, ValueError):
+                    currency_info["issue_size_range"] = None
 
         if currency_info.get("issue_size"):
             return currency_info
@@ -114,6 +345,8 @@ class CurrencyExtractor(BaseExtractor):
             text,
             re.IGNORECASE,
         ):
+            if self._is_programme_context(text, m.start(), m.end(), m.group(0)):
+                continue
             raw = m.group(1)
             if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", raw):
                 num = int(raw.replace(".", ""))
@@ -145,6 +378,8 @@ class CurrencyExtractor(BaseExtractor):
         """
         if not text:
             return None, None, None
+
+        lei_spans = self._lei_spans(text)
             
         # Check for ranges or qualifiers
         is_range = False
@@ -181,6 +416,9 @@ class CurrencyExtractor(BaseExtractor):
             
             for match in matches:
                 full_match = match.group(0)
+
+                if self._inside_lei(match.start(), match.end(), lei_spans):
+                    continue
                 
                 if self.debug_mode:
                     context = text[max(0, match.start() - 30):min(len(text), match.end() + 30)]
@@ -195,18 +433,21 @@ class CurrencyExtractor(BaseExtractor):
                 for group in groups:
                     if group and not any(c.isdigit() for c in group):
                         # Potential currency name or code
-                        mapped = self._map_symbol_to_code(group)
+                        mapped = self._canonical_iso(group) or self._map_symbol_to_code(group)
                         if mapped:
                             currency = mapped
                             break
                 
                 # If no currency found in groups, search full_match
                 if not currency:
-                    # Check for explicit currency codes (e.g., USD, EUR)
-                    for code in self.patterns['currency_codes']:
-                        search_code = code.strip(r'\b')
-                        if re.search(r'\b' + re.escape(search_code) + r'\b', full_match, re.IGNORECASE):
-                            currency = search_code.upper()
+                    for cm in re.finditer(ISO_CODE_BOUNDED, full_match, re.IGNORECASE):
+                        abs_start = match.start() + cm.start()
+                        abs_end = match.start() + cm.end()
+                        if self._inside_lei(abs_start, abs_end, lei_spans):
+                            continue
+                        mapped = self._canonical_iso(cm.group(0))
+                        if mapped:
+                            currency = mapped
                             break
                             
                     if not currency:
@@ -237,20 +478,18 @@ class CurrencyExtractor(BaseExtractor):
                 if issue_size:
                     issue_size = self._apply_multiplier(issue_size, full_match)
                 
-                # Basic validation: ignore programme sizes if clearly marked
-                if re.search(r'programme|limit|ceiling', full_match, re.IGNORECASE) or \
-                   re.search(r'programme|limit|ceiling', text[max(0, match.start()-50):match.start()], re.IGNORECASE):
+                if self._is_programme_context(text, match.start(), match.end(), full_match):
                     if self.debug_mode:
                         print(f"CurrencyExtractor: Skipping potential programme/limit match: {full_match}")
                     continue
 
                 if currency and issue_size:
+                    currency = self._canonical_iso(currency) or self._map_symbol_to_code(currency)
+                    if not currency:
+                        continue
                     if self.debug_mode:
                         print(f"CurrencyExtractor: Successfully extracted currency {currency} and size {issue_size}")
                     return currency, issue_size, None # Could add range support back if needed
-                    
-            if self.debug_mode and match_count == 0:
-                print(f"CurrencyExtractor: No matches for issue size pattern {i+1}")
         
         return None, None, None
     
@@ -280,6 +519,8 @@ class CurrencyExtractor(BaseExtractor):
             r'(?:value|size)\s+of\s+(?:the\s+)?(?:issue|issuance|offering)\s*[:\-]?\s*([A-Z]{3}|\$|€|£|¥)?\s*([\d,\.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?',
             r'(?:issued|issuance)\s+in\s+(?:the\s+)?(?:amount\s+of\s+)?([A-Z]{3}|\$|€|£|¥)?\s*([\d,\.]+)\s*(?:million|billion|thousand|m\b|bn|k\b)?'
         ]
+        amount_phrases = [p.replace("[A-Z]{3}", ISO_CODE_BOUNDED) for p in amount_phrases]
+        lei_spans = self._lei_spans(text)
         
         # Check for "up to" or range qualifiers
         is_up_to = False
@@ -305,8 +546,16 @@ class CurrencyExtractor(BaseExtractor):
         issue_size_range = None
         
         if is_range:
-            range_match = re.search(r'(?:between|from)?\s*(?:([A-Z]{3}|\$|€|£|¥))?\s*([\d,.]+)\s*(?:million|billion|m|bn)?\s*(?:and|to|-)\s*(?:([A-Z]{3}|\$|€|£|¥))?\s*([\d,.]+)\s*(?:million|billion|m|bn)?', text, re.IGNORECASE)
-            if range_match:
+            range_re = r'(?:between|from)?\s*(?:([A-Z]{3}|\$|€|£|¥))?\s*([\d,.]+)\s*(?:million|billion|m|bn)?\s*(?:and|to|-)\s*(?:([A-Z]{3}|\$|€|£|¥))?\s*([\d,.]+)\s*(?:million|billion|m|bn)?'
+            range_re = range_re.replace("[A-Z]{3}", ISO_CODE_BOUNDED)
+            range_match = re.search(range_re, text, re.IGNORECASE)
+            if (
+                range_match
+                and not self._inside_lei(range_match.start(), range_match.end(), lei_spans)
+                and not self._is_programme_context(
+                    text, range_match.start(), range_match.end(), range_match.group(0)
+                )
+            ):
                 # Extract currency (prefer first occurrence, fallback to second)
                 currency_symbol = range_match.group(1) or range_match.group(3)
                 
@@ -314,7 +563,7 @@ class CurrencyExtractor(BaseExtractor):
                 if currency_symbol and len(currency_symbol) == 1:
                     currency = self._map_symbol_to_code(currency_symbol)
                 else:
-                    currency = currency_symbol
+                    currency = self._canonical_iso(currency_symbol) or self._map_symbol_to_code(currency_symbol)
                 
                 # Extract range values
                 min_value = self._normalize_number(range_match.group(2))
@@ -345,6 +594,10 @@ class CurrencyExtractor(BaseExtractor):
         for phrase in amount_phrases:
             matches = re.finditer(phrase, text, re.IGNORECASE)
             for match in matches:
+                if self._inside_lei(match.start(), match.end(), lei_spans):
+                    continue
+                if self._is_programme_context(text, match.start(), match.end(), match.group(0)):
+                    continue
                 # Extract currency
                 currency_part = match.group(1) if match.lastindex >= 1 else None
                 
@@ -353,7 +606,7 @@ class CurrencyExtractor(BaseExtractor):
                     if len(currency_part) == 1 or currency_part in ['$', '€', '£', '¥']:
                         currency = self._map_symbol_to_code(currency_part)
                     else:
-                        currency = currency_part
+                        currency = self._canonical_iso(currency_part) or self._map_symbol_to_code(currency_part)
                 
                 # Extract amount
                 amount_part = match.group(2) if match.lastindex >= 2 else None
@@ -381,19 +634,21 @@ class CurrencyExtractor(BaseExtractor):
                     return currency, issue_size, issue_size_range
         
         # Fallback method: Look for any amount with currency in nearby context
-        currency_codes = self.patterns['currency_codes']
         currency_symbols = self.patterns['currency_symbols']
         
         # Find all currency mentions
         currencies_found = []
-        for code in currency_codes:
-            if re.search(r'\b' + code + r'\b', text, re.IGNORECASE):
-                currencies_found.append(code)
+        for cm in re.finditer(ISO_CODE_BOUNDED, text, re.IGNORECASE):
+            if self._inside_lei(cm.start(), cm.end(), lei_spans):
+                continue
+            mapped = self._canonical_iso(cm.group(0))
+            if mapped:
+                currencies_found.append(mapped)
         
         for symbol in currency_symbols:
             if re.search(symbol, text, re.IGNORECASE):
                 # Map to code
-                code = self._map_symbol_to_code(symbol)
+                code = self._canonical_iso(symbol) or self._map_symbol_to_code(symbol)
                 if code:
                     currencies_found.append(code)
         
@@ -414,11 +669,19 @@ class CurrencyExtractor(BaseExtractor):
                         text, 
                         re.IGNORECASE
                     )
-                    if currency_amount_match:
-                        amount = self._normalize_number(currency_amount_match.group(1))
-                        amount = self._apply_multiplier(amount, currency_amount_match.group(0))
-                        
-                        return currency_code, amount, None
+                    if currency_amount_match and not self._inside_lei(
+                        currency_amount_match.start(), currency_amount_match.end(), lei_spans
+                    ):
+                        if not self._is_programme_context(
+                            text,
+                            currency_amount_match.start(),
+                            currency_amount_match.end(),
+                            currency_amount_match.group(0),
+                        ):
+                            amount = self._normalize_number(currency_amount_match.group(1))
+                            amount = self._apply_multiplier(amount, currency_amount_match.group(0))
+                            mapped = self._canonical_iso(currency_code) or self._map_symbol_to_code(currency_code)
+                            return mapped, amount, None
                 
                 # Look for amount followed by currency code/symbol
                 for currency_code in set(currencies_found):
@@ -427,19 +690,33 @@ class CurrencyExtractor(BaseExtractor):
                         text, 
                         re.IGNORECASE
                     )
-                    if amount_currency_match:
-                        amount = self._normalize_number(amount_currency_match.group(1))
-                        amount = self._apply_multiplier(amount, amount_currency_match.group(0))
-                        
-                        return currency_code, amount, None
+                    if amount_currency_match and not self._inside_lei(
+                        amount_currency_match.start(), amount_currency_match.end(), lei_spans
+                    ):
+                        if not self._is_programme_context(
+                            text,
+                            amount_currency_match.start(),
+                            amount_currency_match.end(),
+                            amount_currency_match.group(0),
+                        ):
+                            amount = self._normalize_number(amount_currency_match.group(1))
+                            amount = self._apply_multiplier(amount, amount_currency_match.group(0))
+                            mapped = self._canonical_iso(currency_code) or self._map_symbol_to_code(currency_code)
+                            return mapped, amount, None
                         
                 # If we found currencies but no amounts directly associated,
                 # return the most common currency but no amount
-                return most_common_currency, None, None
+                mapped = self._canonical_iso(most_common_currency) or self._map_symbol_to_code(most_common_currency)
+                return mapped, None, None
         
         # Last resort: just look for any number followed by million/billion
         million_billion_match = re.search(r'([\d,.]+)\s*(?:million|billion|m\b|bn\b)', text, re.IGNORECASE)
-        if million_billion_match:
+        if million_billion_match and not self._is_programme_context(
+            text,
+            million_billion_match.start(),
+            million_billion_match.end(),
+            million_billion_match.group(0),
+        ):
             amount = self._normalize_number(million_billion_match.group(1))
             amount = self._apply_multiplier(amount, million_billion_match.group(0))
             
@@ -461,7 +738,7 @@ class CurrencyExtractor(BaseExtractor):
         normalized = text.replace('\xa0', ' ')
         
         # Standardize spacing around currency symbols
-        for symbol in ['$', '€', '£', '¥', 'Fr', 'kr', '₽', '₺', 'R', '₹', 'A$', 'C$', 'HK$', 'S$', 'NZ$']:
+        for symbol in ['$', '€', '£', '¥', 'Fr', 'kr', '₽', '₺', '₹', 'A$', 'C$', 'HK$', 'S$', 'NZ$']:
             normalized = re.sub(f'([{symbol}])\\s+', r'\1', normalized)
             normalized = re.sub(f'\\s+([{symbol}])', r'\1', normalized)
         
@@ -572,11 +849,10 @@ class CurrencyExtractor(BaseExtractor):
         """
         if not symbol:
             return None
-            
-        # Check if it's already a currency code
-        for code in self.patterns['currency_codes']:
-            if symbol.upper() == code:
-                return code
+
+        iso = self._canonical_iso(symbol)
+        if iso:
+            return iso
                 
         # Map symbols and names to codes
         mapping = {

@@ -79,7 +79,15 @@ Outputs: `logs/pdf_quality_report.json`, `logs/pdf_quality_allowlist.json`
 
 Full-pool scan: `py -3 scripts/triage_downloaded_pdfs.py --all` (fast mode, ~1–2 min). See [VALIDATION_AND_QUALITY.md](VALIDATION_AND_QUALITY.md) for L0–L4 layers and why most downloads are trash.
 
-- **GOGEL pilot:** use ledger outcomes (`complete`, `no_tier1`, `scrape_error`) — not `completeness_gates.ship` on small runs.
+- **GOGEL ISIN-only intake (default):**
+
+```powershell
+py -3 -m processes.main --doc-policy strict --require-bond-isins --limit-companies 5
+```
+
+Does **not** name-search. Does **not** glob `data/downloads/<company>/*.pdf`. Extract uses only this run’s downloads. `--skip-scraping` will not walk old folders unless `--glob-pdfs` (debug). `--allow-fallback-search` re-enables LEI/name search (off by default).
+
+Judge by `logs/run_ledger.jsonl` and `logs/audit/<Company>/esma_rows.csv` (`kept` rows must have `isin_match>0`). Not `completeness_gates.ship` on small runs.
 
 ## Completeness gates
 

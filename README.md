@@ -1,67 +1,47 @@
-# Papertrails Data Pipeline
+# PaperTrails
 
-Extract bond underwriting data from ESMA prospectus PDFs for companies in the **Urgewald GOGEL 2025** dataset. Hybrid extraction: local LLM (Ollama) for banks, regex for dates/currency/coupon.
+Open alert feed for **EU fossil-fuel bond underwriting** from public ESMA prospectuses, ranked by GOGEL short-term expansion (STE).
 
-## Status (May 2026)
+**Product definition:** [docs/PRODUCT.md](docs/PRODUCT.md) (start here).
+
+## Status
 
 | Area | Status |
 |------|--------|
-| Bounded validation (L0–L4 on 3 benchmark ISINs) | ✅ `ship: true` — see [docs/VALIDATION_AND_QUALITY.md](docs/VALIDATION_AND_QUALITY.md) |
-| Metadata extraction (regex) | ✅ Strong on FTWS final terms |
-| Bank extraction (AI) | ⚠️ Good on benchmark FTWS; layout-dependent |
-| ESMA scraper (benchmark audit) | ✅ 3/3 select + download |
-| Bulk `data/downloads/` quality | ❌ ~5/277 usable without triage gate |
-| Full GOGEL production pass | 🔲 Not ready |
+| Product | Alert feed (`papertrails/`) — auto-publish to `website/data/deals.json` |
+| Bounded validation L0–L4 | Ship on 3 benchmarks — extractor regression |
+| Bulk GOGEL walk via `processes.main` | **Legacy / not the product** |
+| ESMA download | Works on audit path (Solr + session cookies); yield varies by ISIN |
 
-**Reality check:** extraction on known-good PDFs works; **finding and keeping the right PDF at scale** is the main gap.
-
-Full documentation: **[docs/README.md](docs/README.md)**
-
-## Prerequisites
-
-1. [Ollama](https://ollama.ai/) with `llama3.1:8b`
-2. Python 3.8+
-3. Chrome (for scraping)
+## Quick start (product)
 
 ```bash
 pip install -r docs/requirements.txt
-ollama pull llama3.1:8b
+ollama pull llama3.1:8b   # for bank extraction
+
+py -3 -m papertrails.build_watchlist --top 5
+py -3 -m papertrails.run_alerts --phase0          # yield proof (poll only)
+py -3 -m papertrails.run_alerts                  # poll + extract + publish
+py -3 -m website.app                             # http://127.0.0.1:5000/
 ```
 
-Place the GOGEL CSV at:
+`HEADLESS=false` or `--headed` if ESMA throttles headless Chrome.
 
-`data/raw/Urgewald GOGEL 2025 V1.2 with identifiers.csv`
-
-## Run
+## Legacy pipeline (library / debug)
 
 ```bash
-python -m processes.main --limit-companies 5
-python -m processes.main --region-filter eu
-python -m processes.main --skip-scraping
-```
-
-`HEADLESS=true` enables headless Chrome.
-
-## Validation & QA
-
-```bash
-# Bounded benchmark suite (L0 → L1 → L2 → L3 → L4)
+python -m processes.main --limit-companies 5 --require-bond-isins
+python -m processes.main --company "OMV AG" --pdf-paths path/to.pdf
 py -3 scripts/run_validation_suite.py
-
-# Legacy single-shot extraction diagnose
-python scripts/diagnose_extraction.py
-
-# Triage existing downloads (no ESMA, no Ollama)
-py -3 scripts/triage_downloaded_pdfs.py --n 10 --seed 1
 ```
 
-Ground truth: `tests/ground_truth.json`. See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) and [docs/VALIDATION_AND_QUALITY.md](docs/VALIDATION_AND_QUALITY.md).
+Full docs: [docs/README.md](docs/README.md). Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Layout
 
-- `processes/` — `main.py`, scraper, extractors, database, pipeline components
-- `scripts/` — validation suite, triage, diagnostics
-- `tests/` — ground truth
-- `processes/tests/` — unit tests (`core/`) and debug tools (`debug/`)
-- `data/` — GOGEL CSV, downloads, processed output (local, gitignored)
-- `docs/` — architecture, validation, benchmarks, roadmap, operations
+- `papertrails/` — watchlist, alert runner, schema (product)
+- `processes/` — ESMA scraper, extractors, DB (library)
+- `website/` — reverse-chron deals page; `website/data/deals.json` is the tracked site feed
+- `scripts/` — validation / triage
+- `data/` — GOGEL CSV, downloads, alerts (local)
+- `docs/` — including PRODUCT.md

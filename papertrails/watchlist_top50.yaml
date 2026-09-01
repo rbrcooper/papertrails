@@ -1,0 +1,431 @@
+meta:
+  gogel_file: C:/Users/rbrco/Documents/Academic/coding/ff2/data/raw/Urgewald GOGEL
+    2025 V1.2 with identifiers.csv
+  gogel_version: Urgewald GOGEL 2025 V1.2 with identifiers.csv
+  metric_column: ste_resources_under_development_mmboe
+  tiebreak_column: production_mmboe
+  aggregation: sum ste_resources_under_development_mmboe by name_parent
+  eligibility: ≥1 LEI under name_parent (parent + finance/operating subs); --verify-solr
+    requires ≥1 downloadable FTWS
+  discovery_key: company LEI on prospectus rows (sec_issuerNameList)
+  verify_solr: true
+  verify_solr_query: sec_issuerNameList:*{lei}* AND sec_docType:FTWS; ISIN len>=12;
+    downloadFile from sec_docRfssId
+  top: 50
+  eligible_parents_total: 756
+  solr_live_parents: 23
+  solr_probes: 1014
+  solr_parents_probed: 756
+  leis_per_parent: 8
+  solr_note: stopped after 23 downloadable-FTWS parents (probed 756 of 756 LEI-eligible)
+issuers:
+- rank: 1
+  name_parent: TotalEnergies SE
+  lei: 529900S21EQ1BO4ESM68
+  leis:
+  - 529900S21EQ1BO4ESM68
+  - 529900F8HT5ITZV36963
+  - 529900FWTU88V844B672
+  - 529900QI55ZLJVCMPA71
+  - 5299005IX98ZZ9LSGK46
+  - 549300U37G2I8G4RUG09
+  - 529900VOP1UTMCYCBO32
+  isin_equity: FR0000120271
+  ste_mmboe: 7828.86
+  production_mmboe: 922.47
+  bond_isins:
+  - XS1501166869
+  - XS2432131188
+  - XS2432130610
+  - XS2224632971
+  - XS2290960876
+  - XS2290960520
+  - XS1413582195
+  - XS2194305236
+  - XS2937308497
+  - XS2937308737
+  benchmark: TotalEnergies
+- rank: 2
+  name_parent: Eni SpA
+  lei: BUCRF72VH5RBN7X3VL35
+  leis:
+  - BUCRF72VH5RBN7X3VL35
+  - 5493001XW6MSHRMFLU28
+  - 549300LIVN3FFOJN2K47
+  - 549300N0HG7GNPZRVM33
+  isin_equity: IT0003132476
+  ste_mmboe: 5302.86
+  production_mmboe: 804.3
+  bond_isins:
+  - XS1023703090
+  - BE0934300931
+  - BE6228793350
+  - BE6305946731
+  - BE6238117475
+  - BE6259268520
+  - IT0004643851
+  - IT0004643844
+  - XS1180451657
+  - XS1412711217
+- rank: 3
+  name_parent: Repsol SA
+  lei: BSYCX13Y0NOTV14V9N85
+  leis:
+  - BSYCX13Y0NOTV14V9N85
+  - 222100TAWUOMRM7NNG09
+  - 549300ENB6LGQ6U50V24
+  - 5493002YCY6HTK0OUR29
+  isin_equity: ES0173516115
+  ste_mmboe: 1548.06
+  production_mmboe: 245.49
+  bond_isins:
+  - XS2894862080
+  - XS3102778191
+  - XS3149402458
+  - XS3181538847
+  - XS3183166605
+  - XS3186907666
+  - XS3188535929
+  - XS3190845415
+  - XS3191627473
+  - XS3201088708
+- rank: 4
+  name_parent: Aker BP ASA
+  lei: 549300NFTY73920OYK69
+  leis:
+  - 549300NFTY73920OYK69
+  isin_equity: NO0010345853
+  ste_mmboe: 823.51
+  production_mmboe: 159.51
+  bond_isins:
+  - XS2341269970
+  - XS2830454554
+  benchmark: AKER
+- rank: 5
+  name_parent: OMV AG
+  lei: 549300V62YJ9HTLRI486
+  leis:
+  - 549300V62YJ9HTLRI486
+  - 549300UKYDM6L8HEPU79
+  isin_equity: AT0000743059
+  ste_mmboe: 588.82
+  production_mmboe: 146.97
+  bond_isins:
+  - XS0834371469
+  - XS1734689620
+  - XS1917590959
+  - XS2022093517
+  - XS2154348424
+  - XS2154347707
+  - XS2189613982
+  - XS2224439971
+  - XS2224439385
+  - XS2886118079
+  benchmark: OMV
+- rank: 6
+  name_parent: ORLEN SA
+  lei: 259400VVMM70CQREJT74
+  leis:
+  - 259400VVMM70CQREJT74
+  - 549300SA1CUQOTMZIR83
+  - 259400HYI1DKOD4Y1V58
+  - 259400QHANAYXQ4H6222
+  - 259400EUTZRQOO7GZ132
+  isin_equity: PLPKN0000018
+  ste_mmboe: 345.5
+  production_mmboe: 75.63
+  bond_isins:
+  - XS2647371843
+  - PLO037100016
+  - XS1575640054
+- rank: 7
+  name_parent: SNGN Romgaz SA
+  lei: 2549009R7KJ38D9RW354
+  leis:
+  - 2549009R7KJ38D9RW354
+  isin_equity: ROSNGNACNOR3
+  ste_mmboe: 296.78
+  production_mmboe: 32.21
+  bond_isins:
+  - XS3221850228
+  - XS2914558593
+- rank: 8
+  name_parent: RWE AG
+  lei: 529900GB7KCA94ACC940
+  leis:
+  - 529900GB7KCA94ACC940
+  - 529900J7MYLKI84UP772
+  - 529900VJ33LBYDQPI962
+  isin_equity: DE0007037129
+  ste_mmboe: 86.69
+  production_mmboe: 4.0
+  bond_isins:
+  - XS1254119750
+  - XS0826313990
+  - XS3172206008
+  - XS3174771553
+  - XS3183143067
+  - XS3208025042
+  - XS3208064967
+  - XS3208143324
+  - XS3218683558
+  - XS3219360321
+- rank: 9
+  name_parent: Bapco Energies BSC
+  lei: 549300OBH16L6TS6IW50
+  leis:
+  - 549300OBH16L6TS6IW50
+  isin_equity: ''
+  ste_mmboe: 0.0
+  production_mmboe: 170.83
+- rank: 10
+  name_parent: A2A SpA
+  lei: 81560076E3944316DB24
+  leis:
+  - 81560076E3944316DB24
+  isin_equity: IT0001233417
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS0261846066
+  - XS1701884204
+  - XS2250376477
+  - XS3213247037
+  - XS1195347478
+- rank: 11
+  name_parent: CEZ a.s.
+  lei: 529900S5R9YHJHYKKG94
+  leis:
+  - 529900S5R9YHJHYKKG94
+  isin_equity: CZ0005112300
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS0853136579
+  - XS0384970652
+  - XS0447067843
+  - XS0764314695
+  - XS0814711775
+  - XS0818793209
+  - XS0822571799
+  - XS0940293763
+  - XS2084418339
+- rank: 12
+  name_parent: Electricite de France SA (EDF Group)
+  lei: 549300X3UK4GG3FNMO06
+  leis:
+  - 549300X3UK4GG3FNMO06
+  - 529900WS2E20BA5J4L49
+  isin_equity: IT0003372205
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS0431123768
+  - FR0011191311
+  - FR001400EFQ6
+  - JP525003AP69
+  - JP525003DP66
+  - JP525003CP67
+  - JP525003BP68
+  - FR001400R2I3
+  - JP525003BQA8
+  - JP525003AQA0
+- rank: 13
+  name_parent: Enagas SA
+  lei: 213800OU3FQKGM4M2U23
+  leis:
+  - 213800OU3FQKGM4M2U23
+  - 213800H2FQSU5E19V152
+  isin_equity: ES0130960018
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS1403388694
+  - XS1508831051
+  - XS2251626896
+  - XS2751598322
+  - ES0505918005
+- rank: 14
+  name_parent: EnBW Energie Baden-Württemberg AG
+  lei: 529900JSFZ4TS59HKD79
+  leis:
+  - 529900JSFZ4TS59HKD79
+  - 724500CNCIO1ZTJ0X675
+  isin_equity: DE0005220008
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS0758304165
+  - XS2381277008
+  - XS0674277933
+  - XS1044811591
+  - XS1405770907
+  - XS1498442521
+  - XS0404526054
+  - XS0438844093
+  - XS1074208270
+  - XS1078022826
+- rank: 15
+  name_parent: Enel SpA
+  lei: WOCMU6HCI0OJWNPRZS33
+  leis:
+  - WOCMU6HCI0OJWNPRZS33
+  - 0YQH6LCEF474UTUV4B96
+  - 815600FFB8456BC08590
+  isin_equity: IT0003128367
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS0176748894
+  - XS0176845666
+  - XS0137705579
+  - XS0306647792
+  - XS1713463559
+  - XS2228373671
+  - XS2312746345
+  - XS2312744217
+  - XS2576550243
+  - XS2576550086
+- rank: 16
+  name_parent: Engie SA
+  lei: LAXUQCHT4FH58LRZDY46
+  leis:
+  - LAXUQCHT4FH58LRZDY46
+  - 549300WXGDF2VEC6BH79
+  - 549300WKO9211VIK5170
+  - 5493000FIKCC3ZDWTO77
+  isin_equity: FR0010208488
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - FR0010946855
+  - FR0013455821
+  - FR0013517190
+  - FR0012990984
+  - FR0013392602
+  - FR0013054053
+  - FR0013056157
+  - FR0013057221
+  - FR0013260767
+  - FR0013284270
+- rank: 17
+  name_parent: EP Investment Sarl
+  lei: 8945006A0R89CADUGI48
+  leis:
+  - 8945006A0R89CADUGI48
+  - '31570010000000090208'
+  - 315700I4J1M1NKGWWY89
+  - 315700Y2NG75XVC71W04
+  - 391200U7ORKSJOKAIR77
+  - 8156002F8701A7507679
+  isin_equity: ''
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - CZ0003551657
+  - XS2716891440
+  - XS2034622048
+  - XS2062490649
+  - XS2304675791
+  - XA2034622048
+  - XS1973579243
+- rank: 18
+  name_parent: Iren SpA
+  lei: 8156001EBD33FD474E60
+  leis:
+  - 8156001EBD33FD474E60
+  isin_equity: IT0003027817
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS2197356186
+  - XS2977890313
+- rank: 19
+  name_parent: NV Nederlandse Gasunie
+  lei: 724500MQFZSYSBC5H178
+  leis:
+  - 724500MQFZSYSBC5H178
+  isin_equity: ''
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS1409382030
+  - XS1892117919
+  - XS2060691040
+  - XS3053369982
+- rank: 20
+  name_parent: Siemens AG
+  lei: W38RGI023J3WT1HWRP32
+  leis:
+  - W38RGI023J3WT1HWRP32
+  - TAFO772JB70PDRN5VS48
+  isin_equity: DE0007236101
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - DE000A383UK7
+  - XS0264824375
+  - DE000A1G85D0
+  - DE000A1UDWN5
+  - XS1874128033
+  - XS1874127902
+  - XS1955187932
+  - XS1955187858
+  - XS1955187775
+  - XS2049616894
+- rank: 21
+  name_parent: Snam SpA
+  lei: 8156002278562044AF79
+  leis:
+  - 8156002278562044AF79
+  isin_equity: IT0003153415
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS2802190459
+  - XS1505573482
+  - XS1700721464
+  - XS2005658781
+  - XS2051660509
+  - XS2896350175
+  - XS3068759573
+  - XS3071359734
+  - XS3075444581
+  - XS3178873298
+- rank: 22
+  name_parent: Veolia Environnement SA
+  lei: 969500LENY69X51OOT31
+  leis:
+  - 969500LENY69X51OOT31
+  - 315700SIBEYEAWSYLB92
+  isin_equity: FR0000124141
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - FR0013173432
+  - FR0013248523
+  - FR0013283140
+  - FR0013445335
+  - FR0013452620
+  - FR0013505542
+  - FR0013512449
+  - FR0014002C30
+  - FR0010765859
+  - FR0011158849
+- rank: 23
+  name_parent: Vier Gas Holdings Sarl
+  lei: 529900901EZ5M6818919
+  leis:
+  - 529900901EZ5M6818919
+  - 529900AGED6PJE9AVL37
+  isin_equity: ''
+  ste_mmboe: 0.0
+  production_mmboe: 0.0
+  bond_isins:
+  - XS1882681452
+  - XS2049146215
+  - XS2049090595
+  - XS2535725159
+  - XS2535724772
+  - XS2929985385
+  - XS3170345980

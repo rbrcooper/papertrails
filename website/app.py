@@ -55,8 +55,13 @@ PAGE = """
     <div class="meta">
       {% if d.issue_date %}Issue {{ d.issue_date }} · {% endif %}
       {% if d.currency %}{{ d.currency }}{% endif %}
-      {% if d.amount %} {{ d.amount }}{% endif %}
+      {% if d.amount %} · tranche {{ d.amount }}{% endif %}
+      {% if d.programme_size %} · programme {{ d.programme_size }}{% endif %}
+      {% if d.n_underwriters %} · {{ d.n_underwriters }} underwriter(s){% endif %}
+      {% if d.allocated_amount is not none %} · 1/n {{ d.allocated_amount }}{% endif %}
       {% if d.watchlist_rank %} · STE rank {{ d.watchlist_rank }}{% endif %}
+      {% if d.doc_type_code %} · {{ d.doc_type_code }}{% endif %}
+      {% if d.extraction_method %} · {{ d.extraction_method }}{% endif %}
     </div>
     <ul class="banks">
       {% for b in d.underwriters %}
@@ -65,8 +70,6 @@ PAGE = """
     </ul>
     {% if d.source_url %}
       <p><a href="{{ d.source_url }}" rel="noopener">Prospectus / source</a></p>
-    {% elif d.pdf_path %}
-      <p class="meta">Local PDF: {{ d.pdf_path }}</p>
     {% endif %}
   </article>
   {% endfor %}
@@ -76,16 +79,51 @@ PAGE = """
 """
 
 
+def _sort_deals(deals):
+    return sorted(
+        deals,
+        key=lambda d: (bool(d.get("issue_date")), d.get("issue_date") or ""),
+        reverse=True,
+    )
+
+
+def _public_deals(deals):
+    out = []
+    for d in deals:
+        row = dict(d)
+        row.pop("pdf_path", None)
+        out.append(row)
+    return out
+
+
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def preview_run_kwargs(host=None, env=None):
+    """Bind/debug kwargs for local preview. Never binds non-loopback."""
+    env = os.environ if env is None else env
+    bind = host if host is not None else (env.get("FLASK_HOST") or "127.0.0.1")
+    bind = str(bind).strip()
+    if bind.lower() not in _LOOPBACK_HOSTS:
+        raise ValueError(
+            f"Refusing non-loopback bind host {bind!r}; "
+            "Flask preview must stay on loopback"
+        )
+    debug = str(env.get("FLASK_DEBUG", "")).strip().lower() in {"1", "true", "yes"}
+    port = int(env.get("PORT", "5000"))
+    return {"host": bind, "port": port, "debug": debug}
+
+
 def _load_payload():
     if not DEALS_PATH.exists():
         return {"updated_at": None, "deals": []}
     with DEALS_PATH.open(encoding="utf-8") as f:
         data = json.load(f)
     if isinstance(data, list):
-        return {"updated_at": None, "deals": data}
+        return {"updated_at": None, "deals": _sort_deals(_public_deals(data))}
     return {
         "updated_at": data.get("updated_at"),
-        "deals": data.get("deals") or [],
+        "deals": _sort_deals(_public_deals(data.get("deals") or [])),
     }
 
 
@@ -103,5 +141,4 @@ def api_deals():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "5000"))
-    app.run(debug=True, port=port)
+    app.run(**preview_run_kwargs())

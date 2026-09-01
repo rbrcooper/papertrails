@@ -1,3 +1,18 @@
+# Bare ISO 4217 codes used for currency extraction (not a full ISO table).
+ISO_CURRENCY_CODES = (
+    "USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD",
+    "NZD", "HKD", "SGD", "CNY", "CNH", "SEK", "NOK",
+    "DKK", "CZK", "HUF", "PLN", "RUB", "TRY", "ZAR",
+    "MXN", "BRL", "AED", "SAR", "QAR", "KWD", "INR",
+    "IDR", "THB", "VND", "MYR", "PHP", "ILS", "CLP",
+    "COP", "PEN", "ARS", "UYU", "RON", "BGN", "HRK",
+    "ISK", "NGN", "KES", "UAH", "KZT", "MAD", "EGP",
+)
+ISO_CODE = r"(?:" + "|".join(ISO_CURRENCY_CODES) + r")"
+# Lookbehind blocks LEI interiors / Taunusanlage; letter-only lookahead keeps EUR500.
+ISO_CODE_BOUNDED = r"(?<![A-Za-z0-9])" + ISO_CODE + r"(?![A-Za-z])"
+
+
 class PatternRegistry:
     """Central repository for regex patterns used in extraction."""
     
@@ -151,16 +166,6 @@ class PatternRegistry:
     @staticmethod
     def get_currency_patterns():
         """Get patterns for currency and issue size extraction."""
-        currency_codes = [
-            r'USD', r'EUR', r'GBP', r'JPY', r'CHF', r'AUD', r'CAD', 
-            r'NZD', r'HKD', r'SGD', r'CNY', r'CNH', r'SEK', r'NOK', 
-            r'DKK', r'CZK', r'HUF', r'PLN', r'RUB', r'TRY', r'ZAR',
-            r'MXN', r'BRL', r'AED', r'SAR', r'QAR', r'KWD', r'INR',
-            # Additional currency codes
-            r'IDR', r'THB', r'VND', r'MYR', r'PHP', r'ILS', r'CLP',
-            r'COP', r'PEN', r'ARS', r'UYU', r'RON', r'BGN', r'HRK',
-            r'ISK', r'NGN', r'KES', r'UAH', r'KZT', r'MAD', r'EGP'
-        ]
         currency_names = [
             'euro', 'euros', 'dollar', 'dollars', 'pound', 'pounds', 'yen', 
             'franc', 'francs', 'kroner', 'krone', 'krona', 'ruble', 'rubles', 
@@ -176,14 +181,11 @@ class PatternRegistry:
         # Helper patterns for issue size
         # Allow dash as decimal separator for specific cases like 4-000
         amount_pattern = r'(\d[\d,.-]*)\s*(?:million|billion|thousand|m\b|bn|k\b)?'
-        codes_pattern = r'(?:' + '|'.join(currency_codes) + r')'
+        codes_pattern = ISO_CODE
         names_pattern = r'(?:' + '|'.join(currency_names) + r')'
         symbols_pattern = r'(?:' + '|'.join(currency_symbols) + r')'
 
-        return {
-            'currency_codes': [rf'\b{code}\b' for code in currency_codes],
-            'currency_symbols': currency_symbols,
-            'issue_size': [
+        issue_size = [
                 # Generic pattern for "750,000,000 euro", "750 million EUR", etc.
                 rf"\b({amount_pattern})\s*({codes_pattern}|{names_pattern})\b",
                 # Pattern for "EUR 750,000,000", "€750 million", etc.
@@ -214,7 +216,12 @@ class PatternRegistry:
                 # European format handling (dot as thousands separator)
                 r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?([A-Z]{3}|\$|€|£|¥|Fr|₽|₺|R\s|kr|₹)?\s*(\d[\d.]*)(?:,\d+)?\s*(?:million|billion|m|bn)?(?:\s*([A-Z]{3}))?',
                 r'(?:aggregate\s+(?:nominal\s+)?amount|(?:total\s+)?(?:issue|principal)\s+(?:size|amount)|series\s+amount)\s*(?:of\s+(?:the\s+)?(?:notes|securities|bonds))?\s*[:\-]?\s*(?:up\s+to\s+)?((?:USD|EUR|GBP|JPY|CHF|AUD|CAD|NZD|HKD|SGD|CNY|CNH|SEK|NOK|DKK|CZK|HUF|PLN|RUB|TRY|ZAR|MXN|BRL|AED|SAR|QAR|KWD|INR))\s*(\d[\d.]*)(?:,\d+)?\s*(?:million|billion|m|bn)?'
-            ]
+        ]
+
+        return {
+            'currency_codes': list(ISO_CURRENCY_CODES),
+            'currency_symbols': currency_symbols,
+            'issue_size': [p.replace("[A-Z]{3}", ISO_CODE_BOUNDED) for p in issue_size],
         }
     
     @staticmethod
