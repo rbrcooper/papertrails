@@ -26,7 +26,7 @@ _DEALER_TABLE_ANCHOR = re.compile(
 # the preferred anchor — Total/ESB hit "If syndicated, names of Managers" ~40 chars
 # before "Active Bookrunners"; a combined regex would move the window start.
 _DEALER_SYNDICATED_FALLBACK = re.compile(
-    r"if syndicated\s*[:.,]?\s*(?:.{0,80}?)names(?: of(?: the)? (?:managers|dealers))?",
+    r"if syndicated\s*[:.,]?\s*(?:.{0,80}?)names(?: of(?: the)? (?:relevant\s+)?(?:managers|dealers|lead managers?))?",
     re.IGNORECASE | re.DOTALL,
 )
 _BANK_LEGAL_SUFFIX = (
@@ -65,6 +65,16 @@ _COVER_AS_BOOKRUNNERS_PREFIX = re.compile(
     r"as\s+(?:global\s+coordinators\s+and\s+)?$",
     re.IGNORECASE,
 )
+# Longest first so "Joint Active Bookrunners" / combined global+active win.
+_DEALER_ROLE_HEADING = re.compile(
+    r"joint\s+active\s+bookrunners"
+    r"|global\s+coordinators\s+and\s+active\s+bookrunners"
+    r"|passive\s+bookrunners"
+    r"|active\s+bookrunners"
+    r"|joint\s+bookrunners"
+    r"|global\s+coordinators",
+    re.IGNORECASE,
+)
 
 
 def _is_cover_as_bookrunners_match(text: str, match: re.Match) -> bool:
@@ -72,6 +82,48 @@ def _is_cover_as_bookrunners_match(text: str, match: re.Match) -> bool:
     if not re.search(r"active\s+bookrunners", match.group(0), re.IGNORECASE):
         return False
     return bool(_COVER_AS_BOOKRUNNERS_PREFIX.search(text[: match.start()]))
+
+
+def _role_from_heading(heading: str) -> str:
+    """Map a dealer-table heading to underwriters[].role. Default Dealer."""
+    h = re.sub(r"\s+", " ", heading).strip().lower().rstrip(":")
+    if "joint active" in h:
+        return "Joint Active Bookrunner"
+    if "passive" in h:
+        return "Passive Bookrunner"
+    if "joint bookrunner" in h:
+        return "Joint Bookrunner"
+    if "global coordinator" in h and "active" in h:
+        return "Active Bookrunner"
+    if "global coordinator" in h:
+        return "Global Coordinator"
+    if "active bookrunner" in h:
+        return "Active Bookrunner"
+    return "Dealer"
+
+
+def _token_index(block: str, name: str) -> int:
+    """First token index of name in block, or -1. Safe when casefold changes length (ß)."""
+    needle = name.casefold()
+    block_cf = block.casefold()
+    if len(block_cf) != len(block):
+        pat = re.compile(
+            rf"(?<![0-9A-Za-z]){re.escape(name)}(?![0-9A-Za-z])",
+            re.IGNORECASE,
+        )
+        m = pat.search(block)
+        return m.start() if m else -1
+    start = 0
+    while True:
+        i = block_cf.find(needle, start)
+        if i < 0:
+            return -1
+        before_ok = i == 0 or not block_cf[i - 1].isalnum()
+        after_i = i + len(needle)
+        after_ok = after_i >= len(block_cf) or not block_cf[after_i].isalnum()
+        if before_ok and after_ok:
+            return i
+        start = i + 1
 
 
 def _whitelist_name_in_block(legal_name: str, block_cf: str) -> bool:
@@ -260,20 +312,40 @@ class AIBankExtractor:
         block_cf = block.casefold()
         seen: set[str] = set()
         banks: List[Dict[str, Any]] = []
+        initial_role = _role_from_heading(match.group(0))
+        heading_roles = [
+            (hm.start(), _role_from_heading(hm.group(0)))
+            for hm in _DEALER_ROLE_HEADING.finditer(block)
+        ]
 
-        def _add(name: str) -> None:
+        def _role_at(pos: int) -> str:
+            role = initial_role
+            for hpos, hrole in heading_roles:
+                if hpos <= pos:
+                    role = hrole
+                else:
+                    break
+            return role
+
+        def _add(name: str, pos: int) -> None:
             key = re.sub(r"\s+", " ", name.lower())
             if key in seen:
                 return
             seen.add(key)
-            banks.append({"raw_name": name, "role": "Dealer", "confidence": 0.92})
+            banks.append({
+                "raw_name": name,
+                "role": _role_at(pos),
+                "confidence": 0.92,
+            })
 
         for legal_name in _FTWS_DEALER_LEGAL_NAMES:
             if _whitelist_name_in_block(legal_name, block_cf):
-                _add(legal_name)
+                idx = _token_index(block, legal_name)
+                _add(legal_name, idx if idx >= 0 else 0)
 
-        if _SOC_GEN_RE.search(block):
-            _add("Société Générale")
+        soc = _SOC_GEN_RE.search(block)
+        if soc:
+            _add("Société Générale", soc.start())
 
         if self.known_banks:
             extra: List[str] = []
@@ -285,8 +357,9 @@ class AIBankExtractor:
                     if len(alias) >= 14:
                         extra.append(alias)
             for name in sorted(set(extra), key=len, reverse=True):
-                if name in block:
-                    _add(name)
+                pos = block.find(name)
+                if pos != -1:
+                    _add(name, pos)
 
         # Drop shorter names that are substrings of a longer match (e.g. "Goldman Sachs").
         pruned: List[Dict[str, Any]] = []

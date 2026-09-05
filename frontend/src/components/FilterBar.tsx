@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, SlidersHorizontal, ArrowDownUp, Flame, LayoutList, Trophy, PieChart, Scale, ShieldAlert } from 'lucide-react';
+import { Search, X, SlidersHorizontal, ArrowDownUp, Flame, LayoutList, Trophy, PieChart, Scale } from 'lucide-react';
 import { FilterState } from '../types/deal';
 
 interface FilterBarProps {
@@ -29,9 +29,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.search !== '' ||
     filters.selectedUnderwriter !== '' ||
     filters.selectedIssuer !== '' ||
-    filters.selectedCurrency !== '' ||
     filters.expansionOnly ||
-    filters.pledgeMismatchOnly ||
     filters.yearFilter !== '';
 
   const handleReset = () => {
@@ -39,9 +37,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       search: '',
       selectedUnderwriter: '',
       selectedIssuer: '',
-      selectedCurrency: '',
       expansionOnly: false,
-      pledgeMismatchOnly: false,
       yearFilter: '',
       sortBy: 'date_desc',
     });
@@ -210,22 +206,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <span>Upstream Expansion (STE &gt; 0)</span>
           </button>
 
-          {/* Climate Pledge Mismatch Filter */}
-          <button
-            id="filter-pledge-toggle"
-            type="button"
-            onClick={() => onFilterChange({ ...filters, pledgeMismatchOnly: !filters.pledgeMismatchOnly })}
-            className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition-colors cursor-pointer ${
-              filters.pledgeMismatchOnly
-                ? 'bg-blue-100 text-blue-900 border-blue-300 font-semibold'
-                : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
-            }`}
-            title="Filter deals where Net-Zero Banking Alliance (NZBA) signatory banks underwrote debt for upstream expansionists"
-          >
-            <ShieldAlert className={`w-3.5 h-3.5 ${filters.pledgeMismatchOnly ? 'text-blue-700' : 'text-stone-400'}`} />
-            <span>Pledge Mismatches (NZBA on Expansion)</span>
-          </button>
-
           {/* Sort By Dropdown */}
           <div className="flex items-center gap-1.5 ml-auto">
             <ArrowDownUp className="w-3.5 h-3.5 text-stone-500" />
@@ -312,17 +292,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 Upstream STE &gt; 0 only
                 <button
                   onClick={() => onFilterChange({ ...filters, expansionOnly: false })}
-                  className="hover:text-red-600 cursor-pointer"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            {filters.pledgeMismatchOnly && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-900 rounded border border-blue-200">
-                Pledge Mismatch (NZBA on Expansion)
-                <button
-                  onClick={() => onFilterChange({ ...filters, pledgeMismatchOnly: false })}
                   className="hover:text-red-600 cursor-pointer"
                 >
                   ×

@@ -325,6 +325,83 @@ class TestDealerTableExtraction:
         assert "Banco Santander, S.A." in names
         assert "Commerzbank Aktiengesellschaft" in names
 
+    def test_total_xs2937308737_active_vs_joint(self):
+        from processes.pdf_extraction.extractors.ai_bank_extractor import AIBankExtractor
+
+        snippet = (
+            "Method of distribution Syndicated (ii) If syndicated, names of the Managers: "
+            "Global Coordinators and Active Bookrunners Barclays Bank Ireland PLC "
+            "Goldman Sachs Bank Europe SE Joint Active Bookrunners BofA Securities Europe SA "
+            "HSBC Continental Europe Natixis SMBC Bank EU AG "
+            "(iv) Stabilisation Manager: Barclays Bank Ireland PLC"
+        )
+        banks = AIBankExtractor(debug_mode=False).extract_dealer_management_banks(snippet)
+        by_name = {b["raw_name"]: b["role"] for b in banks}
+        assert by_name["Barclays Bank Ireland PLC"] == "Active Bookrunner"
+        assert by_name["Goldman Sachs Bank Europe SE"] == "Active Bookrunner"
+        assert by_name["BofA Securities Europe SA"] == "Joint Active Bookrunner"
+        assert by_name["HSBC Continental Europe"] == "Joint Active Bookrunner"
+        assert by_name["Natixis"] == "Joint Active Bookrunner"
+        assert by_name["SMBC Bank EU AG"] == "Joint Active Bookrunner"
+
+    def test_vier_gas_xs3170345980_global_active_passive(self):
+        from processes.pdf_extraction.extractors.ai_bank_extractor import AIBankExtractor
+
+        snippet = (
+            "Dealer/Management Group (specify) "
+            "Global Coordinators ING Bank N.V. UniCredit Bank GmbH "
+            "Active Bookrunners NatWest Markets N.V. "
+            "Passive Bookrunners Commerzbank Aktiengesellschaft "
+            "Subscription Agreement"
+        )
+        banks = AIBankExtractor(debug_mode=False).extract_dealer_management_banks(snippet)
+        by_name = {b["raw_name"]: b["role"] for b in banks}
+        assert by_name["ING Bank N.V."] == "Global Coordinator"
+        assert by_name["UniCredit Bank GmbH"] == "Global Coordinator"
+        assert by_name["NatWest Markets N.V."] == "Active Bookrunner"
+        assert by_name["Commerzbank Aktiengesellschaft"] == "Passive Bookrunner"
+
+    def test_eni_rwe_ep_stay_dealer_without_split_headings(self):
+        from processes.pdf_extraction.extractors.ai_bank_extractor import AIBankExtractor
+
+        extractor = AIBankExtractor(debug_mode=False)
+        snippets = (
+            (
+                "If syndicated, names of Managers: BPER Banca S.p.A. Deutsche Bank Aktiengesellschaft "
+                "HSBC Continental Europe Intesa Sanpaolo S.p.A. J.P. Morgan SE NATIXIS "
+                "Société Générale UniCredit Bank GmbH Date of Subscription Agreement"
+            ),
+            (
+                "Dealer / Management Group (specify) SMBC Bank EU AG "
+                "Deutsche Bank Aktiengesellschaft Subscription Agreement"
+            ),
+            (
+                "If syndicated: (A) Names of Dealers Commerzbank Aktiengesellschaft "
+                "Goldman Sachs Bank Europe SE ING Bank N.V. SMBC Bank EU AG "
+                "Société Générale (B) Stabilisation Manager(s), if any: Not Applicable"
+            ),
+        )
+        for snippet in snippets:
+            banks = extractor.extract_dealer_management_banks(snippet)
+            assert banks
+            assert {b["role"] for b in banks} == {"Dealer"}
+
+    def test_mixed_roles_still_equal_split_of_tranche(self):
+        from processes.pdf_extraction.extractors.ai_bank_extractor import AIBankExtractor
+
+        snippet = (
+            "Active Bookrunners Barclays Bank Ireland PLC "
+            "Passive Bookrunners UniCredit Bank GmbH Stabilisation Manager"
+        )
+        banks = AIBankExtractor(debug_mode=False).extract_dealer_management_banks(snippet)
+        assert {b["raw_name"]: b["role"] for b in banks} == {
+            "Barclays Bank Ireland PLC": "Active Bookrunner",
+            "UniCredit Bank GmbH": "Passive Bookrunner",
+        }
+        amount, n = compute_allocated_amount(600_000_000, banks)
+        assert n == 2
+        assert amount == 300_000_000
+
     def test_clean_text_keeps_latin_letters(self):
         from processes.pdf_extraction.utils.text_processing import TextProcessor
 

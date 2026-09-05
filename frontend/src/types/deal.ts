@@ -27,10 +27,17 @@ export interface Deal {
   amount_kind?: string;
   programme_size?: string | null;
   allocated_amount?: number;
-  use_of_proceeds?: string;
-  bond_type?: 'conventional' | 'green' | 'sustainability_linked' | 'transition';
-  parent_company?: string;
-  beneficial_owner?: string;
+  maturity_kind?: string | null;
+  coupon_rate?: number | null;
+  coupon_type?: string | null;
+  coupon_yield?: number | null;
+  use_of_proceeds?: string | null;
+  bond_type?: 'conventional' | 'green' | 'sustainability_linked' | 'transition' | string | null;
+  issuer_legal?: string | null;
+  issuer_guarantor?: string | null;
+  hq_country?: string | null;
+  gogel_company?: string | null;
+  gogel_hierarchy?: string | null;
 }
 
 export interface DealsData {
@@ -42,9 +49,7 @@ export interface FilterState {
   search: string;
   selectedUnderwriter: string;
   selectedIssuer: string;
-  selectedCurrency: string;
   expansionOnly: boolean; // STE > 0
-  pledgeMismatchOnly: boolean; // NZBA members financing STE > 0
   yearFilter: string;
   sortBy: 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc' | 'programme_desc' | 'ste_desc' | 'underwriters_desc';
 }

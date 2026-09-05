@@ -13,6 +13,8 @@ Usage:
   py -3 -m papertrails.build_watchlist --top 5
   py -3 -m papertrails.build_watchlist --top 50 --out papertrails/watchlist.yaml
   py -3 -m papertrails.build_watchlist --top 50 --verify-solr --out papertrails/watchlist_top50.yaml
+  py -3 -m papertrails.build_watchlist --all-lei --out papertrails/watchlist_all_lei.yaml
+  py -3 -m papertrails.build_watchlist --top 0 --out papertrails/watchlist_all_lei.yaml
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOGEL = ROOT / "data" / "raw" / "Urgewald GOGEL 2025 V1.2 with identifiers.csv"
 DEFAULT_OUT = Path(__file__).resolve().parent / "watchlist.yaml"
+ALL_LEI_OUT = Path(__file__).resolve().parent / "watchlist_all_lei.yaml"
 
 METRIC_COLUMN = "ste_resources_under_development_mmboe"
 PRODUCTION_COLUMN = "production_mmboe"
@@ -122,11 +125,22 @@ def _load_parent_aggregates(gogel_path: Path) -> List[Dict[str, Any]]:
                 "_lei_meta": [],
                 "isin_equity": "",
                 "bond_isins": [],
+                "hq_country": "",
             },
         )
         bucket["ste_mmboe"] += _parse_eu_number(row.get(METRIC_COLUMN))
         bucket["production_mmboe"] += _parse_eu_number(row.get(PRODUCTION_COLUMN))
         hier = row.get("company_hierarchy")
+        hq_raw = row.get("hq_country")
+        hq = "" if (hq_raw is None or (isinstance(hq_raw, float) and pd.isna(hq_raw))) else str(hq_raw).strip()
+        if hq in {".", "NA", "nan"}:
+            hq = ""
+        if hq:
+            is_parent = "parent" in str(hier or "").lower() and "sub" not in str(hier or "").lower()
+            if is_parent:
+                bucket["hq_country"] = hq
+            elif not bucket["hq_country"]:
+                bucket["hq_country"] = hq
         lei = _clean_lei(row.get("lei") if pd.notna(row.get("lei")) else "")
         if lei:
             bucket["_lei_meta"].append((_hierarchy_lei_rank(hier), lei))
@@ -260,10 +274,17 @@ def _issuer_payload(row: Dict[str, Any], rank: Optional[int]) -> Dict[str, Any]:
         "ste_mmboe": round(float(row["ste_mmboe"]), 4),
         "production_mmboe": round(float(row["production_mmboe"]), 4),
     }
+    if row.get("hq_country"):
+        out["hq_country"] = row["hq_country"]
     bonds = list(row.get("bond_isins") or [])
     if bonds:
         out["bond_isins"] = bonds[:10]
     return out
+
+
+def _unlimited_top(top: int, all_lei: bool = False) -> bool:
+    """--all-lei or --top 0 (or any <=0) means every LEI-eligible parent."""
+    return bool(all_lei) or top <= 0
 
 
 def build_watchlist(
@@ -272,15 +293,19 @@ def build_watchlist(
     include_benchmarks: bool = True,
     verify_solr: bool = False,
     leis_per_parent: int = 8,
+    all_lei: bool = False,
 ) -> Dict[str, Any]:
     eligible = _load_parent_aggregates(gogel_path)
     lei_eligible_total = len(eligible)
     solr_probes = 0
     solr_parents_probed = 0
     live_meta_note = ""
+    unlimited = _unlimited_top(top, all_lei=all_lei)
+    meta_top = 0 if unlimited else top
 
     if verify_solr:
         filtered = []
+        cap = "*" if unlimited else str(top)
         for row in eligible:
             solr_parents_probed += 1
             hit = False
@@ -298,12 +323,12 @@ def build_watchlist(
                     )
                 continue
             print(
-                f"HIT {len(filtered)+1}/{top} {row['name_parent']} "
+                f"HIT {len(filtered)+1}/{cap} {row['name_parent']} "
                 f"ste={row['ste_mmboe']} leis={len(row.get('leis') or [])}",
                 flush=True,
             )
             filtered.append(dict(row))
-            if len(filtered) >= top:
+            if not unlimited and len(filtered) >= top:
                 break
         live_meta_note = (
             f"stopped after {len(filtered)} downloadable-FTWS parents "
@@ -311,7 +336,7 @@ def build_watchlist(
         )
         eligible = filtered
 
-    core = eligible[: max(0, top)]
+    core = eligible if unlimited else eligible[:top]
     core_names = {c["name_parent"] for c in core}
 
     issuers: List[Dict[str, Any]] = []
@@ -356,13 +381,18 @@ def build_watchlist(
                 + (
                     "; --verify-solr requires ≥1 downloadable FTWS"
                     if verify_solr
-                    else ""
+                    else (
+                        "; all LEI-eligible (no FTWS-live Solr filter)"
+                        if unlimited
+                        else ""
+                    )
                 )
             ),
             "discovery_key": "company LEI on prospectus rows (sec_issuerNameList)",
             "verify_solr": verify_solr,
             "verify_solr_query": VERIFY_SOLR_QUERY if verify_solr else "",
-            "top": top,
+            "all_lei": unlimited,
+            "top": meta_top,
             "eligible_parents_total": lei_eligible_total,
             "solr_live_parents": len(core) if verify_solr else None,
             "solr_probes": solr_probes if verify_solr else 0,
@@ -377,8 +407,26 @@ def build_watchlist(
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Build STE-ranked GOGEL watchlist")
     parser.add_argument("--gogel", type=Path, default=DEFAULT_GOGEL)
-    parser.add_argument("--top", type=int, default=5)
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=5,
+        help="STE-ranked cap. 0 = all LEI-eligible parents (same as --all-lei).",
+    )
+    parser.add_argument(
+        "--all-lei",
+        action="store_true",
+        help=(
+            "Write every LEI-eligible parent (no STE cap, no --verify-solr). "
+            "Default --out is papertrails/watchlist_all_lei.yaml."
+        ),
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="YAML path. Default: watchlist.yaml, or watchlist_all_lei.yaml with --all-lei/--top 0.",
+    )
     parser.add_argument("--no-benchmarks", action="store_true")
     parser.add_argument(
         "--verify-solr",
@@ -386,7 +434,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         help=(
             "Keep only parents with ≥1 downloadable FTWS under their LEIs "
             "(sec_docType FTWS, ISIN length ≥ 12, downloadFile; slower). "
-            "Not prospectus-row numFound>0."
+            "Not prospectus-row numFound>0. Do not combine with --all-lei."
         ),
     )
     parser.add_argument(
@@ -397,8 +445,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    if args.all_lei and args.verify_solr:
+        parser.error(
+            "--all-lei is every LEI-eligible parent without --verify-solr "
+            "(that filter is the FTWS-live 23-parent file, not this one)"
+        )
+
     if not args.gogel.exists():
         raise SystemExit(f"GOGEL file not found: {args.gogel}")
+
+    unlimited = _unlimited_top(args.top, all_lei=bool(args.all_lei))
+    out = args.out or (ALL_LEI_OUT if unlimited else DEFAULT_OUT)
 
     payload = build_watchlist(
         args.gogel,
@@ -406,17 +463,23 @@ def main(argv: Optional[List[str]] = None) -> int:
         include_benchmarks=not args.no_benchmarks,
         verify_solr=bool(args.verify_solr),
         leis_per_parent=int(args.leis_per_parent),
+        all_lei=bool(args.all_lei) or unlimited,
     )
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    with args.out.open("w", encoding="utf-8") as f:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8") as f:
         yaml.safe_dump(payload, f, sort_keys=False, allow_unicode=True)
 
     print(
-        f"Wrote {len(payload['issuers'])} issuers to {args.out} "
-        f"(top={args.top}, lei_eligible={payload['meta']['eligible_parents_total']}, "
+        f"Wrote {len(payload['issuers'])} issuers to {out} "
+        f"(top={payload['meta']['top']}, all_lei={payload['meta']['all_lei']}, "
+        f"lei_eligible={payload['meta']['eligible_parents_total']}, "
         f"solr_live={payload['meta'].get('solr_live_parents')})"
     )
-    for row in payload["issuers"]:
+    listing = payload["issuers"]
+    if len(listing) > 60:
+        listing = listing[:10]
+        print(f"  (first 10 of {len(payload['issuers'])})")
+    for row in listing:
         tag = f" [{row['benchmark']}]" if row.get("benchmark") else ""
         n_lei = len(row.get("leis") or [])
         print(

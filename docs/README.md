@@ -1,8 +1,8 @@
 # Papertrails — Documentation
 
-**Product:** [PRODUCT.md](PRODUCT.md) (alert feed). Package: `papertrails/`.
+**Navigate:** product = [PRODUCT.md](PRODUCT.md). Chronology = [ROADMAP.md](ROADMAP.md). Library notes below are for `processes/` QA, not the alert feed.
 
-Library: scrape ESMA prospectus PDFs and extract bond metadata + underwriting banks. Bulk GOGEL walk via `processes.main` is **legacy**.
+Library: scrape ESMA prospectus PDFs and extract bond metadata + underwriting banks. Bulk GOGEL walk via `processes.main` is frozen.
 
 ## Current status (Aug 2026)
 

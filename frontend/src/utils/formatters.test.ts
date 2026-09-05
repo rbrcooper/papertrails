@@ -7,6 +7,11 @@ import {
   formatCurrencyTotals,
   isMixedCurrency,
   maxProgrammeByIssuerCurrency,
+  compareByCurrencyThenAmount,
+  compareByCurrencyThenProgramme,
+  displayUnderwriterRole,
+  formatCouponRate,
+  formatMaturity,
   safeHttpUrl,
   sanitizeDeal,
   steAllocated1n,
@@ -127,4 +132,28 @@ test('sanitizeDeal strips pdf_path', () => {
   } as Deal & { pdf_path: string };
   const clean = sanitizeDeal(dirty);
   assert.equal('pdf_path' in clean, false);
+});
+
+test('amount sort groups by currency before size', () => {
+  const ron = deal({ currency: 'RON', amount: '500000000', isin: 'A' });
+  const eurSmall = deal({ currency: 'EUR', amount: '100000000', isin: 'B' });
+  const eurLarge = deal({ currency: 'EUR', amount: '900000000', isin: 'C' });
+  const sorted = [ron, eurLarge, eurSmall].sort((a, b) =>
+    compareByCurrencyThenAmount(a, b, 'desc')
+  );
+  assert.deepEqual(sorted.map(d => d.isin), ['C', 'B', 'A']);
+});
+
+test('programme sort groups by currency', () => {
+  const a = deal({ currency: 'EUR', amount: '1', programme_size: '100', isin: 'A' });
+  const b = deal({ currency: 'RON', amount: '1', programme_size: '999', isin: 'B' });
+  const sorted = [b, a].sort((x, y) => compareByCurrencyThenProgramme(x, y, 'desc'));
+  assert.deepEqual(sorted.map(d => d.isin), ['A', 'B']);
+});
+
+test('coupon and maturity formatters', () => {
+  assert.equal(formatCouponRate(3.625, 'Fixed'), '3.625% (Fixed)');
+  assert.equal(formatMaturity('2032-01-10', null), '10 Jan 2032');
+  assert.equal(displayUnderwriterRole('Active Bookrunner'), 'Active Bookrunner');
+  assert.equal(displayUnderwriterRole('Dealer'), null);
 });

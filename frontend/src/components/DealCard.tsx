@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { ExternalLink, Copy, Check, Info, Flame, FileText, Sparkles } from 'lucide-react';
 import { Deal } from '../types/deal';
-import { formatAmount, formatExactAmount, formatDate, generateCitation, safeHttpUrl } from '../utils/formatters';
-import { getBankClimateProfile } from '../data/referenceData';
+import { formatAmount, formatExactAmount, formatDate, formatCouponRate, formatMaturity, displayUnderwriterRole, generateCitation, safeHttpUrl } from '../utils/formatters';
 
 interface DealCardProps {
   deal: Deal;
@@ -47,6 +46,8 @@ export const DealCard: React.FC<DealCardProps> = ({
   };
 
   const hasUpstreamExpansion = (deal.ste_mmboe ?? 0) > 0;
+  const couponLabel = formatCouponRate(deal.coupon_rate, deal.coupon_type);
+  const maturityLabel = formatMaturity(deal.maturity_date, deal.maturity_kind);
 
   return (
     <article
@@ -126,6 +127,14 @@ export const DealCard: React.FC<DealCardProps> = ({
           </div>
           <div className="text-[11px] text-stone-500 font-tabular mt-0.5">
             Nominal tranche amount ({deal.currency})
+            {(couponLabel || maturityLabel) && (
+              <span className="text-stone-600">
+                {' '}
+                · {couponLabel && `Coupon ${couponLabel}`}
+                {couponLabel && maturityLabel && ' · '}
+                {maturityLabel && `Maturity ${maturityLabel}`}
+              </span>
+            )}
           </div>
         </div>
 
@@ -170,14 +179,14 @@ export const DealCard: React.FC<DealCardProps> = ({
           {deal.underwriters.map((underwriter, idx) => {
             const formattedAllocated = formatAmount(underwriter.allocated_amount, deal.currency);
             const exactAllocated = formatExactAmount(underwriter.allocated_amount, deal.currency);
-            const climateProfile = getBankClimateProfile(underwriter.raw_name);
+            const roleLabel = displayUnderwriterRole(underwriter.role);
 
             return (
               <div
                 key={idx}
                 className="flex items-center justify-between gap-2 p-2 bg-stone-50 hover:bg-amber-50/50 border border-stone-200/70 hover:border-amber-300/80 rounded transition-colors text-xs group/bank"
               >
-                <div className="flex items-center gap-1.5 truncate">
+                <div className="flex flex-col min-w-0 truncate">
                   <button
                     onClick={() => onSelectBank?.(underwriter.raw_name)}
                     className="font-medium text-stone-900 group-hover/bank:text-amber-900 text-left truncate hover:underline cursor-pointer"
@@ -185,13 +194,8 @@ export const DealCard: React.FC<DealCardProps> = ({
                   >
                     {underwriter.raw_name}
                   </button>
-                  {climateProfile?.nzbaMember && (
-                    <span
-                      className="px-1 py-0.2 text-[9px] font-bold bg-blue-100 text-blue-800 rounded-xs shrink-0"
-                      title="Net-Zero Banking Alliance (NZBA) Signatory Bank"
-                    >
-                      NZBA
-                    </span>
+                  {roleLabel && (
+                    <span className="text-[10px] text-stone-500 truncate">{roleLabel}</span>
                   )}
                 </div>
                 <div

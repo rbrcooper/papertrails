@@ -267,6 +267,57 @@ export function formatDateTime(dateString: string | null | undefined): string {
   });
 }
 
+/** Coupon from FTWS form fields. */
+export function formatCouponRate(
+  rate?: number | null,
+  couponType?: string | null
+): string | null {
+  if (rate == null || !Number.isFinite(rate)) return null;
+  const pct = `${rate}%`;
+  return couponType ? `${pct} (${couponType})` : pct;
+}
+
+/** Maturity from FTWS — date or kind (e.g. undated). */
+export function formatMaturity(
+  maturityDate?: string | null,
+  maturityKind?: string | null
+): string | null {
+  if (maturityDate) return formatDate(maturityDate);
+  if (maturityKind) return maturityKind;
+  return null;
+}
+
+/** Show syndicate role when FTWS names a heading (not generic Dealer). */
+export function displayUnderwriterRole(role?: string | null): string | null {
+  if (!role || role === 'Dealer' || role === 'Unknown') return null;
+  return role;
+}
+
+/** Sort by ISO currency then amount — no FX conversion. */
+export function compareByCurrencyThenAmount(
+  a: Pick<Deal, 'currency' | 'amount'>,
+  b: Pick<Deal, 'currency' | 'amount'>,
+  direction: 'asc' | 'desc'
+): number {
+  const ccyCmp = (a.currency || '').localeCompare(b.currency || '');
+  if (ccyCmp !== 0) return ccyCmp;
+  const amtA = parseAmount(a.amount);
+  const amtB = parseAmount(b.amount);
+  return direction === 'desc' ? amtB - amtA : amtA - amtB;
+}
+
+export function compareByCurrencyThenProgramme(
+  a: Pick<Deal, 'currency' | 'programme_size'>,
+  b: Pick<Deal, 'currency' | 'programme_size'>,
+  direction: 'asc' | 'desc'
+): number {
+  const ccyCmp = (a.currency || '').localeCompare(b.currency || '');
+  if (ccyCmp !== 0) return ccyCmp;
+  const progA = parseAmount(a.programme_size);
+  const progB = parseAmount(b.programme_size);
+  return direction === 'desc' ? progB - progA : progA - progB;
+}
+
 /**
  * Generate investigative journalistic citation for reporting
  */

@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
 import { X, ExternalLink, Copy, Check, FileText, Flame, Sparkles } from 'lucide-react';
 import { Deal } from '../types/deal';
-import { formatAmount, formatExactAmount, formatDate, formatDateTime, generateCitation, sanitizeDeal, safeHttpUrl } from '../utils/formatters';
-import { getBankClimateProfile } from '../data/referenceData';
+import {
+  formatAmount,
+  formatExactAmount,
+  formatDate,
+  formatDateTime,
+  formatCouponRate,
+  formatMaturity,
+  displayUnderwriterRole,
+  generateCitation,
+  sanitizeDeal,
+  safeHttpUrl,
+} from '../utils/formatters';
 
 interface DealDetailModalProps {
   deal: Deal | null;
@@ -23,6 +33,8 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({
   if (!deal) return null;
 
   const prospectusUrl = safeHttpUrl(deal.source_url);
+  const couponLabel = formatCouponRate(deal.coupon_rate, deal.coupon_type);
+  const maturityLabel = formatMaturity(deal.maturity_date, deal.maturity_kind);
 
   const handleCopyCitation = () => {
     navigator.clipboard.writeText(generateCitation(deal));
@@ -123,6 +135,42 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({
                   {formatDate(deal.issue_date)} ({deal.issue_date || 'N/A'})
                 </dd>
               </div>
+              {maturityLabel && (
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <dt className="text-stone-500 font-medium">Maturity</dt>
+                  <dd className="col-span-2 font-mono text-stone-900">{maturityLabel}</dd>
+                </div>
+              )}
+              {couponLabel && (
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <dt className="text-stone-500 font-medium">Coupon</dt>
+                  <dd className="col-span-2 font-mono text-stone-900">{couponLabel}</dd>
+                </div>
+              )}
+              {deal.bond_type && (
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <dt className="text-stone-500 font-medium">Bond Type</dt>
+                  <dd className="col-span-2 font-mono text-stone-900">{deal.bond_type}</dd>
+                </div>
+              )}
+              {deal.issuer_legal && (
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <dt className="text-stone-500 font-medium">Legal Issuer</dt>
+                  <dd className="col-span-2 text-stone-900">{deal.issuer_legal}</dd>
+                </div>
+              )}
+              {deal.issuer_guarantor && (
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <dt className="text-stone-500 font-medium">Guarantor</dt>
+                  <dd className="col-span-2 text-stone-900">{deal.issuer_guarantor}</dd>
+                </div>
+              )}
+              {deal.gogel_hierarchy && (
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <dt className="text-stone-500 font-medium">GOGEL Hierarchy</dt>
+                  <dd className="col-span-2 text-stone-900">{deal.gogel_hierarchy}</dd>
+                </div>
+              )}
               <div className="grid grid-cols-3 px-3 py-2">
                 <dt className="text-stone-500 font-medium">Currency</dt>
                 <dd className="col-span-2 font-mono text-stone-900">{deal.currency}</dd>
@@ -163,7 +211,7 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({
 
             <div className="border border-stone-200 rounded-md overflow-hidden divide-y divide-stone-200">
               {deal.underwriters.map((u, i) => {
-                const bankProfile = getBankClimateProfile(u.raw_name);
+                const roleLabel = displayUnderwriterRole(u.role) || u.role || 'Dealer';
                 return (
                   <div
                     key={i}
@@ -180,19 +228,9 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({
                         >
                           {u.raw_name}
                         </button>
-                        {bankProfile?.nzbaMember && (
-                          <span className="px-1.5 py-0.2 text-[10px] font-bold bg-blue-100 text-blue-800 rounded">
-                            NZBA
-                          </span>
-                        )}
                       </div>
                       <div className="text-[11px] text-stone-500">
-                        <span>Role: {u.role || 'Dealer'}</span>
-                        {bankProfile && (
-                          <span className="text-stone-400 ml-2">
-                            • Fossil Policy: <strong className="text-stone-600 font-medium">{bankProfile.oilGasPolicyRating}</strong>
-                          </span>
-                        )}
+                        <span>Role: {roleLabel}</span>
                       </div>
                     </div>
                     <div className="sm:text-right">

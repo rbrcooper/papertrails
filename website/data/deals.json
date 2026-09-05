@@ -1,6 +1,1789 @@
 {
-  "updated_at": "2026-09-01T16:10:16+00:00",
+  "updated_at": "2026-09-03T16:23:03+00:00",
   "deals": [
+    {
+      "id": "c249286e462ee05a",
+      "issuer": "Veolia Environnement SA",
+      "isin": "FR001401AOX0",
+      "issue_date": "2026-09-02",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Industriel et Commercial S.A.",
+          "role": "Active Bookrunner",
+          "allocated_amount": 100000000.0
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Active Bookrunner",
+          "allocated_amount": 100000000.0
+        },
+        {
+          "raw_name": "Standard Chartered",
+          "role": "Active Bookrunner",
+          "allocated_amount": 100000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Active Bookrunner",
+          "allocated_amount": 100000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Active Bookrunner",
+          "allocated_amount": 100000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=51795205&checksum=3620e58f610baf92b75196a0dfa5bd13",
+      "extracted_at": "2026-09-03T16:23:03+00:00",
+      "published_at": "2026-09-02T11:26:29+00:00",
+      "gate_status": "published",
+      "doc_id": "65134728",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 22,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "22000000000",
+      "allocated_amount": 100000000.0
+    },
+    {
+      "id": "38633e8dde43b01f",
+      "issuer": "Snam SpA",
+      "isin": "XS3406813124",
+      "issue_date": "2026-06-22",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "HSBC Continental Europe",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Natixis",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=50001029&checksum=4728b6f53f1d977ca0d6a26c551cf5ca",
+      "extracted_at": "2026-09-03T16:23:02+00:00",
+      "published_at": "2026-09-02T11:26:28+00:00",
+      "gate_status": "published",
+      "doc_id": "63043318",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 21,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "15000000000",
+      "allocated_amount": 150000000.0
+    },
+    {
+      "id": "88bada2eb4c4c9e7",
+      "issuer": "Snam SpA",
+      "isin": "XS2944871586",
+      "issue_date": "2024-11-26",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Mizuho Securities Europe GmbH",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Morgan Stanley",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Goldman Sachs",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=47562496&checksum=a2ab77fff81bc8f169bdabd99bbf5236",
+      "extracted_at": "2026-09-03T16:23:02+00:00",
+      "published_at": "2026-09-02T11:26:28+00:00",
+      "gate_status": "published",
+      "doc_id": "60351907",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 21,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 9,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "15000000000",
+      "allocated_amount": 83333333.33
+    },
+    {
+      "id": "18630ea6a7040327",
+      "issuer": "Snam SpA",
+      "isin": "XS2944872121",
+      "issue_date": "2024-11-26",
+      "currency": "GBP",
+      "amount": "600000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "Mizuho Securities Europe GmbH",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "Morgan Stanley",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        },
+        {
+          "raw_name": "Goldman Sachs",
+          "role": "Dealer",
+          "allocated_amount": 66666666.67
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=47563186&checksum=661167981ea1450b60f810038f98bd21",
+      "extracted_at": "2026-09-03T16:23:02+00:00",
+      "published_at": "2026-09-02T11:26:28+00:00",
+      "gate_status": "published",
+      "doc_id": "60352551",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 21,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 9,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "15000000000",
+      "allocated_amount": 66666666.67
+    },
+    {
+      "id": "ac0f0df1312352bd",
+      "issuer": "Veolia Environnement SA",
+      "isin": "FR001401AOY8",
+      "issue_date": "2026-09-02",
+      "currency": "EUR",
+      "amount": "650000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Industriel et Commercial S.A.",
+          "role": "Active Bookrunner",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Active Bookrunner",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "Standard Chartered",
+          "role": "Active Bookrunner",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Active Bookrunner",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Active Bookrunner",
+          "allocated_amount": 130000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=51795066&checksum=da9de0c7b7c669c25f89351dc344e93c",
+      "extracted_at": "2026-09-03T16:23:03+00:00",
+      "published_at": "2026-09-02T11:26:28+00:00",
+      "gate_status": "published",
+      "doc_id": "65133043",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 22,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "22000000000",
+      "allocated_amount": 130000000.0
+    },
+    {
+      "id": "a58510ac43e0af34",
+      "issuer": "NV Nederlandse Gasunie",
+      "isin": "XS3268298893",
+      "issue_date": "2026-01-15",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "ABN AMRO Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 375000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 375000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=45956358&checksum=732d544598df0ec26150b028e748a650",
+      "extracted_at": "2026-09-03T16:23:01+00:00",
+      "published_at": "2026-09-02T11:26:27+00:00",
+      "gate_status": "published",
+      "doc_id": "58325823",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 19,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 2,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "7500000000",
+      "allocated_amount": 375000000.0
+    },
+    {
+      "id": "526b322e5e7bc816",
+      "issuer": "NV Nederlandse Gasunie",
+      "isin": "XS2806495896",
+      "issue_date": "2024-04-29",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Co\u00f6peratieve Rabobank U.A.",
+          "role": "Dealer",
+          "allocated_amount": 166666666.67
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Dealer",
+          "allocated_amount": 166666666.67
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 166666666.67
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=33211091&checksum=e5a548f814a54576b310ee86890850f6",
+      "extracted_at": "2026-09-03T16:23:01+00:00",
+      "published_at": "2026-09-02T11:26:27+00:00",
+      "gate_status": "published",
+      "doc_id": "42861934",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 19,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 3,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "7500000000",
+      "allocated_amount": 166666666.67
+    },
+    {
+      "id": "0a4ce47596ace661",
+      "issuer": "NV Nederlandse Gasunie",
+      "isin": "XS2716710756",
+      "issue_date": "2023-11-22",
+      "currency": "EUR",
+      "amount": "300000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 100000000.0
+        },
+        {
+          "raw_name": "ABN AMRO Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 100000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 100000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=29922899&checksum=7a1a275a7e801f58eba10a466bc05c7d",
+      "extracted_at": "2026-09-03T16:23:01+00:00",
+      "published_at": "2026-09-02T11:26:27+00:00",
+      "gate_status": "published",
+      "doc_id": "38838106",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 19,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 3,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "7500000000",
+      "allocated_amount": 100000000.0
+    },
+    {
+      "id": "4041786a5056246c",
+      "issuer": "Engie SA",
+      "isin": "FR0014013BG2",
+      "issue_date": "2025-10-13",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Barclays Bank Ireland PLC",
+          "role": "Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "HSBC Continental Europe",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Natixis",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=43727132&checksum=1535306a173139bbb250b625b0e4663e",
+      "extracted_at": "2026-09-03T16:23:00+00:00",
+      "published_at": "2026-09-02T11:26:26+00:00",
+      "gate_status": "published",
+      "doc_id": "55585519",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 16,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 9,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "40000000000",
+      "allocated_amount": 55555555.56
+    },
+    {
+      "id": "4751278ae4ebd2a5",
+      "issuer": "Engie SA",
+      "isin": "FR0014013BH0",
+      "issue_date": "2025-10-13",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Barclays Bank Ireland PLC",
+          "role": "Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "HSBC Continental Europe",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Natixis",
+          "role": "Joint Active Bookrunner",
+          "allocated_amount": 55555555.56
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=43727183&checksum=d1caa0aa025bf5c038e9ba6e7de111a1",
+      "extracted_at": "2026-09-03T16:23:00+00:00",
+      "published_at": "2026-09-02T11:26:26+00:00",
+      "gate_status": "published",
+      "doc_id": "55585587",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 16,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 9,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "40000000000",
+      "allocated_amount": 55555555.56
+    },
+    {
+      "id": "df7f723c96cb90d7",
+      "issuer": "EP Investment Sarl",
+      "isin": "XS3239976163",
+      "issue_date": "2025-11-27",
+      "currency": "EUR",
+      "amount": "600000000",
+      "underwriters": [
+        {
+          "raw_name": "HSBC Continental Europe",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Erste Group Bank AG",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=44690344&checksum=631d8bca91d055809ed1439cce6ad34f",
+      "extracted_at": "2026-09-03T16:23:01+00:00",
+      "published_at": "2026-09-02T11:26:26+00:00",
+      "gate_status": "published",
+      "doc_id": "56721048",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 17,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 4,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": null,
+      "allocated_amount": 150000000.0
+    },
+    {
+      "id": "b60e55576f7af07e",
+      "issuer": "Iren SpA",
+      "isin": "XS2752472436",
+      "issue_date": "2024-01-22",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 71428571.43
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 71428571.43
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 71428571.43
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 71428571.43
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 71428571.43
+        },
+        {
+          "raw_name": "Morgan Stanley",
+          "role": "Dealer",
+          "allocated_amount": 71428571.43
+        },
+        {
+          "raw_name": "Goldman Sachs",
+          "role": "Dealer",
+          "allocated_amount": 71428571.43
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=31004559&checksum=9c179ef951fd5a58ad5cfea7aef08b1c",
+      "extracted_at": "2026-09-03T16:23:01+00:00",
+      "published_at": "2026-09-02T11:26:26+00:00",
+      "gate_status": "published",
+      "doc_id": "40133244",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 18,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 7,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "4000000000",
+      "allocated_amount": 71428571.43
+    },
+    {
+      "id": "200ee604b9b3059d",
+      "issuer": "Enel SpA",
+      "isin": "XS3008889092",
+      "issue_date": "2025-02-17",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "Goldman Sachs Bank Europe SE",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=38882554&checksum=5d681f8e390c0c33610b45d787c73b67",
+      "extracted_at": "2026-09-03T16:22:59+00:00",
+      "published_at": "2026-09-02T11:26:25+00:00",
+      "gate_status": "published",
+      "doc_id": "49660901",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 15,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 7,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "35000000000",
+      "allocated_amount": 107142857.14
+    },
+    {
+      "id": "dc6a2cfdd66cf350",
+      "issuer": "Enel SpA",
+      "isin": "XS3008888953",
+      "issue_date": "2025-02-17",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "Goldman Sachs Bank Europe SE",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=38882313&checksum=9c96b88958534d1c6fbaf95d4b11f3d6",
+      "extracted_at": "2026-09-03T16:23:00+00:00",
+      "published_at": "2026-09-02T11:26:25+00:00",
+      "gate_status": "published",
+      "doc_id": "49659829",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 15,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 7,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "35000000000",
+      "allocated_amount": 107142857.14
+    },
+    {
+      "id": "a7125be2c9f03734",
+      "issuer": "Engie SA",
+      "isin": "FR0014019L22",
+      "issue_date": "2026-07-01",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Cr\u00e9dit Industriel et Commercial S.A.",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Barclays Bank Ireland PLC",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=50275159&checksum=d8df0e5fff84f4f65efb1208a63126a5",
+      "extracted_at": "2026-09-03T16:23:00+00:00",
+      "published_at": "2026-09-02T11:26:25+00:00",
+      "gate_status": "published",
+      "doc_id": "63359607",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 16,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": null,
+      "allocated_amount": 150000000.0
+    },
+    {
+      "id": "fd3a474c364be2a6",
+      "issuer": "EnBW Energie Baden-W\u00fcrttemberg AG",
+      "isin": "XS2862984510",
+      "issue_date": "2024-07-22",
+      "currency": "EUR",
+      "amount": "650000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 162500000.0
+        },
+        {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 162500000.0
+        },
+        {
+          "raw_name": "Barclays Bank Ireland PLC",
+          "role": "Dealer",
+          "allocated_amount": 162500000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 162500000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=34446696&checksum=cf85b269d5e781fd3bfabcb4b61c008a",
+      "extracted_at": "2026-09-03T16:22:59+00:00",
+      "published_at": "2026-09-02T11:26:24+00:00",
+      "gate_status": "published",
+      "doc_id": "44284835",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 14,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 4,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "10000000000",
+      "allocated_amount": 162500000.0
+    },
+    {
+      "id": "6a4a772fa69fd265",
+      "issuer": "Enel SpA",
+      "isin": "XS3358330820",
+      "issue_date": "2026-05-19",
+      "currency": "EUR",
+      "amount": "1250000000",
+      "underwriters": [
+        {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=48798690&checksum=a2817158db7d4e3aafa504972c4fa67b",
+      "extracted_at": "2026-09-03T16:22:59+00:00",
+      "published_at": "2026-09-02T11:26:24+00:00",
+      "gate_status": "published",
+      "doc_id": "61825937",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 15,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 7,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "35000000000",
+      "allocated_amount": 178571428.57
+    },
+    {
+      "id": "f33756ba53c8d255",
+      "issuer": "EnBW Energie Baden-W\u00fcrttemberg AG",
+      "isin": "XS2942479044",
+      "issue_date": "2024-11-20",
+      "currency": "EUR",
+      "amount": "1000000000",
+      "underwriters": [
+        {
+          "raw_name": "Skandinaviska Enskilda Banken AB (publ)",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=36949445&checksum=4ef178669964f981771cf475c0f271a2",
+      "extracted_at": "2026-09-03T16:22:58+00:00",
+      "published_at": "2026-09-02T11:26:23+00:00",
+      "gate_status": "published",
+      "doc_id": "47150053",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 14,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 4,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "15000000000",
+      "allocated_amount": 250000000.0
+    },
+    {
+      "id": "f40a0e7b6d9c64c9",
+      "issuer": "EnBW Energie Baden-W\u00fcrttemberg AG",
+      "isin": "XS2942478822",
+      "issue_date": "2024-11-20",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Skandinaviska Enskilda Banken AB (publ)",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=36949422&checksum=2be9576d951a7eb5d00d72c6d6a50431",
+      "extracted_at": "2026-09-03T16:22:57+00:00",
+      "published_at": "2026-09-02T11:26:22+00:00",
+      "gate_status": "published",
+      "doc_id": "47150029",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 14,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 4,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "15000000000",
+      "allocated_amount": 125000000.0
+    },
+    {
+      "id": "ef6d578bd9880e6f",
+      "issuer": "CEZ a.s.",
+      "isin": "XS2838370414",
+      "issue_date": "2024-06-11",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "Raiffeisen Bank International AG",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Erste Group Bank AG",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "HSBC Bank plc",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=33671265&checksum=8c123280ea23f1e2b738804cb42a90dc",
+      "extracted_at": "2026-09-03T16:22:56+00:00",
+      "published_at": "2026-09-02T11:26:21+00:00",
+      "gate_status": "published",
+      "doc_id": "43431719",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 11,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "8000000000",
+      "allocated_amount": 150000000.0
+    },
+    {
+      "id": "29e625a16310349a",
+      "issuer": "RWE AG",
+      "isin": "XS2523390271",
+      "issue_date": "2022-08-24",
+      "currency": "EUR",
+      "amount": "1250000000",
+      "underwriters": [
+        {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 208333333.33
+        },
+        {
+          "raw_name": "MUFG Securities (Europe) N.V.",
+          "role": "Dealer",
+          "allocated_amount": 208333333.33
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Dealer",
+          "allocated_amount": 208333333.33
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 208333333.33
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 208333333.33
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 208333333.33
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=21979119&checksum=4153f22e4b20c4ccc84873aa19ef20ec",
+      "extracted_at": "2026-09-03T16:22:55+00:00",
+      "published_at": "2026-09-02T11:26:20+00:00",
+      "gate_status": "published",
+      "doc_id": "30025341",
+      "ste_mmboe": 86.69,
+      "watchlist_rank": 8,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 6,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "10000000000",
+      "allocated_amount": 208333333.33
+    },
+    {
+      "id": "e6af7c279fce527a",
+      "issuer": "A2A SpA",
+      "isin": "XS2986639701",
+      "issue_date": "2025-01-30",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Morgan Stanley",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        },
+        {
+          "raw_name": "Goldman Sachs",
+          "role": "Dealer",
+          "allocated_amount": 55555555.56
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=39419668&checksum=e153c222208617876c998ffa6bdc3266",
+      "extracted_at": "2026-09-03T16:22:55+00:00",
+      "published_at": "2026-09-02T11:26:20+00:00",
+      "gate_status": "published",
+      "doc_id": "50329718",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 10,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 9,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "7000000000",
+      "allocated_amount": 55555555.56
+    },
+    {
+      "id": "29c35a2306f2caa6",
+      "issuer": "A2A SpA",
+      "isin": "XS2583205906",
+      "issue_date": "2023-02-03",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "Goldman Sachs",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=25044835&checksum=65dc8c0d94c916d704790761f2bb475e",
+      "extracted_at": "2026-09-03T16:22:55+00:00",
+      "published_at": "2026-09-02T11:26:20+00:00",
+      "gate_status": "published",
+      "doc_id": "33337439",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 10,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 6,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "6000000000",
+      "allocated_amount": 83333333.33
+    },
+    {
+      "id": "4927e0e05a2ac087",
+      "issuer": "A2A SpA",
+      "isin": "XS2534976886",
+      "issue_date": "2022-09-19",
+      "currency": "EUR",
+      "amount": "650000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 130000000.0
+        },
+        {
+          "raw_name": "Goldman Sachs",
+          "role": "Dealer",
+          "allocated_amount": 130000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=22457865&checksum=3ab35ba8c18f32a9ab7ced116f7667b9",
+      "extracted_at": "2026-09-03T16:22:56+00:00",
+      "published_at": "2026-09-02T11:26:20+00:00",
+      "gate_status": "published",
+      "doc_id": "30536603",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 10,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "6000000000",
+      "allocated_amount": 130000000.0
+    },
+    {
+      "id": "78b93292feee225a",
+      "issuer": "CEZ a.s.",
+      "isin": "XS3040382098",
+      "issue_date": "2025-04-30",
+      "currency": "EUR",
+      "amount": "750000000",
+      "underwriters": [
+        {
+          "raw_name": "Raiffeisen Bank International AG",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=40365571&checksum=432d3374d1b197d5d769392004491723",
+      "extracted_at": "2026-09-03T16:22:56+00:00",
+      "published_at": "2026-09-02T11:26:20+00:00",
+      "gate_status": "published",
+      "doc_id": "51527051",
+      "ste_mmboe": 0.0,
+      "watchlist_rank": 11,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "8000000000",
+      "allocated_amount": 150000000.0
+    },
+    {
+      "id": "3719c6ce5a8af8b5",
+      "issuer": "RWE AG",
+      "isin": "XS2584685031",
+      "issue_date": "2023-02-13",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Morgan Stanley",
+          "role": "Dealer",
+          "allocated_amount": 500000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=25234764&checksum=b1cd55706e3a3287d89bdcbe35652ef0",
+      "extracted_at": "2026-09-03T16:22:54+00:00",
+      "published_at": "2026-09-02T11:26:19+00:00",
+      "gate_status": "published",
+      "doc_id": "33539777",
+      "ste_mmboe": 86.69,
+      "watchlist_rank": 8,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 1,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "10000000000",
+      "allocated_amount": 500000000.0
+    },
+    {
+      "id": "bb768462f22feb1b",
+      "issuer": "RWE AG",
+      "isin": "XS2584685387",
+      "issue_date": "2023-02-13",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "Morgan Stanley",
+          "role": "Dealer",
+          "allocated_amount": 500000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=25234298&checksum=76562b92796b4ee951ff3843f5210f63",
+      "extracted_at": "2026-09-03T16:22:54+00:00",
+      "published_at": "2026-09-02T11:26:18+00:00",
+      "gate_status": "published",
+      "doc_id": "33538735",
+      "ste_mmboe": 86.69,
+      "watchlist_rank": 8,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 1,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "10000000000",
+      "allocated_amount": 500000000.0
+    },
+    {
+      "id": "5207e2044cdce646",
+      "issuer": "ORLEN SA",
+      "isin": "XS3104553931",
+      "issue_date": "2025-07-02",
+      "currency": "EUR",
+      "amount": "600000000",
+      "underwriters": [
+        {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=41679666&checksum=681be08c890ee9f014186d83b5293628",
+      "extracted_at": "2026-09-03T16:22:52+00:00",
+      "published_at": "2026-09-02T11:26:17+00:00",
+      "gate_status": "published",
+      "doc_id": "53108668",
+      "ste_mmboe": 345.5,
+      "watchlist_rank": 6,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 3,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "5000000000",
+      "allocated_amount": 200000000.0
+    },
+    {
+      "id": "fdc26db99606ee5e",
+      "issuer": "ORLEN SA",
+      "isin": "XS2975119988",
+      "issue_date": "2025-01-30",
+      "currency": "USD",
+      "amount": "1250000000",
+      "underwriters": [
+        {
+          "raw_name": "Goldman Sachs Bank Europe SE",
+          "role": "Dealer",
+          "allocated_amount": 312500000.0
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 312500000.0
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Dealer",
+          "allocated_amount": 312500000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 312500000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=38310999&checksum=9323c5b86820a299c7c804297878dae6",
+      "extracted_at": "2026-09-03T16:22:53+00:00",
+      "published_at": "2026-09-02T11:26:17+00:00",
+      "gate_status": "published",
+      "doc_id": "48978539",
+      "ste_mmboe": 345.5,
+      "watchlist_rank": 6,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 4,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "5000000000",
+      "allocated_amount": 312500000.0
+    },
+    {
+      "id": "df5f76ca65bc4db4",
+      "issuer": "ORLEN SA",
+      "isin": "XS2346125573",
+      "issue_date": "2021-05-27",
+      "currency": "EUR",
+      "amount": "500000000",
+      "underwriters": [
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 500000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=14173258&checksum=668679abf041c31ae3c6bb3f80aa1714",
+      "extracted_at": "2026-09-03T16:22:53+00:00",
+      "published_at": "2026-09-02T11:26:17+00:00",
+      "gate_status": "published",
+      "doc_id": "19663442",
+      "ste_mmboe": 345.5,
+      "watchlist_rank": 6,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 1,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "5000000000",
+      "allocated_amount": 500000000.0
+    },
+    {
+      "id": "bd8c3d3b6f4fbc94",
+      "issuer": "TotalEnergies SE",
+      "isin": "XS3015115408",
+      "issue_date": "2025-03-03",
+      "currency": "EUR",
+      "amount": "1000000000",
+      "underwriters": [
+        {
+          "raw_name": "Mizuho Securities Europe GmbH",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        },
+        {
+          "raw_name": "Standard Chartered",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 200000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=41740953&checksum=e03d4eac7fac2bf2e21a7ff3e3135f2e",
+      "extracted_at": "2026-09-03T16:22:50+00:00",
+      "published_at": "2026-09-02T11:26:14+00:00",
+      "gate_status": "published",
+      "doc_id": "53182514",
+      "ste_mmboe": 7828.86,
+      "watchlist_rank": 1,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 5,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "40000000000",
+      "allocated_amount": 200000000.0
+    },
+    {
+      "id": "90fa7d82205c0124",
+      "issuer": "TotalEnergies SE",
+      "isin": "XS3106109849",
+      "issue_date": "2025-07-01",
+      "currency": "EUR",
+      "amount": "1100000000",
+      "underwriters": [
+        {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 275000000.0
+        },
+        {
+          "raw_name": "MUFG Securities (Europe) N.V.",
+          "role": "Dealer",
+          "allocated_amount": 275000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 275000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 275000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=41740935&checksum=9b02c1a33b7045814888e78d514bf1fd",
+      "extracted_at": "2026-09-03T16:22:51+00:00",
+      "published_at": "2026-09-02T11:26:14+00:00",
+      "gate_status": "published",
+      "doc_id": "53182495",
+      "ste_mmboe": 7828.86,
+      "watchlist_rank": 1,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 4,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "40000000000",
+      "allocated_amount": 275000000.0
+    },
+    {
+      "id": "3891dbab3329ccf7",
+      "issuer": "Eni SpA",
+      "isin": "XS3388189394",
+      "issue_date": "2026-05-26",
+      "currency": "EUR",
+      "amount": "1250000000",
+      "underwriters": [
+        {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "HSBC Continental Europe",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "Natixis",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=48776846&checksum=908555aaee30814fd10f786b9cc1b2f9",
+      "extracted_at": "2026-09-03T16:22:51+00:00",
+      "published_at": "2026-09-02T11:26:14+00:00",
+      "gate_status": "published",
+      "doc_id": "61794431",
+      "ste_mmboe": 5302.86,
+      "watchlist_rank": 2,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 7,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "20000000000",
+      "allocated_amount": 178571428.57
+    },
+    {
+      "id": "99769d72693f582d",
+      "issuer": "Eni SpA",
+      "isin": "XS3262549754",
+      "issue_date": "2026-01-19",
+      "currency": "EUR",
+      "amount": "1000000000",
+      "underwriters": [
+        {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "MUFG Securities (Europe) N.V.",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "UniCredit Bank GmbH",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "Goldman Sachs",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        },
+        {
+          "raw_name": "Natixis",
+          "role": "Dealer",
+          "allocated_amount": 111111111.11
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=45796860&checksum=60ffa2ab1dd0940658e11513b06b5974",
+      "extracted_at": "2026-09-03T16:22:51+00:00",
+      "published_at": "2026-09-02T11:26:14+00:00",
+      "gate_status": "published",
+      "doc_id": "58136360",
+      "ste_mmboe": 5302.86,
+      "watchlist_rank": 2,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 9,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "20000000000",
+      "allocated_amount": 111111111.11
+    },
+    {
+      "id": "6acac2fdcc36f76d",
+      "issuer": "Eni SpA",
+      "isin": "XS2599156192",
+      "issue_date": "2023-05-04",
+      "currency": "EUR",
+      "amount": "600000000",
+      "underwriters": [
+        {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        },
+        {
+          "raw_name": "Wells Fargo Securities Europe S.A.",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        },
+        {
+          "raw_name": "BofA Securities Europe SA",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        },
+        {
+          "raw_name": "SMBC Bank EU AG",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        },
+        {
+          "raw_name": "Intesa Sanpaolo",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        },
+        {
+          "raw_name": "Natixis",
+          "role": "Dealer",
+          "allocated_amount": 75000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=26593536&checksum=f892fffac33db63a0b1b41431bd77308",
+      "extracted_at": "2026-09-03T16:22:51+00:00",
+      "published_at": "2026-09-02T11:26:14+00:00",
+      "gate_status": "published",
+      "doc_id": "35012598",
+      "ste_mmboe": 5302.86,
+      "watchlist_rank": 2,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 8,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": null,
+      "allocated_amount": 75000000.0
+    },
+    {
+      "id": "06e95019fd150db8",
+      "issuer": "TotalEnergies SE",
+      "isin": "XS3106109765",
+      "issue_date": "2025-07-01",
+      "currency": "EUR",
+      "amount": "1000000000",
+      "underwriters": [
+        {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        },
+        {
+          "raw_name": "MUFG Securities (Europe) N.V.",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        },
+        {
+          "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
+        }
+      ],
+      "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=41740959&checksum=56671aa14cdc263a37b1c6b083a60b8e",
+      "extracted_at": "2026-09-03T16:22:50+00:00",
+      "published_at": "2026-09-02T11:26:13+00:00",
+      "gate_status": "published",
+      "doc_id": "53182523",
+      "ste_mmboe": 7828.86,
+      "watchlist_rank": 1,
+      "extraction_method": "dealer_table_regex",
+      "n_underwriters": 4,
+      "doc_type_code": "FTWS",
+      "amount_kind": "tranche",
+      "programme_size": "40000000000",
+      "allocated_amount": 250000000.0
+    },
     {
       "id": "0577b2a56b67f252",
       "issuer": "NV Nederlandse Gasunie",
@@ -31,7 +1814,7 @@
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=50639572&checksum=4cd64dd4e69bc1303f0f97c4c1181df9",
-      "extracted_at": "2026-09-01T16:10:16+00:00",
+      "extracted_at": "2026-09-03T16:22:49+00:00",
       "published_at": "2026-09-01T16:10:16+00:00",
       "gate_status": "published",
       "doc_id": "63793301",
@@ -54,42 +1837,42 @@
       "underwriters": [
         {
           "raw_name": "Cr\u00e9dit Industriel et Commercial S.A.",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 71428571.43
         },
         {
           "raw_name": "Commerzbank Aktiengesellschaft",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 71428571.43
         },
         {
           "raw_name": "MUFG Securities (Europe) N.V.",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 71428571.43
         },
         {
           "raw_name": "Banco Santander, S.A.",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 71428571.43
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 71428571.43
         },
         {
           "raw_name": "J.P. Morgan SE",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 71428571.43
         },
         {
           "raw_name": "ING Bank N.V.",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 71428571.43
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=47810610&checksum=702eaa90f4901655b0c4d563d8e370ff",
-      "extracted_at": "2026-09-01T16:10:16+00:00",
+      "extracted_at": "2026-09-03T16:22:50+00:00",
       "published_at": "2026-09-01T16:10:16+00:00",
       "gate_status": "published",
       "doc_id": "60643119",
@@ -111,24 +1894,39 @@
       "amount": "500000000",
       "underwriters": [
         {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Active Bookrunner",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 125000000.0
+        },
+        {
           "raw_name": "UniCredit Bank GmbH",
-          "role": "Dealer",
-          "allocated_amount": 500000000.0
+          "role": "Active Bookrunner",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Active Bookrunner",
+          "allocated_amount": 125000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=48008394&checksum=9dd6a1759674d5a181dd10416d0784ad",
-      "extracted_at": "2026-09-01T14:46:42+00:00",
+      "extracted_at": "2026-09-03T16:22:50+00:00",
       "published_at": "2026-09-01T14:46:42+00:00",
       "gate_status": "published",
       "doc_id": "60876983",
       "ste_mmboe": 0.0,
       "watchlist_rank": 23,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 1,
+      "n_underwriters": 4,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "7000000000",
-      "allocated_amount": 500000000.0
+      "allocated_amount": 125000000.0
     },
     {
       "id": "ae5c655e2bc29c17",
@@ -139,34 +1937,54 @@
       "amount": "1250000000",
       "underwriters": [
         {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
           "raw_name": "BofA Securities Europe SA",
           "role": "Dealer",
-          "allocated_amount": 416666666.67
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
         },
         {
           "raw_name": "SMBC Bank EU AG",
           "role": "Dealer",
-          "allocated_amount": 416666666.67
+          "allocated_amount": 178571428.57
         },
         {
           "raw_name": "Intesa Sanpaolo",
           "role": "Dealer",
-          "allocated_amount": 416666666.67
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 178571428.57
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=48798676&checksum=1139cd65409ad4f17785e058fd26fb90",
-      "extracted_at": "2026-09-01T14:46:41+00:00",
+      "extracted_at": "2026-09-03T16:22:49+00:00",
       "published_at": "2026-09-01T14:46:41+00:00",
       "gate_status": "published",
       "doc_id": "61825637",
       "ste_mmboe": 0.0,
       "watchlist_rank": 15,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 7,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "35000000000",
-      "allocated_amount": 416666666.67
+      "allocated_amount": 178571428.57
     },
     {
       "id": "44fd32e0953da8ba",
@@ -177,29 +1995,44 @@
       "amount": "850000000",
       "underwriters": [
         {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 170000000.0
+        },
+        {
+          "raw_name": "Cr\u00e9dit Industriel et Commercial S.A.",
+          "role": "Dealer",
+          "allocated_amount": 170000000.0
+        },
+        {
           "raw_name": "Barclays Bank Ireland PLC",
           "role": "Dealer",
-          "allocated_amount": 425000000.0
+          "allocated_amount": 170000000.0
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
           "role": "Dealer",
-          "allocated_amount": 425000000.0
+          "allocated_amount": 170000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 170000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=50275090&checksum=224de7952177742586ff6e6b44f3162d",
-      "extracted_at": "2026-09-01T14:46:41+00:00",
+      "extracted_at": "2026-09-03T16:22:49+00:00",
       "published_at": "2026-09-01T14:46:41+00:00",
       "gate_status": "published",
       "doc_id": "63359486",
       "ste_mmboe": 0.0,
       "watchlist_rank": 16,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 2,
+      "n_underwriters": 5,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": null,
-      "allocated_amount": 425000000.0
+      "allocated_amount": 170000000.0
     },
     {
       "id": "4f93a32ff691f37f",
@@ -210,34 +2043,44 @@
       "amount": "500000000",
       "underwriters": [
         {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 100000000.0
+        },
+        {
           "raw_name": "Goldman Sachs Bank Europe SE",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 100000000.0
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 100000000.0
         },
         {
           "raw_name": "SMBC Bank EU AG",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 100000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 100000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=46104149&checksum=592a145270391419fa42079cdd2bc18c",
-      "extracted_at": "2026-09-01T14:46:41+00:00",
+      "extracted_at": "2026-09-03T16:22:49+00:00",
       "published_at": "2026-09-01T14:46:41+00:00",
       "gate_status": "published",
       "doc_id": "58494429",
       "ste_mmboe": 0.0,
       "watchlist_rank": 17,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 5,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": null,
-      "allocated_amount": 166666666.67
+      "allocated_amount": 100000000.0
     },
     {
       "id": "890a2a9831221d87",
@@ -250,52 +2093,57 @@
         {
           "raw_name": "Barclays Bank Ireland PLC",
           "role": "Dealer",
-          "allocated_amount": 71428571.43
+          "allocated_amount": 62500000.0
         },
         {
           "raw_name": "BofA Securities Europe SA",
           "role": "Dealer",
-          "allocated_amount": 71428571.43
+          "allocated_amount": 62500000.0
         },
         {
           "raw_name": "UniCredit Bank GmbH",
           "role": "Dealer",
-          "allocated_amount": 71428571.43
+          "allocated_amount": 62500000.0
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
           "role": "Dealer",
-          "allocated_amount": 71428571.43
+          "allocated_amount": 62500000.0
         },
         {
           "raw_name": "Societe Generale",
           "role": "Dealer",
-          "allocated_amount": 71428571.43
+          "allocated_amount": 62500000.0
         },
         {
           "raw_name": "Intesa Sanpaolo",
           "role": "Dealer",
-          "allocated_amount": 71428571.43
+          "allocated_amount": 62500000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 62500000.0
         },
         {
           "raw_name": "Goldman Sachs",
           "role": "Dealer",
-          "allocated_amount": 71428571.43
+          "allocated_amount": 62500000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=35717571&checksum=21700df04a6ea461bbad5fb65afceefa",
-      "extracted_at": "2026-09-01T14:46:41+00:00",
+      "extracted_at": "2026-09-03T16:22:49+00:00",
       "published_at": "2026-09-01T14:46:41+00:00",
       "gate_status": "published",
       "doc_id": "45649493",
       "ste_mmboe": 0.0,
       "watchlist_rank": 18,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 7,
+      "n_underwriters": 8,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "4000000000",
-      "allocated_amount": 71428571.43
+      "allocated_amount": 62500000.0
     },
     {
       "id": "8631031abb07d39d",
@@ -306,34 +2154,44 @@
       "amount": "750000000",
       "underwriters": [
         {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
+        },
+        {
           "raw_name": "HSBC Continental Europe",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 150000000.0
         },
         {
           "raw_name": "UniCredit Bank GmbH",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 150000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 150000000.0
         },
         {
           "raw_name": "Natixis",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 150000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=50001018&checksum=9be4dc9dabeae06e36cab9dc5c31ae6a",
-      "extracted_at": "2026-09-01T14:46:41+00:00",
+      "extracted_at": "2026-09-03T16:22:50+00:00",
       "published_at": "2026-09-01T14:46:41+00:00",
       "gate_status": "published",
       "doc_id": "63043307",
       "ste_mmboe": 0.0,
       "watchlist_rank": 21,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 5,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "15000000000",
-      "allocated_amount": 250000000.0
+      "allocated_amount": 150000000.0
     },
     {
       "id": "b7fc87e09568bfcf",
@@ -346,32 +2204,37 @@
         {
           "raw_name": "HSBC Continental Europe",
           "role": "Dealer",
-          "allocated_amount": 500000000.0
+          "allocated_amount": 375000000.0
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
           "role": "Dealer",
-          "allocated_amount": 500000000.0
+          "allocated_amount": 375000000.0
         },
         {
           "raw_name": "Intesa Sanpaolo",
           "role": "Dealer",
-          "allocated_amount": 500000000.0
+          "allocated_amount": 375000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 375000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=46708211&checksum=0b67c4a8e624b335cc54daf9002fec26",
-      "extracted_at": "2026-09-01T14:46:40+00:00",
+      "extracted_at": "2026-09-03T16:22:48+00:00",
       "published_at": "2026-09-01T14:46:40+00:00",
       "gate_status": "published",
       "doc_id": "59267626",
       "ste_mmboe": 7828.86,
       "watchlist_rank": 1,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 4,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "40000000000",
-      "allocated_amount": 500000000.0
+      "allocated_amount": 375000000.0
     },
     {
       "id": "e3f587a541a02538",
@@ -393,7 +2256,7 @@
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=13943170&checksum=6d46704e6deef2ef49eb00ab98b878e4",
-      "extracted_at": "2026-09-01T14:46:40+00:00",
+      "extracted_at": "2026-09-03T16:22:48+00:00",
       "published_at": "2026-09-01T14:46:40+00:00",
       "gate_status": "published",
       "doc_id": "19411114",
@@ -417,27 +2280,32 @@
         {
           "raw_name": "Erste Group Bank AG",
           "role": "Dealer",
-          "allocated_amount": 375000000.0
+          "allocated_amount": 250000000.0
         },
         {
           "raw_name": "UniCredit Bank GmbH",
           "role": "Dealer",
-          "allocated_amount": 375000000.0
+          "allocated_amount": 250000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 250000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=50348504&checksum=aed06cfa208325a9344b7359cea899cc",
-      "extracted_at": "2026-09-01T14:46:40+00:00",
+      "extracted_at": "2026-09-03T16:22:48+00:00",
       "published_at": "2026-09-01T14:46:40+00:00",
       "gate_status": "published",
       "doc_id": "63455512",
       "ste_mmboe": 345.5,
       "watchlist_rank": 6,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 2,
+      "n_underwriters": 3,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
-      "programme_size": null,
-      "allocated_amount": 375000000.0
+      "programme_size": "5000000000",
+      "allocated_amount": 250000000.0
     },
     {
       "id": "4a200ed8ddeb3d5a",
@@ -448,62 +2316,87 @@
       "amount": "750000000",
       "underwriters": [
         {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
+        },
+        {
           "raw_name": "Barclays Bank Ireland PLC",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 125000000.0
         },
         {
           "raw_name": "HSBC Continental Europe",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 125000000.0
         },
         {
           "raw_name": "Erste Group Bank AG",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=48853641&checksum=f2563de51b134285949deebe7d03dd34",
-      "extracted_at": "2026-09-01T14:46:40+00:00",
+      "extracted_at": "2026-09-03T16:22:48+00:00",
       "published_at": "2026-09-01T14:46:40+00:00",
       "gate_status": "published",
       "doc_id": "61893062",
       "ste_mmboe": 0.0,
       "watchlist_rank": 11,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 6,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "8000000000",
-      "allocated_amount": 250000000.0
+      "allocated_amount": 125000000.0
     },
     {
       "id": "9c56e982b93c7697",
       "issuer": "RWE AG",
       "isin": "XS2743711298",
       "issue_date": "2024-01-10",
-      "currency": "RON",
+      "currency": "EUR",
       "amount": "500000000",
       "underwriters": [
         {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 166666666.67
+        },
+        {
+          "raw_name": "MUFG Securities (Europe) N.V.",
+          "role": "Dealer",
+          "allocated_amount": 166666666.67
+        },
+        {
           "raw_name": "SMBC Bank EU AG",
           "role": "Dealer",
-          "allocated_amount": 500000000.0
+          "allocated_amount": 166666666.67
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=30851645&checksum=3e201c309c31872912ff72293025b33b",
-      "extracted_at": "2026-08-28T16:10:31+00:00",
+      "extracted_at": "2026-09-03T16:22:46+00:00",
       "published_at": "2026-08-28T16:10:31+00:00",
       "gate_status": "published",
       "doc_id": "39946585",
       "ste_mmboe": 86.69,
       "watchlist_rank": 14,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 1,
+      "n_underwriters": 3,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
-      "programme_size": null,
-      "allocated_amount": 500000000.0
+      "programme_size": "10000000000",
+      "allocated_amount": 166666666.67
     },
     {
       "id": "a06d6430af93f78e",
@@ -516,32 +2409,37 @@
         {
           "raw_name": "Barclays Bank Ireland PLC",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 187500000.0
         },
         {
           "raw_name": "UniCredit Bank GmbH",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 187500000.0
         },
         {
           "raw_name": "Intesa Sanpaolo",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 187500000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 187500000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=49635804&checksum=9fb98118b7e03f9647a3baa6c14cbedb",
-      "extracted_at": "2026-08-28T16:10:28+00:00",
+      "extracted_at": "2026-09-03T16:22:43+00:00",
       "published_at": "2026-08-27T21:48:48+00:00",
       "gate_status": "published",
       "doc_id": "62700361",
       "ste_mmboe": 588.82,
       "watchlist_rank": 6,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 4,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "14000000000",
-      "allocated_amount": 250000000.0
+      "allocated_amount": 187500000.0
     },
     {
       "id": "3d5ea1f7e48ffd87",
@@ -552,44 +2450,54 @@
       "amount": "750000000",
       "underwriters": [
         {
+          "raw_name": "Deutsche Bank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
+        },
+        {
           "raw_name": "HSBC Continental Europe",
           "role": "Dealer",
-          "allocated_amount": 150000000.0
+          "allocated_amount": 107142857.14
         },
         {
           "raw_name": "UniCredit Bank GmbH",
           "role": "Dealer",
-          "allocated_amount": 150000000.0
+          "allocated_amount": 107142857.14
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
           "role": "Dealer",
-          "allocated_amount": 150000000.0
+          "allocated_amount": 107142857.14
         },
         {
           "raw_name": "Intesa Sanpaolo",
           "role": "Dealer",
-          "allocated_amount": 150000000.0
+          "allocated_amount": 107142857.14
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 107142857.14
         },
         {
           "raw_name": "Natixis",
           "role": "Dealer",
-          "allocated_amount": 150000000.0
+          "allocated_amount": 107142857.14
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=48776845&checksum=83204665a439af16ac221dbdf1085589",
-      "extracted_at": "2026-08-28T16:10:27+00:00",
+      "extracted_at": "2026-09-03T16:22:41+00:00",
       "published_at": "2026-08-27T17:54:03+00:00",
       "gate_status": "published",
       "doc_id": "61794430",
       "ste_mmboe": 5302.86,
       "watchlist_rank": 10,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 5,
+      "n_underwriters": 7,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "20000000000",
-      "allocated_amount": 150000000.0
+      "allocated_amount": 107142857.14
     },
     {
       "id": "90e37363bbeb3f02",
@@ -602,32 +2510,37 @@
         {
           "raw_name": "Raiffeisen Bank International AG",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 125000000.0
         },
         {
           "raw_name": "Erste Group Bank AG",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 125000000.0
         },
         {
           "raw_name": "UniCredit Bank GmbH",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=36080194&checksum=f059163a9d67f0ab78dc7fc0e7f4af67",
-      "extracted_at": "2026-08-28T16:10:26+00:00",
+      "extracted_at": "2026-09-03T16:22:41+00:00",
       "published_at": "2026-08-27T17:45:08+00:00",
       "gate_status": "published",
       "doc_id": "46033316",
       "ste_mmboe": 0.0,
       "watchlist_rank": 14,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 4,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "1500000000",
-      "allocated_amount": 166666666.67
+      "allocated_amount": 125000000.0
     },
     {
       "id": "f827c9573e2408d1",
@@ -638,24 +2551,39 @@
       "amount": "750000000",
       "underwriters": [
         {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 187500000.0
+        },
+        {
+          "raw_name": "Co\u00f6peratieve Rabobank U.A.",
+          "role": "Dealer",
+          "allocated_amount": 187500000.0
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Dealer",
+          "allocated_amount": 187500000.0
+        },
+        {
           "raw_name": "ABN AMRO Bank N.V.",
           "role": "Dealer",
-          "allocated_amount": 750000000.0
+          "allocated_amount": 187500000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=40066944&checksum=dca1f5de82590c10eb9fc30f12de65a8",
-      "extracted_at": "2026-08-28T16:10:26+00:00",
+      "extracted_at": "2026-09-03T16:22:41+00:00",
       "published_at": "2026-08-27T17:45:07+00:00",
       "gate_status": "published",
       "doc_id": "51176703",
       "ste_mmboe": 0.0,
       "watchlist_rank": 10,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 1,
+      "n_underwriters": 4,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "7500000000",
-      "allocated_amount": 750000000.0
+      "allocated_amount": 187500000.0
     },
     {
       "id": "fae115142f7fa116",
@@ -666,34 +2594,49 @@
       "amount": "500000000",
       "underwriters": [
         {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
           "raw_name": "Erste Group Bank AG",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 83333333.33
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 83333333.33
         },
         {
           "raw_name": "SMBC Bank EU AG",
           "role": "Dealer",
-          "allocated_amount": 166666666.67
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "J.P. Morgan SE",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 83333333.33
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=27767699&checksum=67cfae89b8c690184fb3620baffca9ff",
-      "extracted_at": "2026-08-28T16:10:26+00:00",
+      "extracted_at": "2026-09-03T16:22:41+00:00",
       "published_at": "2026-08-27T17:45:07+00:00",
       "gate_status": "published",
       "doc_id": "36342045",
       "ste_mmboe": 0.0,
       "watchlist_rank": 12,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 6,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "5000000000",
-      "allocated_amount": 166666666.67
+      "allocated_amount": 83333333.33
     },
     {
       "id": "2b4dd6c38be69fc6",
@@ -704,34 +2647,44 @@
       "amount": "600000000",
       "underwriters": [
         {
+          "raw_name": "Cr\u00e9dit Agricole Corporate and Investment Bank",
+          "role": "Dealer",
+          "allocated_amount": 120000000.0
+        },
+        {
           "raw_name": "Barclays Bank Ireland PLC",
           "role": "Dealer",
-          "allocated_amount": 200000000.0
+          "allocated_amount": 120000000.0
+        },
+        {
+          "raw_name": "Banco Santander, S.A.",
+          "role": "Dealer",
+          "allocated_amount": 120000000.0
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
           "role": "Dealer",
-          "allocated_amount": 200000000.0
+          "allocated_amount": 120000000.0
         },
         {
           "raw_name": "Intesa Sanpaolo",
           "role": "Dealer",
-          "allocated_amount": 200000000.0
+          "allocated_amount": 120000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=31088999&checksum=8e07c21be4e2cca944161c06e39f9eb6",
-      "extracted_at": "2026-08-28T16:10:24+00:00",
+      "extracted_at": "2026-09-03T16:22:38+00:00",
       "published_at": "2026-08-27T17:45:05+00:00",
       "gate_status": "published",
       "doc_id": "40236905",
       "ste_mmboe": 0.0,
       "watchlist_rank": 5,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 3,
+      "n_underwriters": 5,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "4000000000",
-      "allocated_amount": 200000000.0
+      "allocated_amount": 120000000.0
     },
     {
       "id": "8d3108182ae3e2c6",
@@ -742,29 +2695,39 @@
       "amount": "500000000",
       "underwriters": [
         {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
+        },
+        {
           "raw_name": "Erste Group Bank AG",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 125000000.0
         },
         {
           "raw_name": "SMBC Bank EU AG",
           "role": "Dealer",
-          "allocated_amount": 250000000.0
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Dealer",
+          "allocated_amount": 125000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=29774040&checksum=1facd4fac25ee4b62fa62fbb988b1d6a",
-      "extracted_at": "2026-08-28T16:10:24+00:00",
+      "extracted_at": "2026-09-03T16:22:39+00:00",
       "published_at": "2026-08-27T17:45:05+00:00",
       "gate_status": "published",
       "doc_id": "38650477",
       "ste_mmboe": 0.0,
       "watchlist_rank": 7,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 2,
+      "n_underwriters": 4,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "3000000000",
-      "allocated_amount": 250000000.0
+      "allocated_amount": 125000000.0
     },
     {
       "id": "f551db9771be75fd",
@@ -806,7 +2769,7 @@
         }
       ],
       "source_url": null,
-      "extracted_at": "2026-08-28T16:10:24+00:00",
+      "extracted_at": "2026-09-03T16:22:38+00:00",
       "published_at": "2026-08-27T17:45:04+00:00",
       "gate_status": "published",
       "doc_id": null,
@@ -828,24 +2791,39 @@
       "amount": "500000000",
       "underwriters": [
         {
+          "raw_name": "Commerzbank Aktiengesellschaft",
+          "role": "Passive Bookrunner",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "NatWest Markets N.V.",
+          "role": "Active Bookrunner",
+          "allocated_amount": 125000000.0
+        },
+        {
           "raw_name": "UniCredit Bank GmbH",
-          "role": "Dealer",
-          "allocated_amount": 500000000.0
+          "role": "Active Bookrunner",
+          "allocated_amount": 125000000.0
+        },
+        {
+          "raw_name": "ING Bank N.V.",
+          "role": "Active Bookrunner",
+          "allocated_amount": 125000000.0
         }
       ],
       "source_url": "https://registers.esma.europa.eu/publication/downloadFile?fileId=43033487&checksum=1b7be096dcb228c3fa9b7e4ae6e9b52a",
-      "extracted_at": "2026-08-28T16:10:27+00:00",
+      "extracted_at": "2026-09-03T16:22:41+00:00",
       "published_at": "2026-08-26T22:53:30+00:00",
       "gate_status": "published",
       "doc_id": "54730765",
       "ste_mmboe": 0.0,
       "watchlist_rank": 15,
       "extraction_method": "dealer_table_regex",
-      "n_underwriters": 1,
+      "n_underwriters": 4,
       "doc_type_code": "FTWS",
       "amount_kind": "tranche",
       "programme_size": "5000000000",
-      "allocated_amount": 500000000.0
+      "allocated_amount": 125000000.0
     },
     {
       "id": "7c94027157e8c3e2",
@@ -857,37 +2835,37 @@
       "underwriters": [
         {
           "raw_name": "Goldman Sachs Bank Europe SE",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 208333333.33
         },
         {
           "raw_name": "Barclays Bank Ireland PLC",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 208333333.33
         },
         {
           "raw_name": "BofA Securities Europe SA",
-          "role": "Dealer",
+          "role": "Joint Active Bookrunner",
           "allocated_amount": 208333333.33
         },
         {
           "raw_name": "HSBC Continental Europe",
-          "role": "Dealer",
+          "role": "Joint Active Bookrunner",
           "allocated_amount": 208333333.33
         },
         {
           "raw_name": "SMBC Bank EU AG",
-          "role": "Dealer",
+          "role": "Joint Active Bookrunner",
           "allocated_amount": 208333333.33
         },
         {
           "raw_name": "Natixis",
-          "role": "Dealer",
+          "role": "Joint Active Bookrunner",
           "allocated_amount": 208333333.33
         }
       ],
       "source_url": null,
-      "extracted_at": "2026-08-28T16:10:24+00:00",
+      "extracted_at": "2026-09-03T16:22:38+00:00",
       "published_at": "2026-08-26T12:19:25+00:00",
       "gate_status": "published",
       "doc_id": null,
@@ -910,22 +2888,22 @@
       "underwriters": [
         {
           "raw_name": "Barclays Bank Ireland PLC",
-          "role": "Dealer",
+          "role": "Passive Bookrunner",
           "allocated_amount": 166666666.67
         },
         {
           "raw_name": "HSBC Continental Europe",
-          "role": "Dealer",
+          "role": "Passive Bookrunner",
           "allocated_amount": 166666666.67
         },
         {
           "raw_name": "Soci\u00e9t\u00e9 G\u00e9n\u00e9rale",
-          "role": "Dealer",
+          "role": "Active Bookrunner",
           "allocated_amount": 166666666.67
         }
       ],
       "source_url": null,
-      "extracted_at": "2026-08-28T16:10:24+00:00",
+      "extracted_at": "2026-09-03T16:22:38+00:00",
       "published_at": "2026-08-26T12:19:25+00:00",
       "gate_status": "published",
       "doc_id": null,
@@ -978,7 +2956,7 @@
         }
       ],
       "source_url": null,
-      "extracted_at": "2026-08-28T16:10:23+00:00",
+      "extracted_at": "2026-09-03T16:22:37+00:00",
       "published_at": "2026-08-26T11:20:30+00:00",
       "gate_status": "published",
       "doc_id": null,

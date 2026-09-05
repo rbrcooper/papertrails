@@ -2,6 +2,14 @@
 
 Single source of truth for what this project ships. Root README and ROADMAP defer here.
 
+**Read this first**
+
+- Universe: **756** LEI-eligible GOGEL parents → **23** FTWS-live (the live poll set until a `--verify-solr` rebuild).
+- Publish path: **dealer-table regex only** — no Ollama.
+- Frontend aggregates are **this feed** (~61 deals), not all of GOGEL.
+- Cron is off. UK is parked on `cursor/uk-nsm-intake`.
+- This file is the product of record; [ROADMAP.md](ROADMAP.md) is chronology.
+
 ## Repo reality (2026-08-26)
 
 | Area | Status |

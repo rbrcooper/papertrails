@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+# AI Studio drop (ZIPs / nested node_modules)
+_aistudio_drop/

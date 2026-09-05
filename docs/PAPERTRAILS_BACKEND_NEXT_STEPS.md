@@ -1,5 +1,7 @@
 # PaperTrails backend next steps
 
+Stale vs phase 4 (61-deal feed, coupon/maturity/roles UI): see [PRODUCT.md](PRODUCT.md) and [ROADMAP.md](ROADMAP.md) Next. Plan below is historical backend packages. Cron stays off.
+
 Plan only. Cron stays off. Public UI is Google AI Studio (out of this plan). Flask is local preview. Do not resurrect `processes.main` as product.
 
 Coverage grain: GOGEL is the master entity list. A new SPV LEI not in the CSV is accepted as invisible. No GLEIF. No EU HQ filter. A2A OCR out. STDA out of the poll.

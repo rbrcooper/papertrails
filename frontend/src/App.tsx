@@ -16,8 +16,7 @@ import { DealDetailModal } from './components/DealDetailModal';
 import { StoryGeneratorModal } from './components/StoryGeneratorModal';
 import { MethodologyModal } from './components/MethodologyModal';
 import { Filter, ArrowUp } from 'lucide-react';
-import { getBankClimateProfile } from './data/referenceData';
-import { sanitizeDealsPayload } from './utils/formatters';
+import { sanitizeDealsPayload, compareByCurrencyThenAmount, compareByCurrencyThenProgramme } from './utils/formatters';
 
 const embedded: DealsData = sanitizeDealsPayload(dealsRawData as DealsData);
 
@@ -34,12 +33,21 @@ export default function App() {
     search: '',
     selectedUnderwriter: '',
     selectedIssuer: '',
-    selectedCurrency: '',
     expansionOnly: false,
-    pledgeMismatchOnly: false,
     yearFilter: '',
     sortBy: 'date_desc',
   });
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (pitchDeal) setPitchDeal(null);
+      else if (inspectedDeal) setInspectedDeal(null);
+      else if (isMethodologyOpen) setIsMethodologyOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inspectedDeal, pitchDeal, isMethodologyOpen]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -113,26 +121,9 @@ export default function App() {
           return false;
         }
 
-        // Currency filter
-        if (filters.selectedCurrency && deal.currency !== filters.selectedCurrency) {
-          return false;
-        }
-
         // Upstream Short-term Expansion only (STE > 0)
         if (filters.expansionOnly && (!deal.ste_mmboe || deal.ste_mmboe <= 0)) {
           return false;
-        }
-
-        // Climate Pledge Mismatch: Deal has STE > 0 AND at least one underwriter is an NZBA member
-        if (filters.pledgeMismatchOnly) {
-          const hasExpansion = (deal.ste_mmboe ?? 0) > 0;
-          const hasNzbaBank = deal.underwriters.some(u => {
-            const profile = getBankClimateProfile(u.raw_name);
-            return profile?.nzbaMember;
-          });
-          if (!hasExpansion || !hasNzbaBank) {
-            return false;
-          }
         }
 
         // Year filter
@@ -156,21 +147,12 @@ export default function App() {
             if (!b.issue_date) return -1;
             return a.issue_date.localeCompare(b.issue_date);
           }
-          case 'amount_desc': {
-            const amtA = parseFloat(a.amount) || 0;
-            const amtB = parseFloat(b.amount) || 0;
-            return amtB - amtA;
-          }
-          case 'amount_asc': {
-            const amtA = parseFloat(a.amount) || 0;
-            const amtB = parseFloat(b.amount) || 0;
-            return amtA - amtB;
-          }
-          case 'programme_desc': {
-            const progA = parseFloat(a.programme_size || '0') || 0;
-            const progB = parseFloat(b.programme_size || '0') || 0;
-            return progB - progA;
-          }
+          case 'amount_desc':
+            return compareByCurrencyThenAmount(a, b, 'desc');
+          case 'amount_asc':
+            return compareByCurrencyThenAmount(a, b, 'asc');
+          case 'programme_desc':
+            return compareByCurrencyThenProgramme(a, b, 'desc');
           case 'ste_desc': {
             const steA = a.ste_mmboe ?? 0;
             const steB = b.ste_mmboe ?? 0;
@@ -270,9 +252,7 @@ export default function App() {
                       search: '',
                       selectedUnderwriter: '',
                       selectedIssuer: '',
-                      selectedCurrency: '',
                       expansionOnly: false,
-                      pledgeMismatchOnly: false,
                       yearFilter: '',
                       sortBy: 'date_desc',
                     })
