@@ -1,87 +1,74 @@
 # Papertrails — Documentation
 
-**Navigate:** product = [PRODUCT.md](PRODUCT.md). Chronology = [ROADMAP.md](ROADMAP.md). Library notes below are for `processes/` QA, not the alert feed.
+**Start here:** [PRODUCT.md](PRODUCT.md) (what ships). How to run: [../papertrails/README.md](../papertrails/README.md). Chronology: [ROADMAP.md](ROADMAP.md).
 
-Library: scrape ESMA prospectus PDFs and extract bond metadata + underwriting banks. Bulk GOGEL walk via `processes.main` is frozen.
+This index is not the product. `processes.main` and Ollama are frozen library/QA paths, not how you run the feed.
 
-## Current status (Aug 2026)
+## Current status
+
+Shipped: ESMA FTWS dealer-table feed on **23 FTWS-live** parents (universe **756** LEI-eligible) — about **61** deals in `website/data/deals.json`. Cron is off. Publish is regex only.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Alert feed product | 🚧 | `papertrails/` watchlist + auto-publish |
-| Bounded validation L0–L4 | ✅ Passing | 3 benchmark ISINs — `py -3 scripts/run_validation_suite.py` |
-| GOGEL + LEI/ISIN | ✅ | Default GOGEL 2025 CSV with identifiers |
-| ESMA scraper (audit path) | ✅ 3/3 | Solr `downloadFile` + session cookies |
-| ESMA yield (random GOGEL) | ⚠️ | Aug pilot: intake OK, often `no_tier1` |
-| Bulk `data/downloads/` | ❌ legacy junk | ~5/277 usable; do not glob |
-| Website | ✅ deals page | `website/app.py` ← `website/data/deals.json` |
+| Alert feed product | Shipped | `papertrails/` watchlist + auto-publish |
+| Bounded validation L0–L4 | Passing | 3 benchmark ISINs — `py -3 scripts/run_validation_suite.py` |
+| GOGEL + LEI/ISIN | In use | Default GOGEL 2025 CSV with identifiers |
+| ESMA scraper (audit path) | 3/3 | Solr `downloadFile` + session cookies |
+| Product PDFs | `data/alerts/pdfs/` | Live poll / `--skip-scraping` root |
+| Bulk `data/downloads/` | Legacy + L1–L4 fixtures | Do not glob; do not relocate wholesale |
+| Website | `website/data/deals.json` | Flask `website/app.py` is local preview |
 
 ## Quick start
 
-```bash
+Same as the root README. No Ollama on the publish path.
+
+```powershell
 pip install -r docs/requirements.txt
-ollama pull llama3.1:8b
 
-py -3 -m papertrails.build_watchlist --top 5
-py -3 -m papertrails.run_alerts --phase0
-py -3 -m papertrails.run_alerts
+py -3 -m papertrails.run_alerts --watchlist papertrails/watchlist_top50.yaml --isin-limit 1 --headed
+py -3 -m papertrails.run_alerts --skip-scraping
+py -3 -m website.app
 ```
 
-Environment: `HEADLESS=true` by default in alert runner; use `--headed` if needed.
+`--headed` if ESMA throttles headless Chrome. Unattended cron is not enabled. Operator coverage loop: [../papertrails/README.md](../papertrails/README.md).
 
-## Validation & quality checks
+## Extractor QA (library)
+
+Not the product run path.
 
 ```bash
-# Full bounded suite (recommended)
 py -3 scripts/run_validation_suite.py
-py -3 scripts/run_validation_suite.py --skip-l2   # reuse existing L2 audit CSV
-
-# L2 ESMA audit only
+py -3 scripts/run_validation_suite.py --skip-l2
 py -3 processes/tests/debug/audit_benchmark_isins.py
-
-# PDF triage on existing downloads
-py -3 scripts/triage_downloaded_pdfs.py --n 10 --seed 1
-py -3 scripts/triage_downloaded_pdfs.py --all
-```
-
-Legacy extraction diagnose:
-
-
-```bash
-python scripts/diagnose_extraction.py
-```
-
-## Integration smoke tests
-
-```bash
-python processes/tests/debug/test_csv_ingestion.py
 pytest processes/tests/core/test_doc_selection.py -q
 ```
+
+`scripts/triage_downloaded_pdfs.py` and `scripts/diagnose_extraction.py` score the frozen `data/downloads/` corpus. Do not glob that folder into publish.
 
 ## Project layout
 
 ```
-papertrails/         Alert feed product (watchlist, run_alerts, schema)
-processes/           Library (main.py legacy, scraper, extractors, DB)
-website/             Reverse-chron deals page + data/deals.json
-scripts/             Validation suite, triage, diagnostics
-tests/               ground_truth.json
-processes/tests/     Unit tests (core/) and debug tools (debug/)
-data/                GOGEL CSV, downloads/, alerts/, processed/ (local)
-logs/                workflow.log, audit/, validation outputs
-docs/                This folder — start with PRODUCT.md
+papertrails/         Product — watchlist, run_alerts, schema
+processes/           Library — scraper, extractors, DB. Do not move.
+website/             Tracked feed website/data/deals.json + Flask preview
+frontend/            Vite UI of this feed
+scripts/             L0–L4 validation, triage, frozen-walk diagnostics
+tests/               ground_truth.json (L1)
+data/alerts/         Live PDFs, seen.json, quarantine (gitignored)
+data/downloads/      Legacy scrape + L1–L4 fixtures (gitignored)
+docs/                Start with PRODUCT.md
 ```
 
 ## Documentation index
 
 | Doc | Purpose |
 |-----|---------|
-| [PRODUCT.md](PRODUCT.md) | **Product scope, repo reality, STE ranking, kill bar** |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Components, data flow, GOGEL/ISIN matching, AI chunking |
-| [VALIDATION_AND_QUALITY.md](VALIDATION_AND_QUALITY.md) | **L0–L4 layers**, download triage, current issues, next steps |
-| [OPERATIONAL_NOTES.md](OPERATIONAL_NOTES.md) | Scraper tuning, paths, Windows/PowerShell notes |
-| [BENCHMARKS.md](BENCHMARKS.md) | Ground-truth extraction results and known failure modes |
-| [ROADMAP.md](ROADMAP.md) | Alert-feed milestones (defers to PRODUCT.md) |
+| [PRODUCT.md](PRODUCT.md) | **Product of record** — scope, now/next, kill bar |
+| [ROADMAP.md](ROADMAP.md) | Chronology (done / next / later) |
+| [VALIDATION_AND_QUALITY.md](VALIDATION_AND_QUALITY.md) | L0–L4 extractor QA |
+| [BENCHMARKS.md](BENCHMARKS.md) | Ground-truth extraction results |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | **Library / frozen bulk walk** — not the product |
+| [OPERATIONAL_NOTES.md](OPERATIONAL_NOTES.md) | **Library ops** — `processes.main` paths, not `run_alerts` |
 | [examples/company_profiles.example.json](examples/company_profiles.example.json) | Optional scraper profile overrides |
 
 ## External data

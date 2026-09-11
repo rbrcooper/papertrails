@@ -1,6 +1,6 @@
 # PaperTrails backend next steps
 
-Stale vs phase 4 (61-deal feed, coupon/maturity/roles UI): see [PRODUCT.md](PRODUCT.md) and [ROADMAP.md](ROADMAP.md) Next. Plan below is historical backend packages. Cron stays off.
+Phase 4 is shipped (61-deal feed, coupon/maturity/roles UI). What is actually next: [PRODUCT.md](PRODUCT.md) Next. Packages 1–2 below are **done** in code (`admitted_esma_download_url`, Flask loopback tests). Remaining ops is coverage yaml on a new GOGEL CSV. Cron stays off.
 
 Plan only. Cron stays off. Public UI is Google AI Studio (out of this plan). Flask is local preview. Do not resurrect `processes.main` as product.
 
@@ -11,9 +11,9 @@ Coverage grain: GOGEL is the master entity list. A new SPV LEI not in the CSV is
 | Item | Status |
 |------|--------|
 | `Deal.to_dict` / `save_deals` / `append_deal` omit `pdf_path` | Done (`papertrails/schema.py`). Covered in `test_content_gates_publish` + `test_append_deal_public_payload_omits_pdf_path`. Live `website/data/deals.json` has no `pdf_path`. |
-| Flask `/api/deals` strips `pdf_path` | Done (`website/app.py` `_public_deals`). **No test.** |
-| Flask debug | Done: `debug` only if `FLASK_DEBUG` in `{1,true,yes}`. Default off. **No test.** |
-| Flask bind | Implicit Flask default `127.0.0.1` (`app.run(debug=…, port=…)` does not pass `host`). Not locked. **No test.** |
+| Flask `/api/deals` strips `pdf_path` | Done (`website/app.py` `_public_deals`). Tested in `test_website_app.py`. |
+| Flask debug | Done: `debug` only if `FLASK_DEBUG` in `{1,true,yes}`. Default off. Tested. |
+| Flask bind | Done: explicit `127.0.0.1`; `0.0.0.0` refused (`preview_run_kwargs`). Tested in `test_website_app.py`. |
 | Incremental poll | Done (phase 3h/3i). Solr every issuer; skip published + seen FTWS; newer FTWS still downloads. |
 | FTWS-only selection | Done (phase 3f). STDA/SUPP leftover unused. |
 | Coverage loop docs | Done in `papertrails/README.md` (Coverage refresh). Code not required unless that loop is broken. |
@@ -30,18 +30,18 @@ Coverage grain: GOGEL is the master entity list. A new SPV LEI not in the CSV is
 
 ## Rank (cause, not busywork)
 
-1. Host-pin `downloadFile` (open GET).
-2. Lock Flask preview bind + tests (debug/`pdf_path` already coded).
-3. Coverage refresh (ops; yaml rebuild).
+1. Host-pin `downloadFile` — **done** (`admitted_esma_download_url`, `test_esma_download_host.py`).
+2. Lock Flask preview bind + tests — **done** (`test_website_app.py`).
+3. Coverage refresh (ops; yaml rebuild) — still the live ops loop.
 4. Extract leftover — **defer** (not broken).
 5. Cookie/session persistence spike — **done** (2026-09-01). Cron still off.
 6. Cron — **out**.
 
-Packages 1–3 can run in parallel (no file overlap). Package 5 must follow package 1 (`esma_scraper.py`).
+Packages 1, 2, and 5 are done. Package 3 is ops when a new GOGEL CSV lands.
 
 ---
 
-## Package 1 — Host-pin ESMA `downloadFile`
+## Package 1 — Host-pin ESMA `downloadFile` — DONE
 
 **Why.** `download_document` / `resolve_download_url` gate on `"downloadFile" in url`. That accepts any host (`https://evil.example/downloadFile`, `https://registers.esma.europa.eu.attacker/…`). Solr/UI rows can carry attacker-controlled hrefs; the next GET is the product download. Substring `registers.esma.europa.eu not in current_url` elsewhere is the same class of bug; this package pins the **download GET**, not every navigation string.
 
@@ -55,7 +55,7 @@ Packages 1–3 can run in parallel (no file overlap). Package 5 must follow pack
 
 ---
 
-## Package 2 — Flask preview: bind lock + tests
+## Package 2 — Flask preview: bind lock + tests — DONE
 
 **Why.** Public feed is `website/data/deals.json` / `/api/deals`. Debug and `pdf_path` stripping are already implemented; they are untested. Bind is an implicit Flask default, so a copied `host="0.0.0.0"` or `FLASK_HOST` later would publish the preview (and the debugger if someone also sets `FLASK_DEBUG`). Cause is “local preview must stay loopback and path-free,” not new UI.
 

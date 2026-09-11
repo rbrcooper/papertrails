@@ -1,5 +1,7 @@
 # Operational notes
 
+**Library ops — not the product run path.** Paths and flags below are for `processes.main` / extractor QA (`data/downloads/`, `pipeline_queue`). The alert feed writes `data/alerts/pdfs/` via `papertrails.run_alerts`. Product of record: [PRODUCT.md](PRODUCT.md).
+
 ## Data inputs
 
 - **Company list (required):** `data/raw/Urgewald GOGEL 2025 V1.2 with identifiers.csv`

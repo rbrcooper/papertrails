@@ -53,12 +53,16 @@ Poll Solr-queries every issuer. Skip published `deals.json` ISINs and already-do
 
 All 23 downloadable-FTWS parents in `watchlist_top50.yaml` live-polled (`--isin-limit 1 --headed`, no `--max-issuers`). Yield in PRODUCT 3i. Cron still no-go.
 
+## Done (phase 4 — FTWS backfill + UI fields, 2026-09-02)
+
+Backfill on the 23 Solr-live parents (`--isin-limit 5 --force`); feed **61 deals / 20 issuers**. UI shows coupon/maturity/roles from FTWS form fields. NZBA overlay removed from **deal cards** (league/story copy may still mention NZBA). Cron still no-go. UK parked on `cursor/uk-nsm-intake`.
+
 ## Next
 
-1. **Phase 4 (2026-09-02):** Backfill FTWS on the 23 Solr-live parents (`--isin-limit 5 --force`); feed now 61 deals. UI shows coupon/maturity/roles from FTWS form fields; NZBA overlay removed. Cron still no-go. UK parked on `cursor/uk-nsm-intake`. 756 LEI tail re-poll when ESMA DNS is healthy.
-2. **Cron: no-go.** Unattended production cron stays disabled. This increment does not enable it.
-3. On-disk standalones/supplements (Eesti, IPC, Meren, …) are no longer poll slots; they remain extract samples only if someone chooses to regex them. Do not reopen A2A OCR or cover-page JLMs.
-4. More of the 756 only after extract yield on **this 23** is honest. Coverage refresh is a **yaml rebuild**, not a 756 PDF walk: new GOGEL CSV → `build_watchlist` → `--verify-solr` → `watchlist_top50.yaml` → incremental `run_alerts`. GCEL stays Later.
+1. **Cron: no-go.** Unattended production cron stays disabled.
+2. 756 LEI-tail `--verify-solr` rebuild when ESMA DNS is healthy.
+3. Coverage refresh is a **yaml rebuild**, not a 756 PDF walk: new GOGEL CSV → `build_watchlist` → `--verify-solr` → `watchlist_top50.yaml` → incremental `run_alerts`. GCEL stays Later.
+4. On-disk standalones/supplements (Eesti, IPC, Meren, …) are extract samples only. Do not reopen A2A OCR or cover-page JLMs.
 
 ## Later
 

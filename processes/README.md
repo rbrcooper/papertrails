@@ -1,5 +1,7 @@
 # Database Implementation for Bond Data
 
+**Library SQLite schema — not how to run the feed.** Product is [docs/PRODUCT.md](../docs/PRODUCT.md); operator commands are [../papertrails/README.md](../papertrails/README.md). Do not move this package; `papertrails.run_alerts` imports the scraper and extractors from here.
+
 This document provides an overview of the database implementation for storing extracted bond data.
 
 ## Overview

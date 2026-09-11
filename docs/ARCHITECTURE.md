@@ -1,5 +1,7 @@
 # System architecture
 
+**Library / frozen bulk walk — not the product.** This file describes `processes.main` + Ollama QA. What ships is [PRODUCT.md](PRODUCT.md); how to run it is [../papertrails/README.md](../papertrails/README.md). Product PDFs go to `data/alerts/pdfs/`, not a glob of `data/downloads/`.
+
 ## Pipeline orchestration
 
 `processes/main.py` coordinates:

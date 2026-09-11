@@ -10,6 +10,21 @@ Single source of truth for what this project ships. Root README and ROADMAP defe
 - Cron is off. UK is parked on `cursor/uk-nsm-intake`.
 - This file is the product of record; [ROADMAP.md](ROADMAP.md) is chronology.
 
+## Now
+
+Phase 4 is shipped (2026-09-02): `--isin-limit 5 --force` backfill on the 23 FTWS-live parents. Feed is **~61 deals / 20 issuers** in `website/data/deals.json`. UI shows coupon, maturity, and dealer-table roles from FTWS form fields. Deal-card NZBA overlay is off; league/story copy may still mention NZBA.
+
+**Live PDFs** are `data/alerts/pdfs/` (and `data/alerts/seen.json` / `quarantine/`). `data/downloads/` is the old bulk scrape plus L1–L4 fixtures (OMV / Aker / TotalEnergies, `_audit_l2`, `_l4_benchmark`). Do not glob it. Do not relocate the folder — validation hardcodes those paths.
+
+Phase tables below that quote 12 or 25 deals are history. Current count is the Now line.
+
+## Next
+
+- Attended incremental polls on the 23. Unattended cron stays off.
+- Rebuild the 756 LEI-tail `--verify-solr` yaml when ESMA DNS is healthy.
+- Coverage refresh only when a **new GOGEL CSV** lands: yaml rebuild → poll. Not a 756 PDF walk.
+- Do not turn name search on for publish. An isolated no-LEI Solr probe is optional and must not write `deals.json`.
+
 ## Repo reality (2026-08-26)
 
 | Area | Status |
@@ -19,7 +34,8 @@ Single source of truth for what this project ships. Root README and ROADMAP defe
 | Solr | In `processes/esma_scraper.py` — HTTP join for URLs; cookies still from browser session |
 | Intake contract (2026-08-14) | L2/main **ISIN** audit path; PaperTrails **discovery is company LEI** (phase 3c). No folder glob unless `--glob-pdfs` |
 | Aug 2026 EU pilot (5 cos) | Intake held; **0 new PDFs**; ledger `no_tier1` — **yield** problem, not total DL failure |
-| Old bulk `data/downloads/` | Triage **5/277** good — legacy loose scrape contamination |
+| Product PDFs | `data/alerts/pdfs/` — not `data/downloads/` |
+| Old bulk `data/downloads/` | Legacy leftover + L1–L4 fixtures; triage **5/277** good; do not glob; do not relocate |
 | Extraction (product) | **Dealer-table regex only** — no Ollama on publish path |
 | Extraction (QA) | L1–L4 still use AI path on OMV / AKER / Total benchmarks |
 | GOGEL file | `data/raw/Urgewald GOGEL 2025 V1.2 with identifiers.csv` |
@@ -174,6 +190,10 @@ Leftovers after re-extract of those five: A2A `XS3238204062` is an image PDF (`n
 **Go/no-go cron: No.** Unattended cron stays disabled. Session and download held.
 
 **Session persistence spike (2026-09-01):** Chrome `--user-data-dir` and a JSON cookie jar now default to gitignored `data/chrome_profile/` (override `ESMA_CHROME_USER_DATA_DIR` / `ESMA_COOKIE_JAR`); `admitted_esma_download_url` still gates every `downloadFile` GET. Cookie-reuse live was skipped — no jar on disk from a prior attended session. A windowless cookieless HTTP GET of Gasunie FTWS `XS3386682952` (`downloadFile?fileId=50639572`) returned `%PDF-1.7` with no Chrome window. That is a yes for this file without a human window; it does not prove a reused Chrome session for the HTML-fallback case. Unattended cron stays off.
+
+## Phase 4 (FTWS backfill + UI fields, 2026-09-02)
+
+Backfill on the 23 Solr-live parents (`--isin-limit 5 --force`). Feed **61 deals / 20 issuers**. UI coupon / maturity / roles from FTWS form fields. Cron still no-go. UK parked on `cursor/uk-nsm-intake`.
 
 ## Phase 0–1 result (2026-08-26)
 

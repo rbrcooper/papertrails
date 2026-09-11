@@ -16,7 +16,8 @@ Open alert feed for **EU fossil-fuel bond underwriting** from public ESMA final 
 | `processes/` | Library — ESMA scraper, extractors, DB. **Do not move.** |
 | `processes.main` | Frozen — bulk GOGEL walk; not the product |
 | Ollama on publish | Frozen — dealer-table regex only |
-| `data/downloads/` | Frozen — contaminated legacy scrape; do not glob |
+| `data/alerts/pdfs/` | Product — live poll / `--skip-scraping` PDFs |
+| `data/downloads/` | Frozen leftover **and** L1–L4 fixtures; do not glob; do not relocate |
 
 Operator commands: [papertrails/README.md](papertrails/README.md). Studio merge rules: [frontend/README.md](frontend/README.md).
 
