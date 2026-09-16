@@ -15,6 +15,7 @@ import {
   safeHttpUrl,
   sanitizeDeal,
   steAllocated1n,
+  totalUniqueIssuerSte,
   trancheTotalsByCurrency,
 } from './formatters.ts';
 
@@ -157,3 +158,14 @@ test('coupon and maturity formatters', () => {
   assert.equal(displayUnderwriterRole('Active Bookrunner'), 'Active Bookrunner');
   assert.equal(displayUnderwriterRole('Dealer'), null);
 });
+
+test('totalUniqueIssuerSte deduplicates STE across tranches of the same issuer', () => {
+  const d1 = deal({ issuer: 'Eni SpA', ste_mmboe: 500, currency: 'EUR', amount: '100' });
+  const d2 = deal({ issuer: 'Eni SpA', ste_mmboe: 500, currency: 'EUR', amount: '200' });
+  const d3 = deal({ issuer: 'TotalEnergies SE', ste_mmboe: 300, currency: 'EUR', amount: '300' });
+  const d4 = deal({ issuer: 'No STE Corp', ste_mmboe: 0, currency: 'EUR', amount: '400' });
+
+  // 500 + 300 = 800, NOT 500 + 500 + 300 = 1300
+  assert.equal(totalUniqueIssuerSte([d1, d2, d3, d4]), 800);
+});
+

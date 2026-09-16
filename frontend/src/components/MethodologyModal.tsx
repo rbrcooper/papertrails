@@ -56,7 +56,7 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ isOpen, onCl
             <ul className="list-disc list-inside mt-2 space-y-1 text-stone-800 font-mono text-[11px]">
               <li>Allocated Credit = Nominal Issued Tranche ÷ Total Syndicate Dealers (n)</li>
               <li>No bank is granted 100% full credit for multi-dealer syndicate tranches</li>
-              <li>Cumulative market volume strictly equals the actual sum of issued tranches</li>
+              <li>Cumulative volume strictly equals the actual sum of issued tranches across the tracked dataset</li>
             </ul>
           </div>
 

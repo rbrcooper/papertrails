@@ -111,6 +111,25 @@ export function steAllocated1n(
   return ste / (n || 1);
 }
 
+/**
+ * Deduplicated total parent STE across deals.
+ * STE is a parent company reserve metric; multiple tranches from the same parent
+ * must not multiply corporate reserves.
+ */
+export function totalUniqueIssuerSte(
+  deals: Array<Pick<Deal, 'issuer' | 'ste_mmboe'>>
+): number {
+  const perIssuer: Record<string, number> = {};
+  for (const deal of deals) {
+    const ste = deal.ste_mmboe ?? 0;
+    if (ste <= 0) continue;
+    const issuer = (deal.issuer || '').trim();
+    if (!issuer) continue;
+    perIssuer[issuer] = Math.max(perIssuer[issuer] || 0, ste);
+  }
+  return Object.values(perIssuer).reduce((acc, val) => acc + val, 0);
+}
+
 /** Only http(s) hrefs. Rejects javascript:, data:, and unparseable values. */
 export function safeHttpUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== 'string') return null;

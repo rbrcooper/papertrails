@@ -49,6 +49,8 @@ import requests
 import random
 import hashlib
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 from datetime import datetime
 from typing import List, Dict, Optional, Any, Tuple
 import csv
@@ -91,7 +93,7 @@ SOLR_SECURITIES_URL = "https://registers.esma.europa.eu/solr/esma_registers_prii
 ESMA_REGISTERS_HOST = "registers.esma.europa.eu"
 ESMA_REGISTERS_ORIGIN = "https://registers.esma.europa.eu"
 ESMA_DOWNLOAD_PATH = "/publication/downloadFile"
-DEFAULT_CHROME_USER_DATA_DIR = Path("data/chrome_profile")
+DEFAULT_CHROME_USER_DATA_DIR = ROOT / "data" / "chrome_profile"
 ESMA_COOKIE_JAR_NAME = "esma_cookies.json"
 
 
@@ -406,7 +408,7 @@ class ESMAScraper:
         self.logger = logging.getLogger(__name__)
         
         # Set base directory for downloads
-        self.base_dir = Path("data/downloads")
+        self.base_dir = ROOT / "data" / "downloads"
         
         # Set download directory
         if download_dir:
@@ -418,7 +420,7 @@ class ESMAScraper:
         self.download_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize document hashes database
-        self.document_hashes_file = Path("data/document_hashes.json")
+        self.document_hashes_file = ROOT / "data" / "document_hashes.json"
         self.document_hashes_file.parent.mkdir(parents=True, exist_ok=True)
         self.document_hashes = self._load_document_hashes()
         
@@ -430,8 +432,8 @@ class ESMAScraper:
         self.debug_mode = debug_mode
         
         # Setup debug directories
-        self.screenshots_dir = Path("logs/screenshots")
-        self.page_sources_dir = Path("logs/page_sources")
+        self.screenshots_dir = ROOT / "logs" / "screenshots"
+        self.page_sources_dir = ROOT / "logs" / "page_sources"
         self.screenshots_dir.mkdir(parents=True, exist_ok=True)
         self.page_sources_dir.mkdir(parents=True, exist_ok=True)
         
@@ -477,12 +479,12 @@ class ESMAScraper:
         self.processed_files = set()
 
         # Seen URLs cache (avoid re-downloading same link across runs)
-        self.seen_urls_file = Path("data/processed/seen_urls.txt")
+        self.seen_urls_file = ROOT / "data" / "processed" / "seen_urls.txt"
         self.seen_urls_file.parent.mkdir(parents=True, exist_ok=True)
         self.seen_urls: set[str] = self._load_seen_urls()
 
         # Audit log base dir
-        self.audit_dir = Path("logs/audit")
+        self.audit_dir = ROOT / "logs" / "audit"
         self.audit_dir.mkdir(parents=True, exist_ok=True)
 
         self._last_search_isin: Optional[str] = None
@@ -1541,17 +1543,17 @@ class ESMAScraper:
                 if path:
                     return path
             url = resolve_download_url(details) or (details.get("url") or "")
-            if "downloadFile" not in url:
+            if not admitted_esma_download_url(url):
                 continue
             # Prefer clicking the anchor (ESMA often requires in-page navigation).
             try:
                 link = None
                 for a in row.find_elements(By.TAG_NAME, "a"):
                     href = a.get_attribute("href") or ""
-                    if "downloadFile" in href or "detailsUrl" in href:
+                    admitted = admitted_esma_download_url(href)
+                    if admitted:
                         link = a
-                        if "downloadFile" in href:
-                            break
+                        break
                 if link:
                     self.logger.info("Clicking results-table download link for %s", row_isin or isin)
                     try:
@@ -1604,7 +1606,8 @@ class ESMAScraper:
         timeout: int = 90,
     ) -> Optional[str]:
         """Fallback: trigger Chrome download for ESMA file URLs that return HTML via requests."""
-        if not self.driver:
+        url = admitted_esma_download_url(url)
+        if not url or not self.driver:
             return None
         self.logger.info(f"Browser download fallback for: {doc_id or url}")
         try:

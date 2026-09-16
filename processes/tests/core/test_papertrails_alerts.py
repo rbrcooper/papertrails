@@ -1144,3 +1144,22 @@ def test_yield_report_splits_non_syndicated_from_no_dealer_table(tmp_path):
     assert report["extract_this_run"]["non_syndicated"] == 1
     assert report["extract_this_run"]["no_dealer_table"] == 1
     assert report["incremental"]["non_syndicated"] == 1
+
+
+def test_kill_bar_isin_xs2697983869_preserved_in_deals_json():
+    """Regression test: kill-bar ISIN XS2697983869 must exist and be valid in website/data/deals.json."""
+    deals_path = ROOT / "website" / "data" / "deals.json"
+    assert deals_path.exists(), f"deals.json not found at {deals_path}"
+    data = json.loads(deals_path.read_text(encoding="utf-8"))
+    deals = data.get("deals", [])
+    target = next((d for d in deals if (d.get("isin") or "").upper() == "XS2697983869"), None)
+    assert target is not None, "Kill-bar ISIN XS2697983869 not found in website/data/deals.json"
+    assert target.get("issuer") == "Electricity Supply Board (ESB)"
+    assert target.get("amount_kind") == "tranche"
+    assert target.get("gate_status") == "published"
+    assert target.get("currency") == "EUR"
+    underwriters = [u.get("raw_name") for u in target.get("underwriters", [])]
+    assert "Barclays Bank Ireland PLC" in underwriters
+    assert "HSBC Continental Europe" in underwriters
+    assert "Société Générale" in underwriters
+

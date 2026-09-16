@@ -33,9 +33,11 @@ if str(ROOT) not in sys.path:
 
 from papertrails.schema import (  # noqa: E402
     EXTRACTION_METHOD_DEALER_TABLE,
+    _atomic_write_json,
     append_deal,
     content_gates,
     load_deals,
+    make_deal_id,
     write_quarantine,
 )
 from processes.esma_scraper import (  # noqa: E402
@@ -51,6 +53,9 @@ from processes.pipeline_components.validators import (  # noqa: E402
 from processes.pdf_extraction.core import ExtractionEngine  # noqa: E402
 from processes.pdf_extraction.extractors.ai_bank_extractor import (  # noqa: E402
     AIBankExtractor,
+)
+from processes.pdf_extraction.extractors.coupon_extractor import (  # noqa: E402
+    CouponExtractor,
 )
 from processes.pdf_extraction.extractors.currency_extractor import (  # noqa: E402
     CurrencyExtractor,
@@ -135,14 +140,17 @@ def _load_watchlist(path: Path) -> Dict[str, Any]:
 def _load_seen(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {"entries": {}}
-    with path.open(encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with path.open(encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {"entries": {}}
+    except (json.JSONDecodeError, OSError) as e:
+        logger.error("Failed to load seen entries from %s: %s", path, e)
+        return {"entries": {}}
 
 
 def _save_seen(path: Path, seen: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(seen, f, indent=2)
+    _atomic_write_json(path, seen)
 
 
 def _seen_key(isin: str, doc_hint: str = "") -> str:
@@ -346,7 +354,8 @@ def _download_via_solr_lei(
         isin = (s.get("isin") or "").upper()
         if isin in skip_isins:
             continue
-        if cutoff and (s.get("date") or "") <= cutoff:
+        date_val = s.get("date") or ""
+        if cutoff and date_val and date_val < cutoff:
             continue
         ftws.append(s)
     ftws.sort(key=lambda r: r.get("date") or "", reverse=True)
@@ -676,6 +685,12 @@ def _regex_metadata(text: str) -> Dict[str, Any]:
         meta["programme_size"] = cur.get("programme_size")
     except Exception:
         pass
+    try:
+        coup = CouponExtractor(debug_mode=False).extract(text)
+        meta["coupon_rate"] = coup.get("coupon_rate")
+        meta["coupon_type"] = coup.get("coupon_type")
+    except Exception:
+        pass
     return meta
 
 
@@ -813,13 +828,31 @@ def extract_and_publish(
     return stats
 
 
-def records_from_seen(seen_path: Path, only_downloaded: bool = True) -> List[Dict[str, Any]]:
+def records_from_seen(
+    seen_path: Path,
+    only_downloaded: bool = True,
+    *,
+    pdf_root: Optional[Path] = None,
+    require_ftws: bool = True,
+) -> List[Dict[str, Any]]:
     seen = _load_seen(seen_path)
     out = []
+    root = pdf_root.resolve() if pdf_root else None
     for rec in (seen.get("entries") or {}).values():
         if only_downloaded and rec.get("status") != "downloaded":
             continue
-        if rec.get("file_path"):
+        if require_ftws and not _is_ftws_row(rec):
+            continue
+        fp = rec.get("file_path")
+        if not fp:
+            continue
+        p = Path(fp)
+        if root:
+            try:
+                p.resolve().relative_to(root)
+            except ValueError:
+                continue
+        if p.exists():
             out.append(rec)
     return out
 
@@ -1049,8 +1082,7 @@ def write_yield_report(
         "issuers": issuer_rows,
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
+    _atomic_write_json(out_path, report)
     return report
 
 
@@ -1163,12 +1195,29 @@ def main(argv: Optional[List[str]] = None) -> int:
             }
             out = ROOT / "logs" / "alerts_phase0_report.json"
             out.parent.mkdir(parents=True, exist_ok=True)
-            with out.open("w", encoding="utf-8") as f:
-                json.dump(report, f, indent=2)
+            _atomic_write_json(out, report)
             print(json.dumps(report, indent=2))
             return 0 if downloads else 2
+
+        # Check for unextracted downloaded FTWS from earlier interrupted runs
+        published_isins = _published_isin_set(args.deals)
+        seen_unextracted = []
+        for rec in records_from_seen(args.seen, pdf_root=args.pdf_root, require_ftws=True):
+            isin = (rec.get("isin") or "").upper()
+            if isin and isin not in published_isins:
+                qid = make_deal_id(isin, rec.get("doc_id"), rec.get("file_path") or "")
+                qfile = args.quarantine / f"{qid}.json"
+                if not qfile.exists():
+                    if not any((d.get("isin") or "").upper() == isin for d in downloads):
+                        seen_unextracted.append(rec)
+        if seen_unextracted:
+            logger.info(
+                "Resuming %s unextracted downloaded FTWS from seen.json",
+                len(seen_unextracted),
+            )
+            downloads.extend(seen_unextracted)
     else:
-        downloads = records_from_seen(args.seen)
+        downloads = records_from_seen(args.seen, pdf_root=args.pdf_root, require_ftws=True)
 
     stats = extract_and_publish(
         downloads,

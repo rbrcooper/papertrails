@@ -166,7 +166,11 @@ ${syndicateMarkdown}
               Lead Paragraph (Factual & Sourced)
             </span>
             <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-md text-stone-800 leading-relaxed font-sans">
-              {leadParagraph}
+              European fossil fuel issuer <strong>{deal.issuer}</strong> has closed a <strong>{trancheStr}</strong> debt offering (ISIN:{' '}
+              <code className="bg-stone-200/80 px-1 py-0.5 rounded font-mono text-xs text-stone-900">{deal.isin}</code>)
+              {deal.issue_date ? ` dated ${deal.issue_date}` : ''}.
+              {progStr ? ` The tranche forms part of the group's broader ${progStr} multi-currency Euro Medium Term Note (EMTN) programme.` : ''}{' '}
+              The deal was underwritten across an equal-credit syndicate of {nDealers} European and global institutions, granting each participating bank approximately <strong>{perDealerStr}</strong> in facilitated debt credit.
             </div>
           </div>
 

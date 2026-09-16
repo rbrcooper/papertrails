@@ -357,7 +357,7 @@ class AIBankExtractor:
                     if len(alias) >= 14:
                         extra.append(alias)
             for name in sorted(set(extra), key=len, reverse=True):
-                pos = block.find(name)
+                pos = _token_index(block, name)
                 if pos != -1:
                     _add(name, pos)
 

@@ -52,7 +52,11 @@ export const DealCard: React.FC<DealCardProps> = ({
   return (
     <article
       id={`deal-card-${deal.id}`}
-      className="bg-white border border-stone-200/90 rounded-lg p-4 sm:p-5 hover:border-stone-400/80 transition-all shadow-2xs hover:shadow-xs relative group"
+      className={`bg-white border rounded-lg p-4 sm:p-5 transition-all shadow-2xs hover:shadow-xs relative group ${
+        hasUpstreamExpansion
+          ? 'border-stone-200/90 hover:border-amber-400/90 border-l-3 border-l-amber-500/80'
+          : 'border-stone-200/90 hover:border-stone-400/80'
+      }`}
     >
       {/* Top Header: Issuer, Watchlist Badge, ISIN, Date */}
       <div className="flex flex-wrap items-start justify-between gap-2 pb-3 border-b border-stone-100">
@@ -125,14 +129,18 @@ export const DealCard: React.FC<DealCardProps> = ({
           >
             {formattedTranche}
           </div>
-          <div className="text-[11px] text-stone-500 font-tabular mt-0.5">
-            Nominal tranche amount ({deal.currency})
-            {(couponLabel || maturityLabel) && (
-              <span className="text-stone-600">
-                {' '}
-                · {couponLabel && `Coupon ${couponLabel}`}
-                {couponLabel && maturityLabel && ' · '}
-                {maturityLabel && `Maturity ${maturityLabel}`}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            <span className="text-[11px] text-stone-500 font-tabular">
+              Nominal tranche amount ({deal.currency})
+            </span>
+            {couponLabel && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-stone-200/70 text-stone-800 font-medium">
+                {couponLabel}
+              </span>
+            )}
+            {maturityLabel && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-stone-200/70 text-stone-800 font-medium">
+                Mat. {maturityLabel}
               </span>
             )}
           </div>
@@ -211,29 +219,41 @@ export const DealCard: React.FC<DealCardProps> = ({
       </div>
 
       {/* Card Footer: Prospectus Link, Citation Tool, Pitch Generator, & Inspection Details */}
-      <div className="mt-4 pt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-3">
+      <div className="mt-4 pt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center gap-2.5">
           {safeHttpUrl(deal.source_url) ? (
             <a
               href={safeHttpUrl(deal.source_url)!}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-semibold text-amber-800 hover:text-amber-950 hover:underline transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 font-semibold text-amber-800 hover:text-amber-950 hover:underline transition-colors cursor-pointer text-xs"
               title="Download verified ESMA Final Terms prospectus PDF in new tab"
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Prospectus Filing</span>
-              <ExternalLink className="w-3 h-3 ml-0.5" />
+              <FileText className="w-3.5 h-3.5 text-amber-700" />
+              <span>Prospectus PDF</span>
+              <ExternalLink className="w-3 h-3 ml-0.5 text-amber-600" />
             </a>
           ) : (
             <span className="text-stone-400 text-[11px] italic">
-              Prospectus link verified in ESMA registry
+              Prospectus in ESMA registry
             </span>
           )}
 
+          {/* News Pitch Generator Trigger Button */}
+          <button
+            onClick={() => onGeneratePitch?.(deal)}
+            className="inline-flex items-center gap-1 text-amber-900 bg-amber-100/90 hover:bg-amber-200/90 font-semibold px-2 py-1 rounded transition-colors cursor-pointer text-[11px] shadow-2xs border border-amber-200/80"
+            title="Generate ready-to-use newsroom story lead & pitch"
+          >
+            <Sparkles className="w-3 h-3 text-amber-800" />
+            <span>Story Lead</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
           <button
             onClick={handleCopyCitation}
-            className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 px-2 py-1 hover:bg-stone-100 rounded transition-colors cursor-pointer text-[11px]"
             title="Copy journalistic reference citation for this deal"
           >
             {copiedCitation ? (
@@ -244,35 +264,18 @@ export const DealCard: React.FC<DealCardProps> = ({
             ) : (
               <>
                 <Copy className="w-3 h-3 text-stone-400" />
-                <span>Copy Citation</span>
+                <span>Citation</span>
               </>
             )}
           </button>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {/* News Pitch Generator Trigger Button */}
-          <button
-            onClick={() => onGeneratePitch?.(deal)}
-            className="inline-flex items-center gap-1 text-amber-900 bg-amber-100/90 hover:bg-amber-200/90 font-semibold px-2.5 py-1 rounded transition-colors cursor-pointer text-[11px] shadow-2xs"
-            title="Generate ready-to-use newsroom story lead & pitch"
-          >
-            <Sparkles className="w-3 h-3 text-amber-800" />
-            <span>Story Lead</span>
-          </button>
-
-          {deal.doc_id && (
-            <span className="text-stone-600 text-[11px] font-mono hidden sm:inline">
-              Doc ID: {deal.doc_id}
-            </span>
-          )}
           <button
             onClick={() => onInspectDeal?.(deal)}
             className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-2 py-1 rounded transition-colors cursor-pointer text-[11px]"
-            title="View complete ESMA regulatory record metadata"
+            title={deal.doc_id ? `Inspect filing metadata (Doc ID: ${deal.doc_id})` : 'View complete ESMA regulatory record metadata'}
           >
             <Info className="w-3 h-3" />
-            <span>Inspect Filing</span>
+            <span>Inspect</span>
           </button>
         </div>
       </div>

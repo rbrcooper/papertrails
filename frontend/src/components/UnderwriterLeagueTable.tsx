@@ -92,7 +92,7 @@ export const UnderwriterLeagueTable: React.FC<UnderwriterLeagueTableProps> = ({
               </h2>
             </div>
             <p className="text-xs text-stone-600 max-w-3xl font-sans">
-              Methodology notice: Volume is calculated strictly using <strong className="font-semibold text-stone-800">1/n equal credit allocation</strong> per issued tranche (tranche amount ÷ number of syndicate dealers) from verified ESMA final terms filings. Programme facility sizes are excluded. Mixed currencies are listed separately — they are not converted or summed as EUR.
+              Methodology notice: Volume is calculated strictly using <strong className="font-semibold text-stone-800">1/n equal credit allocation</strong> per issued tranche (tranche amount ÷ number of syndicate dealers) from verified ESMA final terms filings across the tracked 23-parent dataset only, not the wider European DCM market. Programme facility sizes are excluded. Mixed currencies are listed separately — they are not converted or summed as EUR.
             </p>
           </div>
           <div className="text-right whitespace-nowrap bg-white px-3 py-2 rounded-md border border-stone-200">
@@ -151,7 +151,7 @@ export const UnderwriterLeagueTable: React.FC<UnderwriterLeagueTableProps> = ({
                   <ArrowUpDown className="w-3 h-3 text-stone-400" />
                 </button>
               </th>
-              <th scope="col" className="py-3 px-3.5 text-center">Action</th>
+
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-200">
@@ -175,6 +175,7 @@ export const UnderwriterLeagueTable: React.FC<UnderwriterLeagueTableProps> = ({
                     <button
                       onClick={() => onSelectBank(bank.bankName)}
                       className="hover:text-amber-800 hover:underline text-left cursor-pointer"
+                      title={`Filter deal feed by ${bank.bankName}`}
                     >
                       {bank.bankName}
                     </button>
@@ -226,15 +227,7 @@ export const UnderwriterLeagueTable: React.FC<UnderwriterLeagueTableProps> = ({
                       <span className="text-stone-400">—</span>
                     )}
                   </td>
-                  <td className="py-3 px-3.5 text-center">
-                    <button
-                      onClick={() => onSelectBank(bank.bankName)}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded text-[11px] font-medium transition-colors cursor-pointer"
-                    >
-                      <span>Filter</span>
-                      <ChevronRight className="w-3 h-3 text-stone-500" />
-                    </button>
-                  </td>
+
                 </tr>
               );
             })}

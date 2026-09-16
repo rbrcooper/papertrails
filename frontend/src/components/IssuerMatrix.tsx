@@ -151,7 +151,7 @@ export const IssuerMatrix: React.FC<IssuerMatrixProps> = ({
                 </button>
               </th>
               <th scope="col" className="py-3 px-3.5">Syndicate Underwriters</th>
-              <th scope="col" className="py-3 px-3.5 text-center">Action</th>
+
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-200">
@@ -172,6 +172,7 @@ export const IssuerMatrix: React.FC<IssuerMatrixProps> = ({
                     <button
                       onClick={() => onSelectIssuer(issuer.issuerName)}
                       className="hover:text-amber-800 hover:underline text-left cursor-pointer flex items-center gap-1.5"
+                      title={`Filter deal feed by ${issuer.issuerName}`}
                     >
                       <span>{issuer.issuerName}</span>
                       {hasSte && (
@@ -213,15 +214,7 @@ export const IssuerMatrix: React.FC<IssuerMatrixProps> = ({
                       ))}
                     </div>
                   </td>
-                  <td className="py-3 px-3.5 text-center">
-                    <button
-                      onClick={() => onSelectIssuer(issuer.issuerName)}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded text-[11px] font-medium transition-colors cursor-pointer"
-                    >
-                      <span>Filter</span>
-                      <ChevronRight className="w-3 h-3 text-stone-500" />
-                    </button>
-                  </td>
+
                 </tr>
               );
             })}

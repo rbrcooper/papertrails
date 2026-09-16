@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import os
+import tempfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,11 +22,37 @@ from processes.pipeline_components.validators import (
     filter_underwriter_banks,
 )
 
+logger = logging.getLogger("papertrails.schema")
+
 EXTRACTION_METHOD_DEALER_TABLE = "dealer_table_regex"
 
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _atomic_write_json(path: Path, data: Any, indent: int = 2) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=str(path.parent),
+        delete=False,
+        suffix=".tmp",
+    )
+    try:
+        json.dump(data, temp_file, indent=indent)
+        temp_file.flush()
+        os.fsync(temp_file.fileno())
+        temp_file.close()
+        os.replace(temp_file.name, str(path))
+    except Exception:
+        if os.path.exists(temp_file.name):
+            try:
+                os.unlink(temp_file.name)
+            except OSError:
+                pass
+        raise
 
 
 @dataclass
@@ -56,6 +85,9 @@ class Deal:
     amount_kind: Optional[str] = None
     programme_size: Optional[Any] = None
     allocated_amount: Optional[Any] = None
+    maturity_date: Optional[str] = None
+    coupon_rate: Optional[Any] = None
+    coupon_type: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Public payload: never include local filesystem paths."""
@@ -120,6 +152,10 @@ def content_gates(
     require_dealer_table: bool = True,
 ) -> Tuple[Optional[Deal], Optional[str]]:
     """Return (Deal, None) on pass or (None, reject_reason) on fail."""
+    isin_clean = (isin or "").strip().upper()
+    if not isin_clean or len(isin_clean) < 12:
+        return None, "missing_isin"
+
     if not pdf_path.exists():
         return None, "pdf_missing"
     if not pdf_looks_valid(pdf_path):
@@ -133,13 +169,11 @@ def content_gates(
     banks_raw = extraction.get("extracted_banks") or []
     underwriters = filter_underwriter_banks(banks_raw)
     if not underwriters:
-        underwriters = [b for b in banks_raw if isinstance(b, dict) and b.get("raw_name")]
-    if not underwriters:
         return None, "no_dealer_table" if require_dealer_table else "no_underwriters"
 
-    extracted_isin = (meta.get("isin") or isin or "").strip().upper()
-    if text_sample and isin and not isin_in_text(text_sample, isin):
-        if extracted_isin != isin.upper():
+    extracted_isin = (meta.get("isin") or isin_clean).strip().upper()
+    if text_sample and not isin_in_text(text_sample, isin_clean):
+        if extracted_isin != isin_clean:
             return None, "isin_not_in_text"
 
     uw = [
@@ -162,9 +196,9 @@ def content_gates(
 
     now = _utc_now()
     deal = Deal(
-        id=make_deal_id(isin, doc_id, str(pdf_path)),
+        id=make_deal_id(isin_clean, doc_id, str(pdf_path)),
         issuer=issuer,
-        isin=isin.upper(),
+        isin=isin_clean,
         issue_date=meta.get("issue_date"),
         currency=meta.get("currency"),
         amount=amount,
@@ -183,6 +217,9 @@ def content_gates(
         amount_kind=amount_kind,
         programme_size=programme_size,
         allocated_amount=allocated,
+        maturity_date=meta.get("maturity_date"),
+        coupon_rate=meta.get("coupon_rate"),
+        coupon_type=meta.get("coupon_type"),
     )
     return deal, None
 
@@ -190,8 +227,12 @@ def content_gates(
 def load_deals(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         return []
-    with path.open(encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with path.open(encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.error("Failed to load deals from %s: %s", path, e)
+        return []
     if isinstance(data, list):
         return data
     return data.get("deals") or []
@@ -204,15 +245,13 @@ def _public_deal_record(deal: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def save_deals(path: Path, deals: List[Dict[str, Any]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     public = [_public_deal_record(d) for d in deals]
     deals_sorted = sorted(
         public,
         key=lambda d: d.get("published_at") or d.get("issue_date") or "",
         reverse=True,
     )
-    with path.open("w", encoding="utf-8") as f:
-        json.dump({"updated_at": _utc_now(), "deals": deals_sorted}, f, indent=2)
+    _atomic_write_json(path, {"updated_at": _utc_now(), "deals": deals_sorted})
 
 
 def append_deal(path: Path, deal: Deal) -> bool:
@@ -245,6 +284,5 @@ def write_quarantine(quarantine_dir: Path, payload: Dict[str, Any]) -> Path:
     payload = dict(payload)
     payload["gate_status"] = "quarantine"
     payload["quarantined_at"] = _utc_now()
-    with out.open("w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
+    _atomic_write_json(out, payload)
     return out

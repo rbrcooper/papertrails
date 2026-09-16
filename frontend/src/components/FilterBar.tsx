@@ -1,6 +1,7 @@
-import React from 'react';
-import { Search, X, SlidersHorizontal, ArrowDownUp, Flame, LayoutList, Trophy, PieChart, Scale } from 'lucide-react';
-import { FilterState } from '../types/deal';
+import React, { useState, useEffect } from 'react';
+import { Search, X, ArrowDownUp, Flame, LayoutList, Trophy, PieChart, Download, FileText, ChevronDown } from 'lucide-react';
+import { FilterState, Deal } from '../types/deal';
+import { exportDealsToCSV, exportDealsToJSON } from '../utils/formatters';
 
 interface FilterBarProps {
   filters: FilterState;
@@ -10,8 +11,11 @@ interface FilterBarProps {
   availableYears: string[];
   totalDealsCount: number;
   filteredDealsCount: number;
-  activeView: 'feed' | 'league' | 'issuers' | 'compare';
-  onViewChange: (view: 'feed' | 'league' | 'issuers' | 'compare') => void;
+  activeView: 'feed' | 'league' | 'issuers';
+  onViewChange: (view: 'feed' | 'league' | 'issuers') => void;
+  highlightedFilter?: string | null;
+  filteredDeals: Deal[];
+  updatedAt: string;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -24,7 +28,22 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   filteredDealsCount,
   activeView,
   onViewChange,
+  highlightedFilter,
+  filteredDeals,
+  updatedAt,
 }) => {
+  const [exportOpen, setExportOpen] = useState(false);
+  const [chipHighlight, setChipHighlight] = useState<string | null>(null);
+
+  // Animate the highlighted filter chip briefly
+  useEffect(() => {
+    if (highlightedFilter) {
+      setChipHighlight(highlightedFilter);
+      const timer = setTimeout(() => setChipHighlight(null), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedFilter]);
+
   const hasActiveFilters =
     filters.search !== '' ||
     filters.selectedUnderwriter !== '' ||
@@ -42,6 +61,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       sortBy: 'date_desc',
     });
   };
+
+  const chipAnimClass = (chipKey: string) =>
+    chipHighlight === chipKey ? 'animate-pulse ring-2 ring-amber-400' : '';
 
   return (
     <div className="bg-white border-b border-stone-200 shadow-2xs">
@@ -88,42 +110,65 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <PieChart className="w-3.5 h-3.5 text-stone-600" />
               <span>Issuer Profiles</span>
             </button>
-
-            <button
-              id="view-compare-btn"
-              onClick={() => onViewChange('compare')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                activeView === 'compare'
-                  ? 'bg-white text-stone-900 shadow-xs border border-stone-200/60'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Scale className="w-3.5 h-3.5 text-amber-700" />
-              <span>Side-by-Side Compare</span>
-            </button>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
-              <Search className="w-4 h-4" />
+          {/* Quick Search + Export */}
+          <div className="flex items-center gap-2 flex-1 max-w-lg">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                id="search-input"
+                type="text"
+                value={filters.search}
+                onChange={e => onFilterChange({ ...filters, search: e.target.value })}
+                placeholder="Search issuer, ISIN, or underwriter..."
+                className="w-full pl-9 pr-8 py-1.5 text-sm bg-stone-50 hover:bg-white focus:bg-white border border-stone-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 transition-all font-sans text-stone-900 placeholder:text-stone-400"
+              />
+              {filters.search && (
+                <button
+                  onClick={() => onFilterChange({ ...filters, search: '' })}
+                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            <input
-              id="search-input"
-              type="text"
-              value={filters.search}
-              onChange={e => onFilterChange({ ...filters, search: e.target.value })}
-              placeholder="Search issuer, ISIN (e.g. XS3305...), or underwriter bank..."
-              className="w-full pl-9 pr-8 py-1.5 text-sm bg-stone-50 hover:bg-white focus:bg-white border border-stone-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 transition-all font-sans text-stone-900 placeholder:text-stone-400"
-            />
-            {filters.search && (
+
+            {/* Export Dropdown */}
+            <div className="relative">
               <button
-                onClick={() => onFilterChange({ ...filters, search: '' })}
-                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer"
+                id="export-dropdown-btn"
+                onClick={() => setExportOpen(!exportOpen)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-stone-700 bg-stone-50 hover:bg-stone-100 border border-stone-300 rounded-md transition-colors shadow-2xs cursor-pointer"
+                title="Export data"
               >
-                <X className="w-3.5 h-3.5" />
+                <Download className="w-3.5 h-3.5 text-stone-500" />
+                <span>Export</span>
+                <ChevronDown className="w-3 h-3 text-stone-400" />
               </button>
-            )}
+              {exportOpen && (
+                <div className="absolute right-0 mt-1 w-48 bg-white border border-stone-200 rounded-md shadow-lg z-20">
+                  <button
+                    id="export-csv-btn"
+                    onClick={() => { exportDealsToCSV(filteredDeals); setExportOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-stone-400" />
+                    Export CSV ({filteredDeals.length} deals)
+                  </button>
+                  <button
+                    id="export-json-btn"
+                    onClick={() => { exportDealsToJSON(filteredDeals, updatedAt); setExportOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50 flex items-center gap-2 border-t border-stone-100 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-stone-400" />
+                    Export JSON
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -244,7 +289,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2 text-xs">
             <span className="text-stone-500">Active filters:</span>
             {filters.search && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-800 rounded border border-stone-200">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-800 rounded border border-stone-200 transition-all ${chipAnimClass('search')}`}>
                 Keyword: "{filters.search}"
                 <button
                   onClick={() => onFilterChange({ ...filters, search: '' })}
@@ -255,7 +300,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </span>
             )}
             {filters.selectedUnderwriter && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-900 rounded border border-amber-200">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-900 rounded border border-amber-200 transition-all ${chipAnimClass('bank')}`}>
                 Bank: {filters.selectedUnderwriter}
                 <button
                   onClick={() => onFilterChange({ ...filters, selectedUnderwriter: '' })}
@@ -266,7 +311,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </span>
             )}
             {filters.selectedIssuer && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-900 rounded border border-blue-200">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-900 rounded border border-blue-200 transition-all ${chipAnimClass('issuer')}`}>
                 Issuer: {filters.selectedIssuer}
                 <button
                   onClick={() => onFilterChange({ ...filters, selectedIssuer: '' })}
@@ -277,7 +322,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </span>
             )}
             {filters.yearFilter && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-800 rounded border border-stone-200">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-800 rounded border border-stone-200 transition-all ${chipAnimClass('year')}`}>
                 Year: {filters.yearFilter}
                 <button
                   onClick={() => onFilterChange({ ...filters, yearFilter: '' })}
@@ -288,7 +333,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </span>
             )}
             {filters.expansionOnly && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-900 rounded border border-amber-200">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-900 rounded border border-amber-200 transition-all ${chipAnimClass('expansion')}`}>
                 Upstream STE &gt; 0 only
                 <button
                   onClick={() => onFilterChange({ ...filters, expansionOnly: false })}

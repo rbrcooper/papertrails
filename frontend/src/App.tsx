@@ -11,7 +11,6 @@ import { FilterBar } from './components/FilterBar';
 import { DealCard } from './components/DealCard';
 import { UnderwriterLeagueTable } from './components/UnderwriterLeagueTable';
 import { IssuerMatrix } from './components/IssuerMatrix';
-import { CompareView } from './components/CompareView';
 import { DealDetailModal } from './components/DealDetailModal';
 import { StoryGeneratorModal } from './components/StoryGeneratorModal';
 import { MethodologyModal } from './components/MethodologyModal';
@@ -24,10 +23,11 @@ export default function App() {
   const [deals, setDeals] = useState<Deal[]>(embedded.deals);
   const [updatedAt, setUpdatedAt] = useState(embedded.updated_at);
   const [dataSource, setDataSource] = useState<'snapshot' | 'api'>('snapshot');
-  const [activeView, setActiveView] = useState<'feed' | 'league' | 'issuers' | 'compare'>('feed');
+  const [activeView, setActiveView] = useState<'feed' | 'league' | 'issuers'>('feed');
   const [inspectedDeal, setInspectedDeal] = useState<Deal | null>(null);
   const [pitchDeal, setPitchDeal] = useState<Deal | null>(null);
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
+  const [highlightedFilter, setHighlightedFilter] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -172,6 +172,7 @@ export default function App() {
       ...prev,
       selectedUnderwriter: bankName,
     }));
+    setHighlightedFilter('bank');
     setActiveView('feed');
   };
 
@@ -180,6 +181,7 @@ export default function App() {
       ...prev,
       selectedIssuer: issuerName,
     }));
+    setHighlightedFilter('issuer');
     setActiveView('feed');
   };
 
@@ -209,6 +211,9 @@ export default function App() {
         filteredDealsCount={filteredDeals.length}
         activeView={activeView}
         onViewChange={setActiveView}
+        highlightedFilter={highlightedFilter}
+        filteredDeals={filteredDeals}
+        updatedAt={updatedAt}
       />
 
       {/* Main Content Area */}
@@ -283,15 +288,6 @@ export default function App() {
             onSelectBank={handleSelectBank}
           />
         )}
-
-        {/* Side-by-Side Comparison Workspace */}
-        {activeView === 'compare' && (
-          <CompareView
-            deals={filteredDeals}
-            onSelectBank={handleSelectBank}
-            onSelectIssuer={handleSelectIssuer}
-          />
-        )}
       </main>
 
       {/* Floating Scroll to Top */}
@@ -350,4 +346,3 @@ export default function App() {
     </div>
   );
 }
-
